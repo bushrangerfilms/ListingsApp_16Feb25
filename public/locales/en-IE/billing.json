@@ -1,0 +1,288 @@
+{
+  "page": {
+    "title": "Billing & Credits",
+    "description": "Manage your credit balance and view usage history",
+    "loadingOrganization": "Loading organisation..."
+  },
+  "credits": {
+    "title": "Credits",
+    "balance": "Credit Balance",
+    "currentBalance": "Current Balance",
+    "creditsAvailable": "credits available",
+    "remaining": "{{count}} credits remaining",
+    "remainingSimple": "credits remaining",
+    "used": "{{count}} credits used",
+    "purchase": "Purchase Credits",
+    "topUp": "Top Up",
+    "history": "Credit History",
+    "transaction": "Transaction",
+    "amount": "Amount",
+    "cost": "Cost",
+    "description": "Description",
+    "loading": "Loading...",
+    "perCredit": "per credit",
+    "neverExpires": "Never expires",
+    "thisMonth": "This month"
+  },
+  "balance": {
+    "low": "Low balance",
+    "critical": "Critical - Top up now"
+  },
+  "usage": {
+    "socialPosts": "Social Posts",
+    "videoGeneration": "Video Generation",
+    "creditsPerPost": "credits per post",
+    "creditsPerVideo": "credits per video",
+    "postsRemaining": "posts remaining",
+    "videosRemaining": "videos remaining",
+    "approximately": "≈ {{count}} {{type}} remaining"
+  },
+  "tabs": {
+    "history": "Transaction History",
+    "analytics": "Usage Analytics"
+  },
+  "subscription": {
+    "title": "Subscription",
+    "plan": "Plan",
+    "currentPlan": "Current Plan",
+    "upgrade": "Upgrade",
+    "downgrade": "Downgrade",
+    "cancel": "Cancel Subscription",
+    "renews": "Renews on {{date}}",
+    "expires": "Expires on {{date}}",
+    "trial": "Free Trial",
+    "trialEnds": "Trial ends in {{days}} days",
+    "trialExpired": "Trial Expired",
+    "choosePlan": "Choose a Plan",
+    "subscribeNow": "Subscribe Now",
+    "reactivate": "Reactivate Subscription",
+    "updatePayment": "Update Payment Method",
+    "contactSupport": "Contact Support"
+  },
+  "account": {
+    "trial": {
+      "endsTomorrow": "Your trial ends tomorrow!",
+      "endsInDays": "Your trial ends in {{days}} days",
+      "subscribePrompt": "Subscribe now to keep full access to all features and your data."
+    },
+    "trialExpired": {
+      "title": "Your trial has expired",
+      "description": "Your account is in read-only mode. You have {{days}} days to subscribe before your account is archived."
+    },
+    "paymentFailed": {
+      "title": "Payment failed",
+      "description": "Please update your payment method within {{days}} days to restore full access."
+    },
+    "cancelled": {
+      "title": "Subscription cancelled",
+      "description": "Your account is in read-only mode. You have {{days}} days to resubscribe before your account is archived."
+    },
+    "archived": {
+      "title": "Account archived",
+      "description": "Your account has been archived. Contact support to restore your account."
+    }
+  },
+  "plans": {
+    "starter": {
+      "name": "Starter",
+      "description": "Perfect for solo agents",
+      "features": {
+        "allPlatform": "All platform features",
+        "credits": "200 credits/month included",
+        "users": "1 user"
+      }
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "For growing teams",
+      "features": {
+        "allPlatform": "All platform features",
+        "credits": "500 credits/month included",
+        "users": "Up to 10 users",
+        "priority": "Priority support"
+      }
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "description": "Custom solutions for large organisations"
+    }
+  },
+  "accountStatus": {
+    "active": "Active",
+    "trial": "Trial",
+    "trialExpired": "Trial Expired",
+    "paymentFailed": "Payment Failed",
+    "unsubscribed": "Unsubscribed",
+    "archived": "Archived"
+  },
+  "pricing": {
+    "perMonth": "per month",
+    "perYear": "per year",
+    "perUser": "per user",
+    "includedCredits": "{{count}} credits included",
+    "additionalCredits": "Additional credits",
+    "vat": "VAT",
+    "vatIncluded": "VAT included",
+    "vatExcluded": "excl. VAT",
+    "total": "Total"
+  },
+  "invoices": {
+    "title": "Invoices",
+    "invoice": "Invoice",
+    "date": "Date",
+    "amount": "Amount",
+    "status": "Status",
+    "download": "Download",
+    "paid": "Paid",
+    "pending": "Pending",
+    "overdue": "Overdue"
+  },
+  "payment": {
+    "method": "Payment Method",
+    "card": "Card",
+    "addCard": "Add Card",
+    "updateCard": "Update Card",
+    "removeCard": "Remove Card",
+    "processing": "Processing payment...",
+    "success": "Payment successful",
+    "failed": "Payment failed",
+    "secureStripe": "Secure payment powered by Stripe",
+    "instantActivation": "Instant activation after payment"
+  },
+  "purchase": {
+    "title": "Purchase Credits",
+    "description": "Select a credit pack to power your social media automation.",
+    "currentBalance": "Current balance: {{count}} credits",
+    "popular": "Popular",
+    "save": "Save {{percent}}%",
+    "credits": "credits",
+    "socialPosts": "{{count}} social posts",
+    "videos": "{{count}} videos",
+    "purchase": "Purchase",
+    "processing": "Processing...",
+    "sharedCredits": "Credits are shared across all your apps (CRM & Socials)",
+    "packUnavailable": "This credit pack is not yet available for purchase. Please try again later.",
+    "checkoutFailed": "Unable to start the checkout process. Please try again."
+  },
+  "history": {
+    "title": "Transaction History",
+    "description": "View all credit purchases and usage",
+    "exportCsv": "Export CSV",
+    "noTransactions": "No transactions yet",
+    "date": "Date",
+    "type": "Type",
+    "credit": "Credit",
+    "debit": "Debit",
+    "balanceAfter": "Balance After",
+    "previous": "Previous",
+    "next": "Next",
+    "page": "Page {{number}}"
+  },
+  "warnings": {
+    "lowCredits": {
+      "title": "Low Credit Balance",
+      "description": "Your credit balance is running low. Purchase more credits to continue using automation features."
+    },
+    "teamLimit": {
+      "title": "Team Limit Reached",
+      "description": "You've reached the maximum number of team members for your plan. Upgrade to add more."
+    }
+  },
+  "trial": {
+    "countdown": "{{days}} days left in trial",
+    "lastDay": "Last day of trial",
+    "freeTrial": "Free Trial",
+    "daysRemaining": "Days remaining",
+    "day": "day",
+    "days": "days",
+    "daysLeft": "{{count}} {{unit}} left",
+    "dayOf": "Day {{current}} of {{total}}",
+    "manageSubscription": "Manage Subscription"
+  },
+  "status": {
+    "active": "Active"
+  },
+  "lowCredits": {
+    "noCreditsTitle": "No credits remaining",
+    "noCreditsDescription": "You've used all your credits. Purchase more to continue using AI features.",
+    "criticalTitle": "Credits critically low",
+    "criticalDescription": "You have only {{balance}} credits remaining (less than 10% of your monthly allocation).",
+    "lowTitle": "Credits running low",
+    "lowDescription": "You have {{balance}} credits remaining (less than 20% of your monthly allocation).",
+    "buyCredits": "Buy Credits"
+  },
+  "team": {
+    "limitReachedTitle": "Team limit reached",
+    "limitReachedDescription": "You have {{current}} of {{max}} team member.",
+    "limitReachedDescriptionPlural": "You have {{current}} of {{max}} team members.",
+    "upgradePrompt": "Upgrade to Pro for up to 10 team members.",
+    "upgradeToPro": "Upgrade to Pro",
+    "approachingLimitTitle": "Approaching team limit",
+    "approachingLimitDescription": "You have {{current}} of {{max}} team members.",
+    "considerUpgrade": "Consider upgrading to Pro for more capacity.",
+    "viewProPlan": "View Pro Plan"
+  },
+  "manage": {
+    "title": "Subscription & Billing",
+    "description": "Manage your subscription, credits, and billing details",
+    "choosePlan": "Choose Your Plan",
+    "daysLeftInTrial": "{{days}} days left in trial",
+    "mostPopular": "Most Popular",
+    "perMonth": "/month",
+    "subscribeTo": "Subscribe to {{plan}}",
+    "currentPlan": "Current Plan",
+    "planDetails": "{{plan}} Plan - {{price}}/month",
+    "freeTrial": "Free Trial",
+    "noActiveSubscription": "No active subscription",
+    "user": "{{count}} user",
+    "users": "{{count}} users",
+    "creditsPerMonth": "{{count}} credits/mo",
+    "nextBilling": "Next billing: {{date}}",
+    "manageBilling": "Manage Billing",
+    "creditBalance": "Credit Balance",
+    "creditsForAI": "Available credits for AI features",
+    "credits": "credits",
+    "lowBalanceWarning": "Your credit balance is running low. Consider purchasing more credits.",
+    "buyMoreCredits": "Buy More Credits",
+    "creditUsage": "Credit Usage",
+    "creditUsageDesc": "Credits are used for AI-powered features and third-party services",
+    "videoGeneration": "Video generation",
+    "socialPost": "Social post",
+    "aiChat": "AI chat",
+    "propertyExtraction": "Property extraction",
+    "emailSend": "Email send",
+    "organizationNotFound": "Organisation not found",
+    "pleaseLogIn": "Please log in to subscribe",
+    "noBillingAccount": "No billing account found. Please contact support.",
+    "pleaseLogInManage": "Please log in to manage billing"
+  },
+  "upgrade": {
+    "title": "Upgrade to Pro",
+    "description": "Get more credits, team members, and priority support",
+    "badge": "Upgrade",
+    "backToBilling": "Back to Billing",
+    "proPlan": "Pro Plan",
+    "proPlanDesc": "For growing teams and agencies",
+    "unableToProcess": "Unable to process upgrade. Please try again.",
+    "pleaseLogIn": "Please log in to upgrade",
+    "processing": "Processing...",
+    "confirmUpgrade": "Upgrade to Pro",
+    "securePayment": "Secure payment powered by Stripe. Cancel anytime.",
+    "whatHappens": "What happens when you upgrade:",
+    "upgradeImmediately": "Your subscription will be upgraded immediately",
+    "chargedDifference": "You'll be charged the difference for the current billing period",
+    "newCreditsStart": "Your new credit allocation starts right away",
+    "inviteTeam": "You can invite up to 10 team members",
+    "allFeatures": "All platform features included",
+    "creditsComparison": "{{pro}} credits/month (vs {{starter}})",
+    "upToUsers": "Up to {{count}} team members",
+    "prioritySupport": "Priority support",
+    "teamTracking": "Team activity tracking",
+    "advancedAnalytics": "Advanced analytics"
+  },
+  "errors": {
+    "checkoutFailed": "Failed to create checkout session",
+    "portalFailed": "Failed to create billing portal",
+    "upgradeFailed": "Failed to start upgrade. Please try again."
+  }
+}

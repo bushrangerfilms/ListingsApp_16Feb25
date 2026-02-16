@@ -1,0 +1,76 @@
+{
+  "title": "Administration",
+  "dashboard": "Dashboard",
+  
+  "organisations": {
+    "title": "Organisations",
+    "manage": "Manage Organisations",
+    "create": "Create Organisation",
+    "edit": "Edit Organisation",
+    "details": "Organisation Details",
+    "settings": "Organisation Settings",
+    "billing": "Billing",
+    "users": "Users",
+    "plan": "Plan"
+  },
+  
+  "users": {
+    "title": "Users",
+    "manage": "Manage Users",
+    "invite": "Invite User",
+    "edit": "Edit User",
+    "remove": "Remove User",
+    "role": "Role",
+    "lastActive": "Last Active",
+    "impersonate": "Impersonate"
+  },
+  
+  "roles": {
+    "superAdmin": "Super Admin",
+    "admin": "Admin",
+    "developer": "Developer",
+    "user": "User"
+  },
+  
+  "billing": {
+    "title": "Billing Management",
+    "credits": "Credits",
+    "grantCredits": "Grant Credits",
+    "revokeCredits": "Revoke Credits",
+    "transactions": "Transactions",
+    "discountCodes": "Discount Codes"
+  },
+  
+  "featureFlags": {
+    "title": "Feature Flags",
+    "create": "Create Feature Flag",
+    "edit": "Edit Feature Flag",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
+  },
+  
+  "audit": {
+    "title": "Audit Log",
+    "action": "Action",
+    "actor": "Actor",
+    "target": "Target",
+    "timestamp": "Timestamp",
+    "details": "Details"
+  },
+  
+  "alerts": {
+    "title": "Alert Rules",
+    "create": "Create Alert",
+    "edit": "Edit Alert",
+    "test": "Test Alert",
+    "history": "Alert History"
+  },
+  
+  "gdpr": {
+    "title": "GDPR Requests",
+    "export": "Data Export",
+    "deletion": "Data Deletion",
+    "pending": "Pending Requests",
+    "completed": "Completed Requests"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "_note": "en-GB overrides for listings namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+  
+  "fields": {
+    "energyRating": "EPC Rating",
+    "berNumber": "EPC Certificate Number",
+    "eircode": "Postcode",
+    "berRating": "EPC Rating"
+  },
+  
+  "address": {
+    "eircode": "Postcode",
+    "county": "County"
+  },
+  
+  "filters": {
+    "price0to200k": "£0 - £200,000",
+    "price200kto400k": "£200,000 - £400,000",
+    "price400kto600k": "£400,000 - £600,000",
+    "price600kPlus": "£600,000+"
+  },
+  
+  "create": {
+    "price": {
+      "label": "Price (£)",
+      "monthlyRent": "Monthly Rent (£)"
+    },
+    "address": {
+      "eircode": "Postcode",
+      "eircodePlaceholder": "SW1A 1AA"
+    },
+    "details": {
+      "berRating": "EPC Rating",
+      "selectBerRating": "Select EPC rating"
+    }
+  },
+  
+  "public": {
+    "filters": {
+      "priceRange0": "£0 - £200,000",
+      "priceRange200": "£200,000 - £400,000",
+      "priceRange400": "£400,000 - £600,000",
+      "priceRange600": "£600,000+"
+    }
+  }
+}

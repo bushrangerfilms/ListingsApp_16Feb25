@@ -1,0 +1,74 @@
+{
+  "credits": {
+    "title": "Credits",
+    "balance": "Credit Balance",
+    "remaining": "{{count}} credits remaining",
+    "used": "{{count}} credits used",
+    "purchase": "Purchase Credits",
+    "topUp": "Top Up",
+    "history": "Credit History",
+    "transaction": "Transaction",
+    "amount": "Amount",
+    "cost": "Cost",
+    "description": "Description"
+  },
+  "subscription": {
+    "title": "Subscription",
+    "plan": "Plan",
+    "currentPlan": "Current Plan",
+    "upgrade": "Upgrade",
+    "downgrade": "Downgrade",
+    "cancel": "Cancel Subscription",
+    "renews": "Renews on {{date}}",
+    "expires": "Expires on {{date}}",
+    "trial": "Free Trial",
+    "trialEnds": "Trial ends in {{days}} days",
+    "trialExpired": "Trial Expired"
+  },
+  "plans": {
+    "starter": {
+      "name": "Starter",
+      "description": "Perfect for individual agents"
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "For growing agencies"
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "description": "Custom solutions for large organisations"
+    }
+  },
+  "pricing": {
+    "perMonth": "per month",
+    "perYear": "per year",
+    "perUser": "per user",
+    "includedCredits": "{{count}} credits included",
+    "additionalCredits": "Additional credits",
+    "vat": "VAT",
+    "vatIncluded": "VAT included",
+    "vatExcluded": "excl. VAT",
+    "total": "Total"
+  },
+  "invoices": {
+    "title": "Invoices",
+    "invoice": "Invoice",
+    "date": "Date",
+    "amount": "Amount",
+    "status": "Status",
+    "download": "Download",
+    "paid": "Paid",
+    "pending": "Pending",
+    "overdue": "Overdue"
+  },
+  "payment": {
+    "method": "Payment Method",
+    "card": "Card",
+    "addCard": "Add Card",
+    "updateCard": "Update Card",
+    "removeCard": "Remove Card",
+    "processing": "Processing payment...",
+    "success": "Payment successful",
+    "failed": "Payment failed"
+  }
+}

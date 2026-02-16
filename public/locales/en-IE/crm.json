@@ -1,0 +1,192 @@
+{
+  "title": "CRM",
+  "pipeline": {
+    "title": "CRM Pipeline",
+    "subtitle": "Manage seller and buyer relationships",
+    "dragHint": "Drag cards between stages to update"
+  },
+  "tabs": {
+    "sellers": "Sellers",
+    "buyers": "Buyers",
+    "analytics": "Analytics"
+  },
+  "views": {
+    "list": "List View",
+    "kanban": "Kanban View"
+  },
+  "sellers": {
+    "title": "Sellers",
+    "new": "New Seller",
+    "noResults": "No sellers found",
+    "profile": "profile",
+    "profiles": "profiles",
+    "total": "Total Sellers",
+    "activeInPipeline": "Active in pipeline",
+    "leadHint": "New leads appear here when visitors submit valuation requests on your website"
+  },
+  "buyers": {
+    "title": "Buyers",
+    "new": "New Buyer",
+    "noResults": "No buyers found",
+    "profile": "profile",
+    "profiles": "profiles",
+    "total": "Total Buyers",
+    "activeInPipeline": "Active in pipeline",
+    "leadHint": "New leads appear here when visitors submit property enquiries or sign up for alerts",
+    "filterByProperty": "Filter by property:",
+    "allProperties": "All properties",
+    "showingInterested": "Showing {{count}} interested buyer",
+    "showingInterestedPlural": "Showing {{count}} interested buyers"
+  },
+  "stages": {
+    "all": "All",
+    "seller": {
+      "lead": "Lead",
+      "valuation_scheduled": "Valuation Scheduled",
+      "valuation_complete": "Valuation Complete",
+      "listed": "Listed",
+      "under_offer": "Under Offer",
+      "sold": "Sold",
+      "lost": "Lost"
+    },
+    "buyer": {
+      "lead": "Lead",
+      "qualified": "Qualified",
+      "viewing_scheduled": "Viewing Scheduled",
+      "viewed": "Viewed",
+      "offer_made": "Offer Made",
+      "sale_agreed": "Sale Agreed",
+      "purchased": "Purchased",
+      "lost": "Lost"
+    },
+    "noProfilesYet": "No profiles in {{stage}} yet"
+  },
+  "sources": {
+    "all": "All Sources",
+    "manual": "Manual",
+    "property_alert": "Property Alert",
+    "property_enquiry": "Property Enquiry",
+    "valuation_request": "Valuation Request",
+    "filterBySource": "Filter by source"
+  },
+  "search": {
+    "placeholder": "Search by name or email..."
+  },
+  "analytics": {
+    "title": "Analytics",
+    "totalSellers": "Total Sellers",
+    "totalBuyers": "Total Buyers",
+    "recentActivity": "Recent Activity",
+    "lastSevenDays": "Last 7 days",
+    "activeInPipeline": "Active in pipeline",
+    "sellerPipeline": "Seller Pipeline by Stage",
+    "buyerPipeline": "Buyer Pipeline by Stage",
+    "pipelineComparison": "Pipeline Comparison"
+  },
+  "contacts": {
+    "title": "Contacts",
+    "contact": "Contact",
+    "add": "Add Contact",
+    "edit": "Edit Contact",
+    "delete": "Delete Contact",
+    "import": "Import Contacts",
+    "export": "Export Contacts"
+  },
+  "types": {
+    "buyer": "Buyer",
+    "seller": "Seller",
+    "landlord": "Landlord",
+    "tenant": "Tenant",
+    "vendor": "Vendor",
+    "lead": "Lead",
+    "prospect": "Prospect",
+    "client": "Client"
+  },
+  "status": {
+    "new": "New",
+    "contacted": "Contacted",
+    "qualified": "Qualified",
+    "negotiating": "Negotiating",
+    "closed": "Closed",
+    "lost": "Lost",
+    "inactive": "Inactive"
+  },
+  "fields": {
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "mobile": "Mobile",
+    "address": "Address",
+    "propertyAddress": "Property Address",
+    "source": "Source",
+    "stage": "Stage",
+    "assignedTo": "Assigned To",
+    "notes": "Notes",
+    "tags": "Tags",
+    "budget": "Budget",
+    "budgetMin": "Min Budget",
+    "budgetMax": "Max Budget",
+    "bedrooms": "Bedrooms",
+    "bedroomsRequired": "Bedrooms Required",
+    "interestedProperties": "Interested Properties",
+    "createdAt": "Created",
+    "lastContact": "Last Contact"
+  },
+  "activity": {
+    "title": "Activity",
+    "log": "Activity Log",
+    "add": "Add Activity",
+    "call": "Call",
+    "email": "Email",
+    "meeting": "Meeting",
+    "viewing": "Viewing",
+    "note": "Note",
+    "task": "Task",
+    "stageChange": "Stage changed to {{stage}}"
+  },
+  "viewings": {
+    "title": "Viewings",
+    "schedule": "Schedule Viewing",
+    "reschedule": "Reschedule",
+    "cancel": "Cancel Viewing",
+    "completed": "Viewing Completed",
+    "feedback": "Feedback",
+    "interested": "Interested",
+    "notInterested": "Not Interested"
+  },
+  "matching": {
+    "title": "Property Matching",
+    "criteria": "Search Criteria",
+    "matches": "Matched Properties",
+    "noMatches": "No matching properties found",
+    "sendMatches": "Send Matching Properties"
+  },
+  "communication": {
+    "title": "Communication",
+    "sendEmail": "Send Email",
+    "sendSms": "Send SMS",
+    "history": "Communication History",
+    "template": "Template"
+  },
+  "profile": {
+    "viewDetails": "View Details",
+    "editProfile": "Edit Profile",
+    "deleteProfile": "Delete Profile",
+    "confirmDelete": "Are you sure you want to delete this profile?",
+    "neverContacted": "Never contacted"
+  },
+  "create": {
+    "title": "Create Profile",
+    "sellerTitle": "Create Seller Profile",
+    "buyerTitle": "Create Buyer Profile",
+    "success": "Profile created successfully",
+    "error": "Failed to create profile"
+  },
+  "toast": {
+    "stageUpdated": "Stage updated successfully",
+    "stageUpdateFailed": "Failed to update stage",
+    "profilesLoadFailed": "Failed to load CRM profiles"
+  }
+}

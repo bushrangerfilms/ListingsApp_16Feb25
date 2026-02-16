@@ -1,0 +1,431 @@
+{
+  "title": "Listings",
+  "listing": "Listing",
+  "property": "Property",
+  "properties": "Properties",
+  "propertyListings": "Property Listings",
+  "create": "Create Listing",
+  "newListing": "New Listing",
+  "edit": "Edit Listing",
+  "view": "View Listing",
+  "delete": "Delete Listing",
+  "exportCsv": "Export CSV",
+  "createFirst": "Create Your First Listing",
+  
+  "manage": {
+    "description": "Manage all your property listings for {{businessName}}",
+    "organizationNotFound": "Organisation Not Found",
+    "organizationNotFoundDescription": "Your account is not linked to an organisation. Please contact support to set up your organisation access.",
+    "reloadPage": "Reload Page",
+    "goToSettings": "Go to Settings"
+  },
+  
+  "status": {
+    "all": "All",
+    "new": "New",
+    "draft": "Draft",
+    "published": "Published",
+    "forSale": "For Sale",
+    "saleAgreed": "Sale Agreed",
+    "sold": "Sold",
+    "withdrawn": "Withdrawn",
+    "forRent": "To Let",
+    "let": "Let",
+    "letAgreed": "Let Agreed",
+    "archived": "Archived",
+    "update": "Update Status"
+  },
+  
+  "filters": {
+    "all": "All",
+    "label": "Filters",
+    "searchPlaceholder": "Search by title, address, or location...",
+    "priceRange": "Price Range",
+    "allPrices": "All Prices",
+    "price0to200k": "€0 - €200,000",
+    "price200kto400k": "€200,000 - €400,000",
+    "price400kto600k": "€400,000 - €600,000",
+    "price600kPlus": "€600,000+",
+    "under200k": "Under 200k",
+    "200kTo400k": "200k - 400k",
+    "400kTo600k": "400k - 600k",
+    "over600k": "600k+",
+    "bedrooms": "Bedrooms",
+    "allBedrooms": "All Bedrooms",
+    "bedroom1": "1 Bedroom",
+    "bedrooms2": "2 Bedrooms",
+    "bedrooms3": "3 Bedrooms",
+    "bedrooms4": "4 Bedrooms",
+    "bedrooms5Plus": "5+ Bedrooms",
+    "bedroom": "{{count}} Bedroom",
+    "bedrooms_plural": "{{count}} Bedrooms",
+    "bedroomsPlus": "{{count}}+ Bedrooms",
+    "sortBy": "Sort By",
+    "newestFirst": "Newest First",
+    "oldestFirst": "Oldest First",
+    "priceLowHigh": "Price: Low to High",
+    "priceHighLow": "Price: High to Low",
+    "titleAZ": "Title: A-Z",
+    "titleZA": "Title: Z-A",
+    "clear": "Clear Filters"
+  },
+  
+  "sort": {
+    "label": "Sort by",
+    "newest": "Newest First",
+    "oldest": "Oldest First",
+    "priceLow": "Price: Low to High",
+    "priceHigh": "Price: High to Low"
+  },
+  
+  "empty": {
+    "noListings": "No listings yet",
+    "noMatchingListings": "No listings match your search criteria"
+  },
+  
+  "toast": {
+    "error": "Error",
+    "success": "Success",
+    "loadFailed": "Failed to load listings",
+    "statusUpdated": "Status updated",
+    "statusChangedTo": "Listing status changed to {{status}}",
+    "statusUpdateFailed": "Failed to update listing status",
+    "deletedSuccessfully": "Listing deleted successfully",
+    "deleteFailed": "Failed to delete listing",
+    "archivedSuccessfully": "Listing archived successfully",
+    "unarchivedSuccessfully": "Listing unarchived successfully",
+    "archiveFailed": "Failed to update archive status",
+    "exportSuccessful": "Export successful",
+    "exportedToCsv": "Listings exported to CSV",
+    "photosRequired": "Photos required",
+    "pleaseUploadPhoto": "Please upload at least one photo"
+  },
+  
+  "dialog": {
+    "deleteTitle": "Are you sure?",
+    "deleteDescription": "This will permanently delete \"{{title}}\". This action cannot be undone.",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  
+  "card": {
+    "new": "NEW",
+    "saleAgreed": "SALE AGREED",
+    "sold": "SOLD",
+    "priceOnApplication": "Price on Application",
+    "poa": "POA",
+    "noImage": "No image",
+    "bed": "bed",
+    "beds": "beds",
+    "bath": "bath",
+    "baths": "baths",
+    "sqm": "m\u00B2",
+    "sqft": "sq ft",
+    "acres": "acres",
+    "hectares": "ha",
+    "viewListing": "View Listing",
+    "editListing": "Edit",
+    "archiveListing": "Archive",
+    "unarchiveListing": "Unarchive",
+    "deleteListing": "Delete"
+  },
+  
+  "propertyTypes": {
+    "house": "House",
+    "apartment": "Apartment",
+    "bungalow": "Bungalow",
+    "townhouse": "Townhouse",
+    "detached": "Detached House",
+    "semiDetached": "Semi-Detached House",
+    "terrace": "Terrace",
+    "endOfTerrace": "End of Terrace",
+    "duplex": "Duplex",
+    "penthouse": "Penthouse",
+    "studio": "Studio",
+    "site": "Site",
+    "land": "Land",
+    "commercial": "Commercial",
+    "office": "Office",
+    "retail": "Retail",
+    "industrial": "Industrial",
+    "farm": "Farm"
+  },
+  
+  "fields": {
+    "title": "Title",
+    "description": "Description",
+    "price": "Price",
+    "askingPrice": "Asking Price",
+    "guidePrice": "Guide Price",
+    "priceOnApplication": "Price on Application",
+    "bedrooms": "Bedrooms",
+    "bathrooms": "Bathrooms",
+    "receptions": "Reception Rooms",
+    "floor": "Floor",
+    "floors": "Floors",
+    "floorArea": "Floor Area",
+    "siteArea": "Site Area",
+    "yearBuilt": "Year Built",
+    "energyRating": "BER Rating",
+    "berNumber": "BER Number",
+    "features": "Features",
+    "amenities": "Amenities",
+    "category": "Category",
+    "buildingType": "Building Type",
+    "buildingSize": "Building Size",
+    "landSize": "Land Size",
+    "county": "County",
+    "eircode": "Eircode",
+    "berRating": "BER Rating",
+    "specs": "Specifications",
+    "furnishingStatus": "Furnishing Status",
+    "bookingPlatformLink": "Booking Platform Link"
+  },
+  
+  "address": {
+    "title": "Address",
+    "line1": "Address Line 1",
+    "line2": "Address Line 2",
+    "town": "Town/City",
+    "county": "County",
+    "eircode": "Eircode",
+    "country": "Country"
+  },
+  
+  "photos": {
+    "title": "Photos",
+    "upload": "Upload Photos",
+    "primary": "Primary Photo",
+    "setPrimary": "Set as Primary",
+    "remove": "Remove Photo",
+    "reorder": "Reorder Photos"
+  },
+  
+  "search": {
+    "title": "Search Properties",
+    "location": "Location",
+    "priceRange": "Price Range",
+    "minPrice": "Min Price",
+    "maxPrice": "Max Price",
+    "minBeds": "Min Beds",
+    "maxBeds": "Max Beds",
+    "propertyType": "Property Type",
+    "results": "{{count}} properties found"
+  },
+  
+  "metrics": {
+    "views": "Views",
+    "enquiries": "Enquiries",
+    "saves": "Saves",
+    "daysOnMarket": "Days on Market"
+  },
+  
+  "form": {
+    "basicDetails": "Basic Details",
+    "locationDetails": "Location",
+    "propertyDetails": "Property Details",
+    "mediaUpload": "Photos & Media",
+    "review": "Review & Submit",
+    "extractFromText": "Extract from Text",
+    "extractFromImages": "Extract from Images",
+    "pasteDescription": "Paste property description here...",
+    "extractDetails": "Extract Details",
+    "extracting": "Extracting...",
+    "markAsNew": "Mark as New",
+    "markAsNewDescription": "Show \"NEW\" badge on this listing",
+    "saveAsDraft": "Save as Draft",
+    "reviewListing": "Review Listing",
+    "submitListing": "Submit Listing",
+    "updateListing": "Update Listing"
+  },
+  
+  "csv": {
+    "title": "Title",
+    "status": "Status",
+    "price": "Price",
+    "address": "Address",
+    "bedrooms": "Bedrooms",
+    "bathrooms": "Bathrooms",
+    "datePosted": "Date Posted"
+  },
+  
+  "create": {
+    "title": "Create New Listing",
+    "subtitle": "Use AI to extract details from a screenshot or text, or fill in manually",
+    "backToDashboard": "Back to Dashboard",
+    "aiExtraction": {
+      "title": "AI Property Extraction",
+      "subtitle": "Upload a property screenshot or paste text to auto-fill the form",
+      "screenshots": "Screenshots",
+      "text": "Text",
+      "selectedCount": "Selected: {{count}} screenshot",
+      "selectedCount_plural": "Selected: {{count}} screenshots",
+      "extractFromScreenshots": "Extract from screenshots",
+      "extractFromText": "Extract from Text",
+      "extracting": "Extracting...",
+      "pasteHere": "Paste property details here (e.g., from a listing website, email, or document)..."
+    },
+    "toast": {
+      "noImages": "No images selected",
+      "pleaseSelectScreenshot": "Please select at least one screenshot",
+      "extractingDetails": "Extracting details",
+      "aiAnalyzing": "AI is analysing {{count}} screenshot...",
+      "aiAnalyzing_plural": "AI is analysing {{count}} screenshots...",
+      "aiAnalyzingText": "AI is analysing the property description...",
+      "successExtracted": "Success!",
+      "successExtractedDescription": "Analysed {{count}} screenshot and filled in the form. Please review and adjust as needed.",
+      "successExtractedDescription_plural": "Analysed {{count}} screenshots and filled in the form. Please review and adjust as needed.",
+      "successExtractedText": "Property details extracted and filled in the form. Please review and adjust as needed.",
+      "extractionFailed": "Extraction failed",
+      "noTextProvided": "No text provided",
+      "pleaseEnterText": "Please enter property details as text"
+    },
+    "category": {
+      "label": "Property Category",
+      "description": "This determines which fields you'll need to fill",
+      "forSale": "For Sale",
+      "rental": "Long-term Rental",
+      "holidayRental": "Holiday Rental"
+    },
+    "poa": {
+      "label": "Price on Application (POA)",
+      "description": "Check this if the price is not publicly listed"
+    },
+    "price": {
+      "label": "Price (€)",
+      "monthlyRent": "Monthly Rent (€)"
+    },
+    "bookingLink": {
+      "label": "Booking Platform Link",
+      "placeholder": "https://airbnb.com/rooms/123456",
+      "description": "Link to Airbnb, Booking.com, or other rental platform"
+    },
+    "markAsNew": {
+      "label": "Mark as New",
+      "description": "Auto expires after 2 weeks. Marks the listing with a NEW badge on the listing on your public website and adds a 'New to Market' banner on your social media videos for the duration set in your settings in the Socials Hub (default 2 weeks)."
+    },
+    "address": {
+      "line1": "Address Line 1",
+      "line1Optional": "Address Line 1 (Optional)",
+      "line1Placeholder": "Main Street",
+      "town": "Town / City",
+      "townPlaceholder": "Dublin",
+      "county": "County",
+      "countyPlaceholder": "Dublin",
+      "eircode": "Eircode",
+      "eircodePlaceholder": "D01 AB12"
+    },
+    "details": {
+      "bedrooms": "Bedrooms",
+      "bathrooms": "Bathrooms",
+      "buildingSize": "Building Size (m²)",
+      "landSize": "Land Size (Acres)",
+      "landSizePlaceholder": "e.g., 3.5",
+      "description": "Description",
+      "descriptionPlaceholder": "e.g., Stunning 3-bed semi-detached home in a quiet cul-de-sac. Recently renovated kitchen with quartz countertops. South-facing garden with patio area. Walking distance to schools and shops.",
+      "specs": "Specifications / Dimensions",
+      "specsPlaceholder": "e.g., Living Room: 5.2m x 4.1m • Kitchen: 4.5m x 3.8m • Master Bedroom: 4.2m x 3.6m with ensuite • Garden: 15m x 8m",
+      "buildingType": "Building Type",
+      "selectBuildingType": "Select building type",
+      "berRating": "BER Rating",
+      "selectBerRating": "Select BER rating",
+      "furnishingStatus": "Furnishing Status",
+      "selectFurnishingStatus": "Select furnishing status"
+    },
+    "photos": {
+      "title": "Property Photos",
+      "description": "Upload photos of the property. The first photo will be used as the main image."
+    },
+    "submit": {
+      "reviewListing": "Review Listing",
+      "submitting": "Submitting..."
+    }
+  },
+  
+  "edit": {
+    "title": "Edit Listing",
+    "subtitle": "Update the property details below",
+    "propertyTitle": "Property Title",
+    "showNewBadge": "Show NEW Badge (30 days)",
+    "showNewBadgeDescription": "Override the automatic NEW badge",
+    "toast": {
+      "success": "Success",
+      "successDescription": "Listing updated successfully",
+      "error": "Error",
+      "errorDescription": "Failed to update listing",
+      "photoUploadFailed": "Failed to upload new photos"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "save": "Save Changes",
+      "saving": "Saving..."
+    }
+  },
+  
+  "public": {
+    "sellProperty": "Sell Your Property Quickly And Easily!",
+    "findProperty": "Find Your Perfect Property",
+    "searchPlaceholder": "Search by location or address...",
+    "propertiesAvailable": "{{count}} properties available",
+    "domainNotConfigured": "Domain Not Configured",
+    "domainNotConfiguredDescription": "This domain is not associated with any organisation. Please contact support.",
+    "noPropertiesFound": "No properties found",
+    "tryAdjustingSearch": "Try adjusting your search criteria or filters",
+    "cantFindProperty": "Can't Find What You're Looking For?",
+    "beFirstToKnow": "Be the first to know of new properties that suit your needs",
+    "getNotified": "Get Notified",
+    "thinkingOfSelling": "Thinking of Selling?",
+    "getFreeValuation": "Get a free property valuation from our expert team",
+    "requestValuation": "Request a Valuation",
+    "hero": {
+      "sellCta": "Sell Your Property Quickly And Easily!",
+      "title": "Find Your Perfect Property",
+      "searchPlaceholder": "Search by location or address...",
+      "filters": "Filters"
+    },
+    "results": {
+      "propertiesAvailable": "{{count}} property available",
+      "propertiesAvailable_plural": "{{count}} properties available"
+    },
+    "filters": {
+      "allPrices": "All Prices",
+      "priceRange0": "€0 - €200,000",
+      "priceRange200": "€200,000 - €400,000",
+      "priceRange400": "€400,000 - €600,000",
+      "priceRange600": "€600,000+",
+      "allBedrooms": "All Bedrooms",
+      "bedroom": "1 Bedroom",
+      "bedrooms": "{{count}} Bedrooms",
+      "bedroomsPlus": "5+ Bedrooms",
+      "newestFirst": "Newest First",
+      "oldestFirst": "Oldest First",
+      "priceLowHigh": "Price: Low to High",
+      "priceHighLow": "Price: High to Low"
+    },
+    "noResults": {
+      "title": "No properties found",
+      "subtitle": "Try adjusting your search criteria or filters",
+      "clearFilters": "Clear Filters"
+    },
+    "domainError": {
+      "title": "Domain Not Configured",
+      "subtitle": "This domain is not associated with any organisation. Please contact support."
+    },
+    "alerts": {
+      "title": "Can't Find What You're Looking For?",
+      "subtitle": "Be the first to know of new properties that suit your needs",
+      "cta": "Get Notified"
+    },
+    "whyUs": {
+      "defaultTitle": "Sell For The Best Price Faster & Easier With {{organization}}!",
+      "defaultPara1": "When you sell with {{organization}}, you're not just listing your home, you're tapping into one of the most powerful buyer networks in the region.",
+      "defaultPara2": "Our forward-thinking use of technology and unrivalled social media reach mean your property gets attention fast.",
+      "defaultPara3": "We make the process smooth, efficient, and rewarding from start to sold."
+    },
+    "cta": {
+      "title": "Thinking of Selling?",
+      "subtitle": "Get a free property valuation from our expert team",
+      "button": "Request a Valuation"
+    }
+  }
+}

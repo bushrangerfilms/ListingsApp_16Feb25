@@ -1,0 +1,459 @@
+{
+  "home": {
+    "seo": {
+      "title": "AutoListing.io - Property Management Platform for Real Estate Professionals",
+      "description": "The all-in-one platform for real estate agents and agencies. Manage listings, automate marketing, capture leads with AI, and grow your business."
+    },
+    "hero": {
+      "badge": "Now with AI-powered automation",
+      "title": "The complete platform for",
+      "titleHighlight": "real estate professionals",
+      "subtitle": "Manage listings, automate marketing, capture leads with AI, and grow your business. Everything you need in one powerful platform.",
+      "cta": "Start Free Trial",
+      "ctaSecondary": "Explore Features",
+      "trialNote": "100 free credits on signup. No credit card required."
+    },
+    "features": {
+      "title": "Everything you need to succeed",
+      "subtitle": "From listing management to lead capture, we've got you covered with powerful tools designed for real estate professionals.",
+      "viewAll": "View all features",
+      "socialMedia": {
+        "title": "Social Media Automation",
+        "description": "Auto-post listings to Facebook, Instagram, LinkedIn with AI-generated content."
+      },
+      "listings": {
+        "title": "Listings Management",
+        "description": "Manage sales, rentals, and holiday lets with AI-powered property detail extraction."
+      },
+      "crm": {
+        "title": "CRM & Contacts",
+        "description": "Track buyers, sellers, and leads with smart matching and activity timelines."
+      },
+      "email": {
+        "title": "Email Automation",
+        "description": "Multi-step campaigns with templates, tracking, and automatic sequence management."
+      },
+      "ai": {
+        "title": "AI Assistant",
+        "description": "Embeddable chatbot that knows your listings and captures leads 24/7."
+      },
+      "analytics": {
+        "title": "Analytics & Insights",
+        "description": "Track performance, monitor engagement, and optimise your marketing."
+      }
+    },
+    "pricing": {
+      "title": "Simple, transparent pricing",
+      "subtitle": "Two plans, all features included. Pay only for what you use with our credit-based system for AI and automation.",
+      "viewPricing": "View pricing",
+      "starter": {
+        "name": "Starter",
+        "price": "29",
+        "period": "mo",
+        "description": "For solo agents"
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "79",
+        "period": "mo",
+        "description": "For teams up to 10"
+      }
+    },
+    "benefits": {
+      "socialMedia": "Automated social media posting",
+      "listings": "Unlimited property listings",
+      "domains": "Custom domain support",
+      "chatbot": "AI-powered chatbot included",
+      "email": "Email automation",
+      "multiTenant": "Multi-tenant architecture"
+    },
+    "trust": {
+      "multiTenant": {
+        "title": "Multi-Tenant Ready",
+        "description": "Each organisation gets their own branded site with custom domain support."
+      },
+      "secure": {
+        "title": "Secure & Reliable",
+        "description": "Built on enterprise-grade infrastructure with row-level security."
+      },
+      "ai": {
+        "title": "AI-Powered",
+        "description": "Google Gemini integration for smart property extraction and chat."
+      }
+    },
+    "cta": {
+      "title": "Ready to transform your business?",
+      "subtitle": "Join real estate professionals who are saving time and closing more deals with AutoListing.io.",
+      "button": "Start Free Trial",
+      "viewPricing": "View Pricing",
+      "trialNote": "100 free credits included. No credit card required to start."
+    }
+  },
+
+  "pricing": {
+    "seo": {
+      "title": "Pricing - AutoListing.io",
+      "description": "Simple, transparent pricing for real estate professionals. All features included, pay only for AI and automation usage."
+    },
+    "hero": {
+      "title": "Simple, transparent pricing",
+      "subtitle": "All features included at every tier. Pay only for AI and automation usage with our credit system."
+    },
+    "plans": {
+      "mostPopular": "Most Popular",
+      "user": "user",
+      "users": "users",
+      "creditsPerMonth": "credits/mo",
+      "trialNote": "Start with 100 free trial credits. No credit card required.",
+      "starter": {
+        "name": "Starter",
+        "description": "Perfect for solo agents getting started",
+        "cta": "Start Free Trial",
+        "features": {
+          "listings": "Unlimited property listings",
+          "crm": "Full CRM access",
+          "email": "Email automation",
+          "chatbot": "AI assistant chatbot",
+          "domains": "Custom domain support",
+          "webhooks": "Webhook integrations",
+          "credits": "200 credits/month included"
+        }
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "For growing teams and agencies",
+        "cta": "Start Free Trial",
+        "features": {
+          "everything": "Everything in Starter",
+          "team": "Up to 10 team members",
+          "support": "Priority support",
+          "credits": "500 credits/month included",
+          "activity": "Team activity tracking",
+          "analytics": "Advanced analytics"
+        }
+      }
+    },
+    "credits": {
+      "title": "Need more credits?",
+      "subtitle": "Purchase additional credit packs anytime. The more you buy, the more you save.",
+      "bestValue": "Best Value",
+      "credits": "credits",
+      "perCredit": "per credit",
+      "howItWorks": {
+        "title": "How credits work",
+        "subtitle": "Credits are only used for AI-powered features and third-party services. Core features are unlimited.",
+        "feature": "Feature",
+        "creditsColumn": "Credits"
+      },
+      "costs": {
+        "videoGeneration": {
+          "name": "Video generation",
+          "description": "AI-generated property videos"
+        },
+        "socialPost": {
+          "name": "Social post",
+          "description": "Automated social media posts"
+        },
+        "aiChat": {
+          "name": "AI assistant chat",
+          "description": "Per chatbot interaction"
+        },
+        "extraction": {
+          "name": "Property extraction",
+          "description": "AI extraction from photos/docs"
+        },
+        "email": {
+          "name": "Email send",
+          "description": "Automated email campaigns"
+        }
+      },
+      "example": {
+        "title": "Example: Typical weekly usage",
+        "description": "An agent with 7-10 listings posting daily to 3 social accounts would use approximately",
+        "creditsPerWeek": "250-300 credits per week",
+        "costPerWeek": "costing around €60/week including subscription."
+      }
+    },
+    "cta": {
+      "title": "Ready to get started?",
+      "subtitle": "Start your free trial today with 100 credits included. No credit card required.",
+      "button": "Start Free Trial"
+    }
+  },
+
+  "features": {
+    "seo": {
+      "title": "Features - AutoListing.io",
+      "description": "Discover all the powerful features of AutoListing.io: property management, CRM, email automation, AI assistant, and more."
+    },
+    "hero": {
+      "title": "Everything you need to grow",
+      "subtitle": "Powerful features designed specifically for real estate professionals. No feature gating - everything is included at every tier."
+    },
+    "comingSoon": "Coming Soon",
+    "categories": {
+      "socialMedia": {
+        "title": "Social Media Automation",
+        "description": "Automate your property marketing across all platforms",
+        "features": {
+          "posting": {
+            "title": "Automated Posting",
+            "description": "Schedule and auto-publish property listings to Facebook, Instagram, LinkedIn, and more."
+          },
+          "content": {
+            "title": "AI Content Generation",
+            "description": "Generate engaging captions, hashtags, and property descriptions with AI."
+          },
+          "media": {
+            "title": "Image & Video Posts",
+            "description": "Create stunning visual posts with your property photos and virtual tours."
+          },
+          "analytics": {
+            "title": "Performance Analytics",
+            "description": "Track engagement, reach, and leads generated from each social post."
+          }
+        }
+      },
+      "property": {
+        "title": "Property Management",
+        "description": "Complete control over your listings",
+        "features": {
+          "types": {
+            "title": "Multi-Property Type Support",
+            "description": "Manage sales, long-term rentals, and holiday lets all in one place."
+          },
+          "extraction": {
+            "title": "AI-Powered Extraction",
+            "description": "Upload photos or documents and let AI extract property details automatically."
+          },
+          "photos": {
+            "title": "Photo Management",
+            "description": "Organise, reorder, and manage property photos with drag-and-drop ease."
+          },
+          "workflow": {
+            "title": "Status Workflow",
+            "description": "Track properties through New, For Sale, Sale/Let Agreed, Sold, and Archived."
+          }
+        }
+      },
+      "crm": {
+        "title": "CRM & Contacts",
+        "description": "Build relationships that close deals",
+        "features": {
+          "profiles": {
+            "title": "Buyer & Seller Profiles",
+            "description": "Store preferences, search criteria, and communication history for every contact."
+          },
+          "matching": {
+            "title": "Smart Matching",
+            "description": "Automatically match buyers with suitable properties based on their criteria."
+          },
+          "timeline": {
+            "title": "Activity Timeline",
+            "description": "Track all interactions, viewings, and communications in one place."
+          },
+          "leads": {
+            "title": "Lead Capture",
+            "description": "Capture leads from your website, chatbot, and email campaigns."
+          }
+        }
+      },
+      "email": {
+        "title": "Email Automation",
+        "description": "Nurture leads on autopilot",
+        "features": {
+          "campaigns": {
+            "title": "Multi-Step Campaigns",
+            "description": "Create automated email sequences with customisable delays between messages."
+          },
+          "templates": {
+            "title": "Template Library",
+            "description": "Build and reuse professional email templates for consistent branding."
+          },
+          "tracking": {
+            "title": "Engagement Tracking",
+            "description": "Monitor open rates, click rates, and engagement metrics in real-time."
+          },
+          "cancellation": {
+            "title": "Smart Cancellation",
+            "description": "Automatically stop sequences when leads reply or take action."
+          }
+        }
+      },
+      "ai": {
+        "title": "AI Assistant",
+        "description": "Your 24/7 lead capture agent",
+        "features": {
+          "chatbot": {
+            "title": "Embeddable Chatbot",
+            "description": "Add an AI assistant to your website that knows your listings and captures leads."
+          },
+          "knowledge": {
+            "title": "Custom Knowledge Base",
+            "description": "Train the AI on your business, policies, and frequently asked questions."
+          },
+          "leads": {
+            "title": "Lead Generation",
+            "description": "Qualify visitors and capture contact details through natural conversation."
+          },
+          "context": {
+            "title": "Context-Aware Responses",
+            "description": "AI understands your properties and CRM data to provide accurate answers."
+          }
+        }
+      },
+      "integrations": {
+        "title": "Integrations & Webhooks",
+        "description": "Connect your entire workflow",
+        "features": {
+          "webhooks": {
+            "title": "Real-Time Webhooks",
+            "description": "Get instant notifications when listings are created, updated, or sold."
+          },
+          "security": {
+            "title": "Secure Payloads",
+            "description": "HMAC-signed webhook payloads ensure data integrity and authenticity."
+          },
+          "retries": {
+            "title": "Automatic Retries",
+            "description": "Failed webhook deliveries are automatically retried with exponential backoff."
+          },
+          "logs": {
+            "title": "Delivery Logs",
+            "description": "Full visibility into webhook delivery status and payload history."
+          }
+        }
+      },
+      "branding": {
+        "title": "Branding & Customisation",
+        "description": "Your brand, your way",
+        "features": {
+          "domains": {
+            "title": "Custom Domains",
+            "description": "Use your own domain for a fully branded experience."
+          },
+          "logo": {
+            "title": "Logo & Branding",
+            "description": "Upload your logo and customise colours to match your brand."
+          },
+          "site": {
+            "title": "Public Listings Site",
+            "description": "A beautiful, SEO-optimised website for your property listings."
+          },
+          "sharing": {
+            "title": "Social Sharing",
+            "description": "Optimised previews when properties are shared on social media."
+          }
+        }
+      }
+    },
+    "cta": {
+      "title": "Ready to see it in action?",
+      "subtitle": "Start your free trial today and experience all these features with 100 credits included.",
+      "button": "Start Free Trial",
+      "viewPricing": "View Pricing"
+    }
+  },
+
+  "support": {
+    "seo": {
+      "title": "Support - AutoListing.io",
+      "description": "Get help with AutoListing.io. Contact our support team, access documentation, or submit a data protection request."
+    },
+    "hero": {
+      "title": "How Can We Help?",
+      "subtitle": "Our team is here to support you. Choose an option below or contact us directly."
+    },
+    "email": {
+      "title": "Email Support",
+      "description": "Get help from our support team",
+      "intro": "For general enquiries and technical support, email us at:",
+      "response": "We aim to respond within 24 hours during business hours."
+    },
+    "chat": {
+      "title": "In-App Chat",
+      "description": "Chat with our AI assistant",
+      "intro": "Logged-in users can access our AI-powered assistant for instant help with:",
+      "features": {
+        "listings": "Creating and managing listings",
+        "platform": "Using platform features",
+        "billing": "Account and billing questions"
+      },
+      "button": "Log in to Access"
+    },
+    "gdpr": {
+      "title": "Data Protection Requests (GDPR)",
+      "description": "Exercise your rights under GDPR and Irish data protection law",
+      "intro": "Under GDPR, you have the right to access, correct, delete, or export your personal data. You can also object to processing or request restrictions on how we use your data.",
+      "howTo": {
+        "title": "To submit a data protection request:",
+        "step1": "Email our Data Protection Officer at",
+        "step2": "Include your full name and the email address associated with your account",
+        "step3": "Specify which right you wish to exercise (access, rectification, erasure, etc.)",
+        "step4": "Provide any details that help us locate your data"
+      },
+      "response": "We will respond to your request within 30 days as required by GDPR. In complex cases, we may extend this by up to 60 days with notice.",
+      "rights": {
+        "title": "Your GDPR Rights:",
+        "access": "Right of Access: Request a copy of your personal data",
+        "rectification": "Right to Rectification: Correct inaccurate data",
+        "erasure": "Right to Erasure: Request deletion of your data",
+        "restriction": "Right to Restriction: Limit how we use your data",
+        "portability": "Right to Portability: Receive your data in a portable format",
+        "object": "Right to Object: Object to certain types of processing"
+      },
+      "complaint": "If you are not satisfied with our response, you may lodge a complaint with the",
+      "dpa": "Irish Data Protection Commission"
+    },
+    "legal": {
+      "title": "Legal Documents",
+      "description": "Important policies and agreements"
+    },
+    "login": {
+      "title": "Account Access",
+      "description": "Sign in to your dashboard",
+      "intro": "Access your AutoListing dashboard to manage listings, contacts, and settings.",
+      "button": "Sign In"
+    },
+    "docs": {
+      "title": "Documentation",
+      "description": "Guides and tutorials",
+      "intro": "Comprehensive guides to help you get the most out of AutoListing.",
+      "comingSoon": "Documentation Centre Coming Soon"
+    },
+    "contact": {
+      "title": "Contact Information",
+      "company": "Registered Office",
+      "email": "General Enquiries"
+    }
+  },
+
+  "footer": {
+    "product": "Product",
+    "company": "Company",
+    "support": "Support",
+    "legal": "Legal",
+    "about": "About",
+    "careers": "Careers",
+    "contact": "Contact",
+    "blog": "Blog",
+    "help": "Help Centre",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "cookies": "Cookie Policy",
+    "features": "Features",
+    "pricing": "Pricing",
+    "copyright": "All rights reserved."
+  },
+
+  "common": {
+    "startFreeTrial": "Start Free Trial",
+    "viewPricing": "View Pricing",
+    "viewFeatures": "Explore Features",
+    "comingSoon": "Coming Soon",
+    "learnMore": "Learn More",
+    "getStarted": "Get Started",
+    "signIn": "Sign In",
+    "signUp": "Sign Up"
+  }
+}

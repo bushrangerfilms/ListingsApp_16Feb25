@@ -1,0 +1,85 @@
+{
+  "title": "CRM",
+  "contacts": {
+    "title": "Contacts",
+    "contact": "Contact",
+    "add": "Add Contact",
+    "edit": "Edit Contact",
+    "delete": "Delete Contact",
+    "import": "Import Contacts",
+    "export": "Export Contacts"
+  },
+  
+  "types": {
+    "buyer": "Buyer",
+    "seller": "Seller",
+    "landlord": "Landlord",
+    "tenant": "Tenant",
+    "vendor": "Vendor",
+    "lead": "Lead",
+    "prospect": "Prospect",
+    "client": "Client"
+  },
+  
+  "status": {
+    "new": "New",
+    "contacted": "Contacted",
+    "qualified": "Qualified",
+    "negotiating": "Negotiating",
+    "closed": "Closed",
+    "lost": "Lost",
+    "inactive": "Inactive"
+  },
+  
+  "fields": {
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "email": "Email",
+    "phone": "Phone",
+    "mobile": "Mobile",
+    "address": "Address",
+    "source": "Source",
+    "assignedTo": "Assigned To",
+    "notes": "Notes",
+    "tags": "Tags"
+  },
+  
+  "activity": {
+    "title": "Activity",
+    "log": "Activity Log",
+    "add": "Add Activity",
+    "call": "Call",
+    "email": "Email",
+    "meeting": "Meeting",
+    "viewing": "Viewing",
+    "note": "Note",
+    "task": "Task"
+  },
+  
+  "viewings": {
+    "title": "Viewings",
+    "schedule": "Schedule Viewing",
+    "reschedule": "Reschedule",
+    "cancel": "Cancel Viewing",
+    "completed": "Viewing Completed",
+    "feedback": "Feedback",
+    "interested": "Interested",
+    "notInterested": "Not Interested"
+  },
+  
+  "matching": {
+    "title": "Property Matching",
+    "criteria": "Search Criteria",
+    "matches": "Matched Properties",
+    "noMatches": "No matching properties found",
+    "sendMatches": "Send Matching Properties"
+  },
+  
+  "communication": {
+    "title": "Communication",
+    "sendEmail": "Send Email",
+    "sendSms": "Send SMS",
+    "history": "Communication History",
+    "template": "Template"
+  }
+}

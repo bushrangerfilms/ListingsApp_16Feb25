@@ -1,0 +1,101 @@
+{
+  "title": "Listings",
+  "listing": "Listing",
+  "property": "Property",
+  "properties": "Properties",
+  "create": "Create Listing",
+  "edit": "Edit Listing",
+  "view": "View Listing",
+  "delete": "Delete Listing",
+  
+  "status": {
+    "draft": "Draft",
+    "forSale": "For Sale",
+    "saleAgreed": "Sale Agreed",
+    "sold": "Sold",
+    "withdrawn": "Withdrawn",
+    "forRent": "To Let",
+    "let": "Let",
+    "letAgreed": "Let Agreed"
+  },
+  
+  "propertyTypes": {
+    "house": "House",
+    "apartment": "Apartment",
+    "bungalow": "Bungalow",
+    "townhouse": "Townhouse",
+    "detached": "Detached House",
+    "semiDetached": "Semi-Detached House",
+    "terrace": "Terrace",
+    "endOfTerrace": "End of Terrace",
+    "duplex": "Duplex",
+    "penthouse": "Penthouse",
+    "studio": "Studio",
+    "site": "Site",
+    "land": "Land",
+    "commercial": "Commercial",
+    "office": "Office",
+    "retail": "Retail",
+    "industrial": "Industrial",
+    "farm": "Farm"
+  },
+  
+  "fields": {
+    "title": "Title",
+    "description": "Description",
+    "price": "Price",
+    "askingPrice": "Asking Price",
+    "guidePrice": "Guide Price",
+    "priceOnApplication": "Price on Application",
+    "bedrooms": "Bedrooms",
+    "bathrooms": "Bathrooms",
+    "receptions": "Reception Rooms",
+    "floor": "Floor",
+    "floors": "Floors",
+    "floorArea": "Floor Area",
+    "siteArea": "Site Area",
+    "yearBuilt": "Year Built",
+    "energyRating": "BER Rating",
+    "berNumber": "BER Number",
+    "features": "Features",
+    "amenities": "Amenities"
+  },
+  
+  "address": {
+    "title": "Address",
+    "line1": "Address Line 1",
+    "line2": "Address Line 2",
+    "town": "Town/City",
+    "county": "County",
+    "eircode": "Eircode",
+    "country": "Country"
+  },
+  
+  "photos": {
+    "title": "Photos",
+    "upload": "Upload Photos",
+    "primary": "Primary Photo",
+    "setPrimary": "Set as Primary",
+    "remove": "Remove Photo",
+    "reorder": "Reorder Photos"
+  },
+  
+  "search": {
+    "title": "Search Properties",
+    "location": "Location",
+    "priceRange": "Price Range",
+    "minPrice": "Min Price",
+    "maxPrice": "Max Price",
+    "minBeds": "Min Beds",
+    "maxBeds": "Max Beds",
+    "propertyType": "Property Type",
+    "results": "{{count}} properties found"
+  },
+  
+  "metrics": {
+    "views": "Views",
+    "enquiries": "Enquiries",
+    "saves": "Saves",
+    "daysOnMarket": "Days on Market"
+  }
+}

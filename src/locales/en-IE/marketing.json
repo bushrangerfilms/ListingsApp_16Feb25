@@ -1,0 +1,84 @@
+{
+  "hero": {
+    "title": "Property Management Made Simple",
+    "subtitle": "The all-in-one platform for estate agents and property professionals",
+    "cta": "Start Your Free Trial"
+  },
+  
+  "features": {
+    "title": "Features",
+    "subtitle": "Everything you need to manage your properties",
+    "listings": {
+      "title": "Listings Management",
+      "description": "Create and manage property listings with ease"
+    },
+    "crm": {
+      "title": "Built-in CRM",
+      "description": "Keep track of all your clients and leads"
+    },
+    "email": {
+      "title": "Email Automation",
+      "description": "Automated email sequences and campaigns"
+    },
+    "ai": {
+      "title": "AI Assistant",
+      "description": "Intelligent chatbot for your website"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "description": "Insights into your business performance"
+    },
+    "integrations": {
+      "title": "Integrations",
+      "description": "Connect with your favourite tools"
+    }
+  },
+  
+  "pricing": {
+    "title": "Simple, Transparent Pricing",
+    "subtitle": "Choose the plan that works for you",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "save": "Save {{percent}}%",
+    "popular": "Most Popular",
+    "startTrial": "Start Free Trial",
+    "contactSales": "Contact Sales",
+    "features": "Features",
+    "included": "Included",
+    "notIncluded": "Not included"
+  },
+  
+  "testimonials": {
+    "title": "What Our Customers Say",
+    "subtitle": "Trusted by estate agents across Ireland"
+  },
+  
+  "cta": {
+    "title": "Ready to Get Started?",
+    "subtitle": "Join thousands of property professionals using AutoListing",
+    "button": "Start Your Free Trial",
+    "noCard": "No credit card required"
+  },
+  
+  "footer": {
+    "product": "Product",
+    "company": "Company",
+    "support": "Support",
+    "legal": "Legal",
+    "about": "About",
+    "careers": "Careers",
+    "contact": "Contact",
+    "blog": "Blog",
+    "help": "Help Centre",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "cookies": "Cookie Policy"
+  },
+  
+  "trust": {
+    "security": "Bank-level Security",
+    "gdpr": "GDPR Compliant",
+    "uptime": "99.9% Uptime",
+    "support": "24/7 Support"
+  }
+}
