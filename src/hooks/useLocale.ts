@@ -101,6 +101,9 @@ const SPECIAL_PHRASES: Record<string, string> = {
   'home.benefits.multiTenant': 'Multi-agent team support',
   'home.seo.title': 'AutoListing.io - Property Management Platform for Estate Agents',
   'home.seo.description': 'All-in-one platform for estate agents. Manage listings, automate marketing, nurture leads with CRM, and grow with AI-powered tools.',
+  'line1': 'Address Line 1',
+  'line1Optional': 'Address Line 1 (Optional)',
+  'line1Placeholder': '',
 };
 
 const formatSegment = (segment: string): string => {
