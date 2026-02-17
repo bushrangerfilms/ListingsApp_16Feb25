@@ -536,9 +536,7 @@ const CreateListing = () => {
                   if (category === 'Listing') {
                     if (!data.isPOA && (!data.price || !/^\d+(\.\d{1,2})?$/.test(data.price))) fieldIssues.push('Price');
                     if (!data.addressLine1 || data.addressLine1.trim().length < 3) fieldIssues.push('Address Line 1');
-                    if (isLand) {
-                      if (!data.landSize) fieldIssues.push('Land Size');
-                    } else {
+                    if (!isLand) {
                       if (!data.bedrooms) fieldIssues.push('Bedrooms');
                       if (!data.bathrooms) fieldIssues.push('Bathrooms');
                     }
@@ -553,14 +551,9 @@ const CreateListing = () => {
                   } else if (category === 'Holiday Rental') {
                     if (!data.bookingPlatformLink || data.bookingPlatformLink.trim().length === 0) fieldIssues.push('Booking Platform Link');
                   }
+                  form.clearErrors('category');
                 } else {
-                  const err = errors[key as keyof typeof errors];
-                  const msg = err?.message;
-                  if (msg) {
-                    fieldIssues.push(`${fieldLabels[key] || key}: ${msg}`);
-                  } else {
-                    fieldIssues.push(fieldLabels[key] || key);
-                  }
+                  fieldIssues.push(fieldLabels[key] || key);
                 }
               }
 
