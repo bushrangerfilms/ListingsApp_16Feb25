@@ -51,8 +51,8 @@ export const listingSchema = z.object({
     .optional(),
   
   addressTown: z.string()
-    .min(2, "Town is required")
-    .max(100, "Town must be less than 100 characters"),
+    .max(100, "Town must be less than 100 characters")
+    .optional(),
   
   county: z.string()
     .min(2, "County is required")
@@ -112,7 +112,6 @@ export const listingSchema = z.object({
     if (!data.isPOA && (!data.price || !/^\d+(\.\d{1,2})?$/.test(data.price))) {
       return false;
     }
-    if (!data.addressLine1 || data.addressLine1.trim().length < 3) return false;
     if (!data.buildingType) return false;
     
     if (isLand) {
@@ -127,7 +126,6 @@ export const listingSchema = z.object({
   if (data.category === "Rental") {
     // Long-term rental (Land not applicable for rentals, but handle gracefully)
     if (!data.price || !/^\d+(\.\d{1,2})?$/.test(data.price)) return false;
-    if (!data.addressLine1 || data.addressLine1.trim().length < 3) return false;
     if (!data.buildingType) return false;
     if (!data.furnishingStatus) return false;
     

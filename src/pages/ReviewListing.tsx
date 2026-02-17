@@ -78,7 +78,6 @@ const ReviewListing = () => {
     
     // Common required fields
     if (!formData.description || formData.description.length < 20) missing.push("Description");
-    if (!formData.addressTown?.trim()) missing.push("Town");
     if (!formData.county?.trim()) missing.push("County");
     
     // Category-specific validation
@@ -86,7 +85,6 @@ const ReviewListing = () => {
       if (!formData.isPOA && (!formData.price || formData.price === '0')) {
         missing.push("Price (or select POA)");
       }
-      if (!formData.addressLine1?.trim()) missing.push("Address Line 1");
       if (!formData.buildingType) missing.push("Building Type");
       
       if (formData.buildingType === 'Land') {
@@ -99,7 +97,6 @@ const ReviewListing = () => {
     
     if (formData.category === 'Rental') {
       if (!formData.price || formData.price === '0') missing.push("Monthly Rent");
-      if (!formData.addressLine1?.trim()) missing.push("Address Line 1");
       if (!formData.buildingType) missing.push("Building Type");
       if (!formData.furnishingStatus) missing.push("Furnishing Status");
       
@@ -594,28 +591,26 @@ const ReviewListing = () => {
                 </div>
               )}
 
-              <div className={formData.category !== 'Holiday Rental' && !formData.addressLine1 ? "border-2 border-amber-500 rounded-md p-2" : ""}>
+              <div>
                 <Label htmlFor="addressLine1">
-                  Address Line 1 {formData.category === 'Holiday Rental' && '(Optional)'}
+                  Address Line 1 (Optional)
                 </Label>
                 <Input
                   id="addressLine1"
                   value={formData.addressLine1}
                   onChange={(e) => handleFieldUpdate("addressLine1", e.target.value)}
-                  placeholder={formData.category !== 'Holiday Rental' && !formData.addressLine1 ? "EMPTY" : "9 Árd Álainn"}
-                  className={formData.category !== 'Holiday Rental' && !formData.addressLine1 ? "placeholder:text-amber-500" : ""}
+                  placeholder="9 Árd Álainn"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className={!formData.addressTown ? "border-2 border-amber-500 rounded-md p-2" : ""}>
-                  <Label htmlFor="addressTown">Town</Label>
+                <div>
+                  <Label htmlFor="addressTown">Town (Optional)</Label>
                   <Input
                     id="addressTown"
                     value={formData.addressTown}
                     onChange={(e) => handleFieldUpdate("addressTown", e.target.value)}
-                    placeholder={!formData.addressTown ? "EMPTY" : "Castlebridge"}
-                    className={!formData.addressTown ? "placeholder:text-amber-500" : ""}
+                    placeholder="Castlebridge"
                   />
                 </div>
 

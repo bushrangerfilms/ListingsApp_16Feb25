@@ -535,14 +535,12 @@ const CreateListing = () => {
 
                   if (category === 'Listing') {
                     if (!data.isPOA && (!data.price || !/^\d+(\.\d{1,2})?$/.test(data.price))) fieldIssues.push('Price');
-                    if (!data.addressLine1 || data.addressLine1.trim().length < 3) fieldIssues.push('Address Line 1');
                     if (!isLand) {
                       if (!data.bedrooms) fieldIssues.push('Bedrooms');
                       if (!data.bathrooms) fieldIssues.push('Bathrooms');
                     }
                   } else if (category === 'Rental') {
                     if (!data.price || !/^\d+(\.\d{1,2})?$/.test(data.price)) fieldIssues.push('Monthly Rent');
-                    if (!data.addressLine1 || data.addressLine1.trim().length < 3) fieldIssues.push('Address Line 1');
                     if (!data.furnishingStatus) fieldIssues.push('Furnishing Status');
                     if (!isLand) {
                       if (!data.bedrooms) fieldIssues.push('Bedrooms');
@@ -712,7 +710,7 @@ const CreateListing = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {form.watch('category') === "Holiday Rental" ? t('listings.create.address.line1Optional') : t('listings.create.address.line1')}
+                      {t('listings.create.address.line1Optional')}
                     </FormLabel>
                     <FormControl>
                       <Input placeholder={t('listings.create.address.line1Placeholder')} {...field} />
@@ -729,7 +727,7 @@ const CreateListing = () => {
                   name="addressTown"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('listings.create.address.town')}</FormLabel>
+                      <FormLabel>{t('listings.create.address.town')} (Optional)</FormLabel>
                       <FormControl>
                         <Input placeholder={t('listings.create.address.townPlaceholder')} {...field} />
                       </FormControl>

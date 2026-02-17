@@ -104,6 +104,7 @@ const SPECIAL_PHRASES: Record<string, string> = {
   'line1': 'Address Line 1',
   'line1Optional': 'Address Line 1 (Optional)',
   'line1Placeholder': '',
+  'townPlaceholder': '',
 };
 
 const formatSegment = (segment: string): string => {
