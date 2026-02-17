@@ -116,8 +116,7 @@ export const listingSchema = z.object({
     if (!data.buildingType) return false;
     
     if (isLand) {
-      // Land: requires land size, no bedrooms/bathrooms/energy rating needed
-      if (!data.landSize || !/^\.?\d*\.?\d+$/.test(data.landSize)) return false;
+      // Land: no bedrooms/bathrooms/energy rating needed, land size is optional
     } else {
       // Buildings: require bedrooms and bathrooms
       if (!data.bedrooms || !/^\d+$/.test(data.bedrooms)) return false;

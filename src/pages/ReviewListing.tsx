@@ -90,7 +90,7 @@ const ReviewListing = () => {
       if (!formData.buildingType) missing.push("Building Type");
       
       if (formData.buildingType === 'Land') {
-        if (!formData.landSize) missing.push("Land Size");
+        // Land size is optional
       } else {
         if (!formData.bedrooms) missing.push("Bedrooms");
         if (!formData.bathrooms) missing.push("Bathrooms");
