@@ -256,7 +256,10 @@ const CreateListing = () => {
       if (combinedExtracted.bedrooms) form.setValue('bedrooms', combinedExtracted.bedrooms);
       if (combinedExtracted.bathrooms) form.setValue('bathrooms', combinedExtracted.bathrooms);
       if (combinedExtracted.buildingSize) form.setValue('buildingSize', combinedExtracted.buildingSize);
-      if (combinedExtracted.landSize) form.setValue('landSize', combinedExtracted.landSize);
+      if (combinedExtracted.landSize) {
+        const cleaned = combinedExtracted.landSize.replace(/[^\d.]/g, '');
+        if (cleaned && !isNaN(parseFloat(cleaned))) form.setValue('landSize', cleaned);
+      }
       if (combinedExtracted.addressLine1) form.setValue('addressLine1', combinedExtracted.addressLine1);
       if (combinedExtracted.addressTown) form.setValue('addressTown', combinedExtracted.addressTown);
       if (combinedExtracted.county) form.setValue('county', combinedExtracted.county);
@@ -323,7 +326,10 @@ const CreateListing = () => {
         if (extracted.bedrooms) form.setValue('bedrooms', extracted.bedrooms);
         if (extracted.bathrooms) form.setValue('bathrooms', extracted.bathrooms);
         if (extracted.buildingSize) form.setValue('buildingSize', extracted.buildingSize);
-        if (extracted.landSize) form.setValue('landSize', extracted.landSize);
+        if (extracted.landSize) {
+          const cleaned = extracted.landSize.replace(/[^\d.]/g, '');
+          if (cleaned && !isNaN(parseFloat(cleaned))) form.setValue('landSize', cleaned);
+        }
         if (extracted.addressLine1) form.setValue('addressLine1', extracted.addressLine1);
         if (extracted.addressTown) form.setValue('addressTown', extracted.addressTown);
         if (extracted.county) form.setValue('county', extracted.county);
@@ -520,7 +526,7 @@ const CreateListing = () => {
                 specs: 'Specs',
               };
 
-              const missingFields: string[] = [];
+              const fieldIssues: string[] = [];
               for (const key of Object.keys(errors)) {
                 if (key === 'category' && errors.category?.type === 'custom') {
                   const category = form.getValues('category');
@@ -528,33 +534,37 @@ const CreateListing = () => {
                   const data = form.getValues();
 
                   if (category === 'Listing') {
-                    if (!data.isPOA && (!data.price || !/^\d+(\.\d{1,2})?$/.test(data.price))) missingFields.push('Price');
-                    if (!data.addressLine1 || data.addressLine1.trim().length < 3) missingFields.push('Address Line 1');
-                    if (!data.eircode || data.eircode.trim().length < 2) missingFields.push(addressConfig.postalCodeLabel);
+                    if (!data.isPOA && (!data.price || !/^\d+(\.\d{1,2})?$/.test(data.price))) fieldIssues.push('Price');
+                    if (!data.addressLine1 || data.addressLine1.trim().length < 3) fieldIssues.push('Address Line 1');
                     if (isLand) {
-                      if (!data.landSize) missingFields.push('Land Size');
+                      if (!data.landSize) fieldIssues.push('Land Size');
                     } else {
-                      if (!data.bedrooms) missingFields.push('Bedrooms');
-                      if (!data.bathrooms) missingFields.push('Bathrooms');
+                      if (!data.bedrooms) fieldIssues.push('Bedrooms');
+                      if (!data.bathrooms) fieldIssues.push('Bathrooms');
                     }
                   } else if (category === 'Rental') {
-                    if (!data.price || !/^\d+(\.\d{1,2})?$/.test(data.price)) missingFields.push('Monthly Rent');
-                    if (!data.addressLine1 || data.addressLine1.trim().length < 3) missingFields.push('Address Line 1');
-                    if (!data.eircode || data.eircode.trim().length < 2) missingFields.push(addressConfig.postalCodeLabel);
-                    if (!data.furnishingStatus) missingFields.push('Furnishing Status');
+                    if (!data.price || !/^\d+(\.\d{1,2})?$/.test(data.price)) fieldIssues.push('Monthly Rent');
+                    if (!data.addressLine1 || data.addressLine1.trim().length < 3) fieldIssues.push('Address Line 1');
+                    if (!data.furnishingStatus) fieldIssues.push('Furnishing Status');
                     if (!isLand) {
-                      if (!data.bedrooms) missingFields.push('Bedrooms');
-                      if (!data.bathrooms) missingFields.push('Bathrooms');
+                      if (!data.bedrooms) fieldIssues.push('Bedrooms');
+                      if (!data.bathrooms) fieldIssues.push('Bathrooms');
                     }
                   } else if (category === 'Holiday Rental') {
-                    if (!data.bookingPlatformLink || data.bookingPlatformLink.trim().length === 0) missingFields.push('Booking Platform Link');
+                    if (!data.bookingPlatformLink || data.bookingPlatformLink.trim().length === 0) fieldIssues.push('Booking Platform Link');
                   }
                 } else {
-                  missingFields.push(fieldLabels[key] || key);
+                  const err = errors[key as keyof typeof errors];
+                  const msg = err?.message;
+                  if (msg) {
+                    fieldIssues.push(`${fieldLabels[key] || key}: ${msg}`);
+                  } else {
+                    fieldIssues.push(fieldLabels[key] || key);
+                  }
                 }
               }
 
-              const uniqueFields = [...new Set(missingFields)];
+              const uniqueFields = [...new Set(fieldIssues)];
               toast({
                 title: "Please complete required fields",
                 description: uniqueFields.length > 0

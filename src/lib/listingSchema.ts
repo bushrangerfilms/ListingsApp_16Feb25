@@ -39,14 +39,12 @@ export const listingSchema = z.object({
     .optional()
     .transform((val) => {
       if (!val || val.trim() === '') return undefined;
-      const num = parseFloat(val);
-      if (isNaN(num)) return val;
+      const cleaned = val.replace(/[^\d.]/g, '');
+      if (!cleaned) return undefined;
+      const num = parseFloat(cleaned);
+      if (isNaN(num)) return undefined;
       return num.toFixed(2);
-    })
-    .refine(
-      (val) => !val || /^\.?\d*\.?\d+$/.test(val),
-      { message: "Land size must be a valid number" }
-    ),
+    }),
   
   addressLine1: z.string()
     .max(200, "Address must be less than 200 characters")
@@ -115,7 +113,6 @@ export const listingSchema = z.object({
       return false;
     }
     if (!data.addressLine1 || data.addressLine1.trim().length < 3) return false;
-    if (!data.eircode || data.eircode.trim().length < 2) return false;
     if (!data.buildingType) return false;
     
     if (isLand) {
@@ -132,7 +129,6 @@ export const listingSchema = z.object({
     // Long-term rental (Land not applicable for rentals, but handle gracefully)
     if (!data.price || !/^\d+(\.\d{1,2})?$/.test(data.price)) return false;
     if (!data.addressLine1 || data.addressLine1.trim().length < 3) return false;
-    if (!data.eircode || data.eircode.trim().length < 2) return false;
     if (!data.buildingType) return false;
     if (!data.furnishingStatus) return false;
     

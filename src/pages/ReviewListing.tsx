@@ -87,20 +87,26 @@ const ReviewListing = () => {
         missing.push("Price (or select POA)");
       }
       if (!formData.addressLine1?.trim()) missing.push("Address Line 1");
-      if (!formData.eircode?.trim()) missing.push("Eircode");
-      if (!formData.bedrooms) missing.push("Bedrooms");
-      if (!formData.bathrooms) missing.push("Bathrooms");
       if (!formData.buildingType) missing.push("Building Type");
+      
+      if (formData.buildingType === 'Land') {
+        if (!formData.landSize) missing.push("Land Size");
+      } else {
+        if (!formData.bedrooms) missing.push("Bedrooms");
+        if (!formData.bathrooms) missing.push("Bathrooms");
+      }
     }
     
     if (formData.category === 'Rental') {
       if (!formData.price || formData.price === '0') missing.push("Monthly Rent");
       if (!formData.addressLine1?.trim()) missing.push("Address Line 1");
-      if (!formData.eircode?.trim()) missing.push("Eircode");
-      if (!formData.bedrooms) missing.push("Bedrooms");
-      if (!formData.bathrooms) missing.push("Bathrooms");
       if (!formData.buildingType) missing.push("Building Type");
       if (!formData.furnishingStatus) missing.push("Furnishing Status");
+      
+      if (formData.buildingType !== 'Land') {
+        if (!formData.bedrooms) missing.push("Bedrooms");
+        if (!formData.bathrooms) missing.push("Bathrooms");
+      }
     }
     
     if (formData.category === 'Holiday Rental') {
@@ -625,14 +631,13 @@ const ReviewListing = () => {
                 </div>
 
                 {(formData.category === 'Listing' || formData.category === 'Rental') && (
-                  <div className={!formData.eircode ? "border-2 border-amber-500 rounded-md p-2" : ""}>
-                    <Label htmlFor="eircode">Eircode</Label>
+                  <div>
+                    <Label htmlFor="eircode">Eircode (Optional)</Label>
                     <Input
                       id="eircode"
                       value={formData.eircode}
                       onChange={(e) => handleFieldUpdate("eircode", e.target.value)}
-                      placeholder={!formData.eircode ? "EMPTY" : "Y35N677"}
-                      className={!formData.eircode ? "placeholder:text-amber-500" : ""}
+                      placeholder="Y35N677"
                     />
                   </div>
                 )}
