@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,25 +9,16 @@ import { Target, Eye, MousePointer } from "lucide-react";
 
 export default function MatchingSection() {
   const { organization } = useOrganization();
-  const { viewAsOrganizationId, selectedOrganization, isOrganizationView } = useOrganizationView();
-  const [metrics, setMetrics] = useState({ totalMatches: 0, emailedMatches: 0, openRate: 0, clickRate: 0 });
-  const [loading, setLoading] = useState(true);
+  const { selectedOrganization, isOrganizationView } = useOrganizationView();
 
-  useEffect(() => {
-    const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
-    if (targetOrg) {
-      fetchData();
-    }
-  }, [organization, viewAsOrganizationId, selectedOrganization, isOrganizationView]);
+  const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
+  const organizationId = targetOrg?.id;
 
-  const fetchData = async () => {
-    const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
-    const organizationId = targetOrg?.id;
-    if (!organizationId) return;
-    
-    try {
+  const { data: metrics = { totalMatches: 0, emailedMatches: 0, openRate: 0, clickRate: 0 }, isLoading: loading } = useQuery({
+    queryKey: ['matching-analytics', organizationId],
+    queryFn: async () => {
       // CRITICAL: Filter by organization_id for multi-tenant security
-      const { data: matches } = await supabase.from("buyer_listing_matches").select("*").eq("organization_id", organizationId);
+      const { data: matches } = await supabase.from("buyer_listing_matches").select("email_sent_at, email_opened_at, buyer_clicked_at").eq("organization_id", organizationId!);
 
       const total = (matches || []).length;
       const emailed = (matches || []).filter((m) => m.email_sent_at).length;
@@ -36,13 +27,10 @@ export default function MatchingSection() {
       const openRate = emailed > 0 ? (opened / emailed) * 100 : 0;
       const clickRate = emailed > 0 ? (clicked / emailed) * 100 : 0;
 
-      setMetrics({ totalMatches: total, emailedMatches: emailed, openRate, clickRate });
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return { totalMatches: total, emailedMatches: emailed, openRate, clickRate };
+    },
+    enabled: !!organizationId,
+  });
 
   if (loading) return <Skeleton className="h-96" />;
 

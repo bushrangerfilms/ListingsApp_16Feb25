@@ -14,7 +14,9 @@ serve(async (req) => {
   try {
     // Support both GET (with URL params) and POST (with JSON body)
     let clientSlug, filter, archived, isPublic, recordId;
-    
+    let page = 1;
+    let pageSize = 200;
+
     if (req.method === 'GET') {
       // Extract parameters from URL query string
       const url = new URL(req.url);
@@ -23,6 +25,8 @@ serve(async (req) => {
       archived = url.searchParams.get('archived') === 'true';
       isPublic = url.searchParams.get('isPublic') === 'true';
       recordId = url.searchParams.get('recordId');
+      page = parseInt(url.searchParams.get('page') || '1', 10) || 1;
+      pageSize = Math.min(parseInt(url.searchParams.get('pageSize') || '200', 10) || 200, 500);
     } else {
       // POST request - parse JSON body
       try {
@@ -32,6 +36,8 @@ serve(async (req) => {
         archived = body.archived;
         isPublic = body.isPublic;
         recordId = body.recordId;
+        page = parseInt(body.page || '1', 10) || 1;
+        pageSize = Math.min(parseInt(body.pageSize || '200', 10) || 200, 500);
       } catch (jsonError) {
         console.error('Failed to parse JSON body:', jsonError);
         return new Response(
@@ -70,16 +76,6 @@ serve(async (req) => {
     const organizationId = orgData.id;
     // Property services: NULL or empty means no filtering (show all - backwards compatible)
     const propertyServices: string[] | null = orgData.property_services;
-    console.log('Organization property_services:', propertyServices);
-    console.log('Using organization ID:', organizationId);
-    
-    // DEBUG: Check what's in listings
-    const { data: debugListings, error: debugError } = await supabase
-      .from('listings')
-      .select('client_id, title')
-      .limit(5);
-    console.log('DEBUG: Sample listings records:', debugListings);
-    console.log('DEBUG: Looking for client_id matching:', organizationId);
 
     // Helper function to extract URL from photo (either string URL or JSON string)
     const extractPhotoUrl = (photo: any): string | null => {
@@ -194,10 +190,13 @@ serve(async (req) => {
       );
     }
 
-    // Build query for list view
+    // Build query for list view (with pagination)
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     let query = supabase
       .from('listings')
-      .select('*')
+      .select('*', { count: 'exact' })
       .eq('organization_id', organizationId); // CRITICAL: Filter by organization
     
     // For public view, show Published, New, Sale Agreed, and Sold listings (not archived)
@@ -217,12 +216,15 @@ serve(async (req) => {
       }
     }
     
-    // Sort by date posted, newest first
-    query = query.order('date_posted', { ascending: false }).order('id', { ascending: false });
+    // Sort by date posted, newest first; apply pagination
+    query = query
+      .order('date_posted', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, to);
 
-    console.log('Fetching listings from Supabase');
-    
-    const { data, error } = await query;
+    console.log('Fetching listings from Supabase, page:', page, 'pageSize:', pageSize);
+
+    const { data, error, count: totalCount } = await query;
 
     if (error) {
       console.error('Supabase error:', error);
@@ -319,13 +321,21 @@ serve(async (req) => {
       console.log(`No property_services filtering - showing all ${allListings.length} listings (backwards compatible)`);
     }
 
+    const cacheControl = isPublic
+      ? 'public, max-age=60'
+      : 'private, max-age=30';
+
     return new Response(
       JSON.stringify({
         success: true,
         listings,
         count: listings.length,
+        totalCount: totalCount ?? listings.length,
+        page,
+        pageSize,
+        hasMore: (totalCount ?? listings.length) > from + listings.length,
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': cacheControl } }
     );
 
   } catch (error) {

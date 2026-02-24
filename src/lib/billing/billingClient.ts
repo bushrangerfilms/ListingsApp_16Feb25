@@ -122,23 +122,15 @@ export async function consumeCredits(params: {
     });
 
     if (error) {
-      // Handle RPC function not found gracefully
-      if (error.code === 'PGRST202' || error.code === '42883' || error.message?.includes('NetworkError')) {
-        console.warn('[Billing] Consume credits RPC not available, simulating consumption');
-        return {
-          transaction_id: 'dev-' + Date.now(),
-          credits_consumed: 0,
-          balance_after: 0,
-        };
-      }
-      
       console.error('Failed to consume credits:', error);
-      
-      // Check for insufficient credits error
+
       if (error.message?.includes('Insufficient credits')) {
         throw new Error('INSUFFICIENT_CREDITS');
       }
-      
+      if (error.message?.includes('CREDIT_SPENDING_DISABLED')) {
+        throw new Error('CREDIT_SPENDING_DISABLED');
+      }
+
       throw new Error(`Failed to consume credits: ${error.message}`);
     }
 
@@ -148,15 +140,12 @@ export async function consumeCredits(params: {
       balance_after: number;
     };
   } catch (err: any) {
-    if (err.message === 'INSUFFICIENT_CREDITS') {
+    // Re-throw known billing errors for the UI to handle
+    if (['INSUFFICIENT_CREDITS', 'CREDIT_SPENDING_DISABLED'].includes(err.message)) {
       throw err;
     }
-    console.warn('[Billing] Consume credits failed, simulating:', err);
-    return {
-      transaction_id: 'dev-' + Date.now(),
-      credits_consumed: 0,
-      balance_after: 0,
-    };
+    console.error('[Billing] Consume credits failed:', err);
+    throw new Error(`Credit system error: ${err.message || 'Unknown error'}`);
   }
 }
 
@@ -260,7 +249,7 @@ export async function getCreditHistory(
 export async function getCreditPacks(): Promise<CreditPack[]> {
   const { data, error } = await (supabase as any)
     .from('credit_packs')
-    .select('*')
+    .select('id, credits, stripe_price_id, discount_percentage')
     .eq('is_active', true)
     .order('display_order');
 
@@ -283,7 +272,7 @@ export async function getCreditPacks(): Promise<CreditPack[]> {
 export async function getUsageRates(): Promise<UsageRate[]> {
   const { data, error } = await (supabase as any)
     .from('usage_rates')
-    .select('*')
+    .select('feature_type, credits_per_use')
     .eq('is_active', true)
     .order('feature_type');
 

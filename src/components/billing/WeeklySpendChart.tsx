@@ -30,7 +30,8 @@ export function WeeklySpendChart({ organizationId, days = 7 }: WeeklySpendChartP
         .eq('organization_id', organizationId)
         .eq('transaction_type', 'consumption')
         .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
+        .lte('created_at', endDate.toISOString())
+        .limit(5000);
 
       if (error) {
         console.error('Failed to fetch weekly spend:', error);

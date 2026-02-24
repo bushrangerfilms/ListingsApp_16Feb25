@@ -110,16 +110,16 @@ export default function AdminUnifiedAnalytics() {
         valuationsData,
         alertsData,
       ] = await Promise.all([
-        supabase.from("property_enquiries").select("*").eq("organization_id", targetOrgId),
-        supabase.from("listing_views").select("*").eq("organization_id", targetOrgId),
-        supabase.from("buyer_profiles").select("*").eq("organization_id", targetOrgId),
-        supabase.from("seller_profiles").select("*").eq("organization_id", targetOrgId),
-        supabase.from("crm_activities").select("*").eq("organization_id", targetOrgId).gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-        supabase.from("profile_email_queue").select("*").eq("organization_id", targetOrgId),
-        supabase.from("email_tracking").select("*").eq("organization_id", targetOrgId),
-        supabase.from("property_enquiries").select("*").eq("organization_id", targetOrgId),
-        supabase.from("valuation_requests").select("*").eq("organization_id", targetOrgId),
-        supabase.from("property_alerts").select("*").eq("organization_id", targetOrgId),
+        supabase.from("property_enquiries").select("id, created_at").eq("organization_id", targetOrgId).limit(5000),
+        supabase.from("listing_views").select("id, created_at").eq("organization_id", targetOrgId).limit(5000),
+        supabase.from("buyer_profiles").select("id, stage").eq("organization_id", targetOrgId).limit(5000),
+        supabase.from("seller_profiles").select("id, stage").eq("organization_id", targetOrgId).limit(5000),
+        supabase.from("crm_activities").select("id, created_at").eq("organization_id", targetOrgId).gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()).limit(5000),
+        supabase.from("profile_email_queue").select("id, status, sent_at").eq("organization_id", targetOrgId).limit(5000),
+        supabase.from("email_tracking").select("id, event_type").eq("organization_id", targetOrgId).limit(5000),
+        supabase.from("property_enquiries").select("id, created_at").eq("organization_id", targetOrgId).limit(5000),
+        supabase.from("valuation_requests").select("id").eq("organization_id", targetOrgId).limit(5000),
+        supabase.from("property_alerts").select("id").eq("organization_id", targetOrgId).limit(5000),
       ]);
 
       // Calculate listing metrics

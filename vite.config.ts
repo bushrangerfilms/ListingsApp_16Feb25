@@ -23,4 +23,22 @@ export default defineConfig(() => ({
       "@assets": path.resolve(__dirname, "./attached_assets"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React + router (shared by all routes)
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // Data fetching layer
+          'vendor-query': ['@tanstack/react-query'],
+          // Supabase client
+          'vendor-supabase': ['@supabase/supabase-js'],
+          // Charts (only used in analytics/admin pages)
+          'vendor-charts': ['recharts'],
+          // Drag-and-drop (only used in CRM kanban)
+          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+        },
+      },
+    },
+  },
 }));

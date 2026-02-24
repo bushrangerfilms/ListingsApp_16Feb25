@@ -55,7 +55,8 @@ export function CRMAnalyticsSection() {
       const { data: activities } = await supabase
         .from('crm_activities')
         .select('id')
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .limit(5000);
 
       if (sellers && buyers) {
         const sellersByStage = sellers.reduce((acc: any, seller) => {

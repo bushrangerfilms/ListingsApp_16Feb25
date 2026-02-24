@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import type { AccountStatus, PropertyService } from '@/lib/billing/types';
@@ -230,8 +230,16 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  const contextValue = useMemo(() => ({
+    organization,
+    loading,
+    setOrganizationBySlug,
+    userOrganizations,
+    switchOrganization,
+  }), [organization, loading, setOrganizationBySlug, userOrganizations, switchOrganization]);
+
   return (
-    <OrganizationContext.Provider value={{ organization, loading, setOrganizationBySlug, userOrganizations, switchOrganization }}>
+    <OrganizationContext.Provider value={contextValue}>
       {children}
     </OrganizationContext.Provider>
   );

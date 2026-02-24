@@ -23,10 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  Users, 
+import {
+  TrendingUp,
+  Users,
   CreditCard,
   AlertCircle,
   CheckCircle2,
@@ -172,70 +171,45 @@ export default function BillingDashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              Stripe Integration
-            </CardTitle>
-            <CardDescription>
-              Revenue data from Stripe
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Credit Usage
+          </CardTitle>
+          <CardDescription>
+            Platform credit consumption
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {creditsRedacted ? (
             <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
               <AlertCircle className="h-5 w-5 text-muted-foreground" />
               <div>
-                <p className="font-medium">Stripe API Integration Pending</p>
+                <p className="font-medium">Revenue Data Restricted</p>
                 <p className="text-sm text-muted-foreground">
-                  Connect to Stripe API to view MRR, subscription counts, and payment data.
+                  Credit tracking is only available to super admins.
                 </p>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Credit Usage
-            </CardTitle>
-            <CardDescription>
-              Platform credit consumption
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {creditsRedacted ? (
-              <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-                <AlertCircle className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Revenue Data Restricted</p>
-                  <p className="text-sm text-muted-foreground">
-                    Credit tracking is only available to super admins.
-                  </p>
-                </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between py-2 border-b">
+                <span className="text-sm">Total Granted</span>
+                <span className="font-medium">{formatCurrency(creditsData?.granted)}</span>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between py-2 border-b">
-                  <span className="text-sm">Total Granted</span>
-                  <span className="font-medium">{formatCurrency(creditsData?.granted)}</span>
-                </div>
-                <div className="flex items-center justify-between py-2 border-b">
-                  <span className="text-sm">Total Used</span>
-                  <span className="font-medium">{formatCurrency(creditsData?.used)}</span>
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-sm">Current Balance</span>
-                  <span className="font-bold text-lg">{formatCurrency(creditsData?.balance)}</span>
-                </div>
+              <div className="flex items-center justify-between py-2 border-b">
+                <span className="text-sm">Total Used</span>
+                <span className="font-medium">{formatCurrency(creditsData?.used)}</span>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-sm">Current Balance</span>
+                <span className="font-bold text-lg">{formatCurrency(creditsData?.balance)}</span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -243,7 +217,7 @@ export default function BillingDashboardPage() {
           <CardDescription>Common billing operations</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Button
               variant="outline"
               className="h-auto p-4 flex flex-col items-center gap-2"
@@ -277,11 +251,6 @@ export default function BillingDashboardPage() {
               <span className="font-medium">Create Discount</span>
               <span className="text-xs text-muted-foreground">Go to Discount Codes</span>
             </Button>
-            <div className="p-4 bg-muted rounded-lg text-center flex flex-col items-center gap-2">
-              <DollarSign className="h-6 w-6 text-muted-foreground" />
-              <p className="font-medium">Issue Refund</p>
-              <p className="text-xs text-muted-foreground">Requires Stripe integration</p>
-            </div>
           </div>
         </CardContent>
       </Card>

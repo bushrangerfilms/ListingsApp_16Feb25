@@ -73,13 +73,15 @@ export default function AdminListingAnalytics() {
       // Fetch all listing views
       const { data: viewsData } = await supabase
         .from("listing_views")
-        .select("*")
-        .order("viewed_at", { ascending: false });
+        .select("listing_id, ip_address, listing_title, viewed_at")
+        .order("viewed_at", { ascending: false })
+        .limit(5000);
 
       // Fetch all enquiries
       const { data: enquiriesData } = await supabase
         .from("property_enquiries")
-        .select("*");
+        .select("property_id, created_at")
+        .limit(5000);
 
       const views = viewsData || [];
       const enquiries = enquiriesData || [];

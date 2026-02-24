@@ -49,7 +49,7 @@ export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) 
   const fetchAutomationStatus = async () => {
     const { data } = await (supabase as any)
       .from('profile_email_queue')
-      .select('*, email_sequence:email_sequences(name)')
+      .select('id, status, email_sequence:email_sequences(name)')
       .eq('seller_profile_id', seller.id)
       .eq('status', 'pending')
       .maybeSingle();

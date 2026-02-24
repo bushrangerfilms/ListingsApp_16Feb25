@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,26 +10,17 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 export default function EmailSection() {
   const { organization } = useOrganization();
-  const { viewAsOrganizationId, selectedOrganization, isOrganizationView } = useOrganizationView();
-  const [metrics, setMetrics] = useState({ sent: 0, opened: 0, clicked: 0, openRate: 0, clickRate: 0 });
-  const [loading, setLoading] = useState(true);
+  const { selectedOrganization, isOrganizationView } = useOrganizationView();
 
-  useEffect(() => {
-    const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
-    if (targetOrg) {
-      fetchData();
-    }
-  }, [organization, viewAsOrganizationId, selectedOrganization, isOrganizationView]);
+  const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
+  const organizationId = targetOrg?.id;
 
-  const fetchData = async () => {
-    const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
-    const organizationId = targetOrg?.id;
-    if (!organizationId) return;
-    
-    try {
+  const { data: metrics = { sent: 0, opened: 0, clicked: 0, openRate: 0, clickRate: 0 }, isLoading: loading } = useQuery({
+    queryKey: ['email-analytics', organizationId],
+    queryFn: async () => {
       // CRITICAL: Filter by organization_id for multi-tenant security
-      const { data: emailQueue } = await supabase.from("profile_email_queue").select("*").eq("organization_id", organizationId);
-      const { data: tracking } = await supabase.from("email_tracking").select("*").eq("organization_id", organizationId);
+      const { data: emailQueue } = await supabase.from("profile_email_queue").select("status").eq("organization_id", organizationId!).limit(5000);
+      const { data: tracking } = await supabase.from("email_tracking").select("event_type").eq("organization_id", organizationId!).limit(5000);
 
       const sent = (emailQueue || []).filter((e) => e.status === "sent").length;
       const opened = (tracking || []).filter((e) => e.event_type === "opened").length;
@@ -37,13 +28,10 @@ export default function EmailSection() {
       const openRate = sent > 0 ? (opened / sent) * 100 : 0;
       const clickRate = sent > 0 ? (clicked / sent) * 100 : 0;
 
-      setMetrics({ sent, opened, clicked, openRate, clickRate });
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return { sent, opened, clicked, openRate, clickRate };
+    },
+    enabled: !!organizationId,
+  });
 
   if (loading) return <Skeleton className="h-96" />;
 

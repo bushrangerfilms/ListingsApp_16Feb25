@@ -736,7 +736,7 @@ export const adminApi = {
     list: async (): Promise<FeatureFlag[]> => {
       const { data, error } = await (supabase as any)
         .from("feature_flags")
-        .select("*")
+        .select('id, name, description, is_enabled, created_at, updated_at, created_by')
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return (data || []).map((f: any) => ({

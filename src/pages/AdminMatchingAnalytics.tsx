@@ -80,18 +80,21 @@ export default function AdminMatchingAnalytics() {
       // Fetch all buyer-listing matches
       const { data: matches } = await supabase
         .from("buyer_listing_matches")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("email_sent_at, email_opened_at, buyer_clicked_at, created_at, property_alert_id")
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
       // Fetch buyer profiles
       const { data: buyers } = await supabase
         .from("buyer_profiles")
-        .select("*");
+        .select("id, name, bedrooms_required, budget_min, budget_max, stage, property_alert_id")
+        .limit(5000);
 
       // Fetch property alerts (alternative matching mechanism)
       const { data: alerts } = await supabase
         .from("property_alerts")
-        .select("*");
+        .select("id")
+        .limit(5000);
 
       const allMatches = matches || [];
       const allBuyers = buyers || [];

@@ -1,9 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders } from '../_shared/cors.ts';
+import { checkRateLimit } from '../_shared/rate-limit.ts';
 
 interface MatchBuyersRequest {
   listingId: string;
@@ -15,6 +12,8 @@ interface MatchBuyersRequest {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get('origin'));
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -51,6 +50,20 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       db: { schema: 'public' }
     });
+
+    // Rate limit: 30 per hour per organization
+    const rateLimitId = organizationId || listingId || 'unknown';
+    const rateCheck = await checkRateLimit(supabase, rateLimitId, {
+      feature: 'match-buyers-to-listing',
+      maxRequests: 30,
+      windowMinutes: 60,
+    });
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded', resetTime: rateCheck.resetTime }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // CRITICAL SECURITY: Find all active property alerts that match the bedroom count AND organization
     const { data: matchingAlerts, error: alertsError } = await supabase

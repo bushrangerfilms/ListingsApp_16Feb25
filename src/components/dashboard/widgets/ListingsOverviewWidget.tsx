@@ -17,9 +17,9 @@ export const ListingsOverviewWidget = () => {
       if (!targetOrg?.id) return { totalViews: 0, activeListings: 0, soldThisMonth: 0, avgDaysOnMarket: 0 };
       
       const [{ count: viewsCount }, { count: activeCount }, { count: soldCount }] = await Promise.all([
-        supabase.from("listing_views").select("*", { count: "exact", head: true }).eq("organization_id", targetOrg.id),
-        supabase.from("listings").select("*", { count: "exact", head: true }).eq("organization_id", targetOrg.id).eq("status", "published"),
-        supabase.from("listings").select("*", { count: "exact", head: true }).eq("organization_id", targetOrg.id).eq("status", "sold"),
+        supabase.from("listing_views").select("id", { count: "exact", head: true }).eq("organization_id", targetOrg.id),
+        supabase.from("listings").select("id", { count: "exact", head: true }).eq("organization_id", targetOrg.id).eq("status", "published"),
+        supabase.from("listings").select("id", { count: "exact", head: true }).eq("organization_id", targetOrg.id).eq("status", "sold"),
       ]);
 
       return {

@@ -19,7 +19,8 @@ export const EmailPerformanceWidget = () => {
       const { data: tracking } = await supabase
         .from("email_tracking")
         .select("event_type")
-        .eq("organization_id", targetOrg.id);
+        .eq("organization_id", targetOrg.id)
+        .limit(5000);
 
       const opens = tracking?.filter((t) => t.event_type === "opened").length || 0;
       const clicks = tracking?.filter((t) => t.event_type === "clicked").length || 0;

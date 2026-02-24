@@ -63,9 +63,10 @@ export function ActivityTimeline({ profileId, profileType }: ActivityTimelinePro
     try {
       const { data, error } = await supabase
         .from('crm_activities')
-        .select('*')
+        .select('id, activity_type, title, description, created_at')
         .eq(profileType === 'seller' ? 'seller_profile_id' : 'buyer_profile_id', profileId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) throw error;
       setActivities(data || []);

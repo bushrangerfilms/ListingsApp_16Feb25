@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,37 +36,17 @@ const inferCategory = (templateKey: string): string => {
 
 export default function AdminEmailTemplates() {
   const navigate = useNavigate();
-  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("customer");
 
-  useEffect(() => {
-    fetchTemplates();
-
-    // Set up real-time subscriptions
-    const channel = supabase
-      .channel('email-templates-updates')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'email_templates' },
-        fetchTemplates
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const fetchTemplates = async () => {
-    try {
-      setLoading(true);
-      
+  const { data: emailTemplates = [], isLoading: loading } = useQuery({
+    queryKey: ['email-templates'],
+    queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('email_templates')
-        .select('*')
+        .select('id, template_key, template_name, category, subject, body_html, available_variables, description, is_active, last_sent_at')
         .order('template_name', { ascending: true });
 
       if (error) throw error;
@@ -75,14 +56,27 @@ export default function AdminEmailTemplates() {
         category: t.category || inferCategory(t.template_key)
       })) as EmailTemplate[];
 
-      setEmailTemplates(templatesWithCategory);
-    } catch (error) {
-      console.error('Error fetching email templates:', error);
-      toast.error('Failed to load email templates');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return templatesWithCategory;
+    },
+  });
+
+  // Set up real-time subscription to invalidate the query cache
+  useEffect(() => {
+    const channel = supabase
+      .channel('email-templates-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'email_templates' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['email-templates'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const handleSaveTemplate = async (template: EmailTemplate) => {
     try {
@@ -100,7 +94,7 @@ export default function AdminEmailTemplates() {
       toast.success('Template updated successfully');
       setTemplateDialogOpen(false);
       setEditingTemplate(null);
-      fetchTemplates();
+      queryClient.invalidateQueries({ queryKey: ['email-templates'] });
     } catch (error) {
       console.error('Error updating template:', error);
       toast.error('Failed to update template');

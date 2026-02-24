@@ -93,23 +93,26 @@ export default function AdminEmailCampaignAnalytics() {
       // CRITICAL: All queries MUST filter by organization_id for multi-tenant security
       const { data: emailQueue } = await supabase
         .from("profile_email_queue")
-        .select("*")
+        .select("id, template_key, sent_at, status, buyer_profile_id, seller_profile_id")
         .eq("organization_id", organizationId)
         .eq("status", "sent")
-        .order("sent_at", { ascending: false });
+        .order("sent_at", { ascending: false })
+        .limit(5000);
 
       // Fetch all email tracking events
       const { data: trackingEvents } = await supabase
         .from("email_tracking")
-        .select("*")
+        .select("event_type, profile_email_queue_id, ip_address, created_at")
         .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
       // Fetch email templates
       const { data: templates } = await supabase
         .from("email_templates")
-        .select("*")
-        .eq("organization_id", organizationId);
+        .select("template_key, template_name")
+        .eq("organization_id", organizationId)
+        .limit(5000);
 
       const sentEmails = emailQueue || [];
       const events = trackingEvents || [];

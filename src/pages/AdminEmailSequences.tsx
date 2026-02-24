@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useOrganizationView } from "@/contexts/OrganizationViewContext";
@@ -24,38 +25,26 @@ export default function AdminEmailSequences() {
   const { organization } = useOrganization();
   const { viewAsOrganizationId, selectedOrganization, isOrganizationView } = useOrganizationView();
   const navigate = useNavigate();
-  const [sequences, setSequences] = useState<EmailSequence[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingSequence, setEditingSequence] = useState<string | null>(null);
 
-  useEffect(() => {
-    const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
-    if (targetOrg) {
-      fetchSequences();
-    }
-  }, [organization, viewAsOrganizationId, selectedOrganization, isOrganizationView]);
+  const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
 
-  const fetchSequences = async () => {
-    const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
-    if (!targetOrg) return;
-
-    try {
+  const { data: sequences = [], isLoading: loading } = useQuery({
+    queryKey: ['email-sequences', targetOrg?.id],
+    queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('email_sequences')
-        .select('*')
-        .eq('organization_id', targetOrg.id)
+        .select('id, name, profile_type, trigger_stage, is_active')
+        .eq('organization_id', targetOrg!.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSequences(data || []);
-    } catch (error) {
-      console.error('Error fetching sequences:', error);
-      toast.error('Failed to load sequences');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return (data || []) as EmailSequence[];
+    },
+    enabled: !!targetOrg,
+  });
 
   const handleToggleActive = async (id: string, currentStatus: boolean) => {
     try {
@@ -66,7 +55,7 @@ export default function AdminEmailSequences() {
 
       if (error) throw error;
       toast.success(currentStatus ? 'Sequence paused' : 'Sequence activated');
-      fetchSequences();
+      queryClient.invalidateQueries({ queryKey: ['email-sequences'] });
     } catch (error) {
       console.error('Error toggling sequence:', error);
       toast.error('Failed to update sequence');
@@ -84,7 +73,7 @@ export default function AdminEmailSequences() {
 
       if (error) throw error;
       toast.success('Sequence deleted');
-      fetchSequences();
+      queryClient.invalidateQueries({ queryKey: ['email-sequences'] });
     } catch (error) {
       console.error('Error deleting sequence:', error);
       toast.error('Failed to delete sequence');
@@ -98,7 +87,7 @@ export default function AdminEmailSequences() {
         onClose={() => {
           setShowBuilder(false);
           setEditingSequence(null);
-          fetchSequences();
+          queryClient.invalidateQueries({ queryKey: ['email-sequences'] });
         }}
       />
     );

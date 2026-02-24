@@ -133,24 +133,28 @@ export default function AdminCommunications() {
       const [propertyEnquiriesResult, valuationRequestsResult, propertyAlertsResult, emailTemplatesResult] = await Promise.all([
         supabase
           .from('property_enquiries')
-          .select('*')
+          .select('id, property_id, property_title, name, email, phone, message, created_at, status, contacted_at')
           .eq('organization_id', targetOrgId)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(200),
         supabase
           .from('valuation_requests')
-          .select('*')
+          .select('id, name, email, phone, property_address, message, created_at, status, contacted_at')
           .eq('organization_id', targetOrgId)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(200),
         supabase
           .from('property_alerts')
-          .select('*')
+          .select('id, name, email, phone, bedrooms, comments, status, created_at, contacted_at, last_notified_at, notification_count, crm_record_id')
           .eq('organization_id', targetOrgId)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(200),
         supabase
           .from('email_templates')
-          .select('*')
+          .select('id, template_key, template_name, category, subject, body_html, available_variables, description, is_active, last_sent_at')
           .eq('organization_id', targetOrgId)
           .order('category', { ascending: true })
+          .limit(200)
       ]);
 
       if (propertyEnquiriesResult.error) throw propertyEnquiriesResult.error;

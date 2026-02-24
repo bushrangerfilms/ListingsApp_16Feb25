@@ -67,13 +67,15 @@ export default function AdminSourceAttribution() {
       // Fetch all buyers and sellers
       const { data: buyers } = await supabase
         .from("buyer_profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("source, created_at, stage")
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
       const { data: sellers } = await supabase
         .from("seller_profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("source, created_at, stage")
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
       const allBuyers = buyers || [];
       const allSellers = sellers || [];

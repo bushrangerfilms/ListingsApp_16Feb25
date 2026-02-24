@@ -58,7 +58,7 @@ export default function AdminTeamManagement() {
     try {
       const { data, error } = await supabase
         .from('user_organizations')
-        .select('*')
+        .select('id, user_id, role, created_at')
         .eq('organization_id', targetOrg.id);
 
       if (error) throw error;
@@ -113,7 +113,7 @@ export default function AdminTeamManagement() {
       // Check if already a member
       const { data: existingMember } = await supabase
         .from('user_organizations')
-        .select('*')
+        .select('id')
         .eq('organization_id', targetOrg.id)
         .eq('user_id', userToInvite.id)
         .maybeSingle();

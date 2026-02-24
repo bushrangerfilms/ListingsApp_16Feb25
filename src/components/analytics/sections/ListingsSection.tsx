@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,31 +19,21 @@ import {
 
 export default function ListingsSection() {
   const { organization } = useOrganization();
-  const { viewAsOrganizationId, selectedOrganization, isOrganizationView } = useOrganizationView();
-  const [metrics, setMetrics] = useState({ totalViews: 0, totalEnquiries: 0, avgConversion: 0 });
-  const [timeSeriesData, setTimeSeriesData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { selectedOrganization, isOrganizationView } = useOrganizationView();
 
   const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
   const targetOrgId = targetOrg?.id;
 
-  useEffect(() => {
-    if (targetOrgId) {
-      fetchData(targetOrgId);
-    }
-  }, [targetOrgId]);
-
-  const fetchData = async (organizationId: string) => {
-    try {
+  const { data: queryData, isLoading: loading } = useQuery({
+    queryKey: ['listings-analytics', targetOrgId],
+    queryFn: async () => {
       // CRITICAL: Filter by organization_id for multi-tenant security
-      const { data: views } = await supabase.from("listing_views").select("*").eq("organization_id", organizationId);
-      const { data: enquiries } = await supabase.from("property_enquiries").select("*").eq("organization_id", organizationId);
+      const { data: views } = await supabase.from("listing_views").select("viewed_at").eq("organization_id", targetOrgId!).limit(5000);
+      const { data: enquiries } = await supabase.from("property_enquiries").select("created_at").eq("organization_id", targetOrgId!).limit(5000);
 
       const totalViews = (views || []).length;
       const totalEnquiries = (enquiries || []).length;
       const avgConversion = totalViews > 0 ? (totalEnquiries / totalViews) * 100 : 0;
-
-      setMetrics({ totalViews, totalEnquiries, avgConversion });
 
       // Time series (last 30 days)
       const timeSeries = [];
@@ -56,13 +46,17 @@ export default function ListingsSection() {
           enquiries: (enquiries || []).filter((e) => e.created_at?.startsWith(dateStr)).length,
         });
       }
-      setTimeSeriesData(timeSeries);
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      return {
+        metrics: { totalViews, totalEnquiries, avgConversion },
+        timeSeriesData: timeSeries,
+      };
+    },
+    enabled: !!targetOrgId,
+  });
+
+  const metrics = queryData?.metrics ?? { totalViews: 0, totalEnquiries: 0, avgConversion: 0 };
+  const timeSeriesData = queryData?.timeSeriesData ?? [];
 
   if (loading) return <Skeleton className="h-96" />;
 

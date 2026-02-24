@@ -91,7 +91,8 @@ export default function AdminCRMAnalytics() {
       const { data: activities } = await supabase
         .from('crm_activities')
         .select('id, activity_type, created_at, seller_profile_id, buyer_profile_id')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(5000);
 
       // Calculate pipeline stats
       if (sellers && buyers) {

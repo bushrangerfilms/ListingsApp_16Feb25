@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,51 +31,52 @@ export function EmailSequenceBuilder({ sequenceId, onClose }: EmailSequenceBuild
   const [profileType, setProfileType] = useState<'seller' | 'buyer'>('seller');
   const [triggerStage, setTriggerStage] = useState("");
   const [steps, setSteps] = useState<SequenceStep[]>([{ step_number: 1, template_key: '', delay_hours: 0 }]);
-  const [templates, setTemplates] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
 
+  const { data: templates = [] } = useQuery({
+    queryKey: ['email-templates-active'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('email_templates')
+        .select('template_key, template_name, category')
+        .eq('is_active', true)
+        .order('category');
+
+      return data || [];
+    },
+  });
+
+  const { data: sequenceData } = useQuery({
+    queryKey: ['email-sequence-detail', sequenceId],
+    queryFn: async () => {
+      const { data: seqData } = await (supabase as any)
+        .from('email_sequences')
+        .select('name, profile_type, trigger_stage')
+        .eq('id', sequenceId)
+        .maybeSingle();
+
+      const { data: stepsData } = await (supabase as any)
+        .from('email_sequence_steps')
+        .select('id, step_number, template_key, delay_hours, sequence_id')
+        .eq('sequence_id', sequenceId)
+        .order('step_number');
+
+      return { sequence: seqData, steps: stepsData };
+    },
+    enabled: !!sequenceId,
+  });
+
+  // Populate form state when sequence data is fetched
   useEffect(() => {
-    fetchTemplates();
-    if (sequenceId) {
-      fetchSequence();
+    if (sequenceData?.sequence) {
+      setName(sequenceData.sequence.name);
+      setProfileType(sequenceData.sequence.profile_type);
+      setTriggerStage(sequenceData.sequence.trigger_stage);
     }
-  }, [sequenceId]);
-
-  const fetchTemplates = async () => {
-    const { data } = await supabase
-      .from('email_templates')
-      .select('template_key, template_name, category')
-      .eq('is_active', true)
-      .order('category');
-    
-    setTemplates(data || []);
-  };
-
-  const fetchSequence = async () => {
-    if (!sequenceId) return;
-
-    const { data: seqData } = await (supabase as any)
-      .from('email_sequences')
-      .select('*')
-      .eq('id', sequenceId)
-      .maybeSingle();
-
-    if (seqData) {
-      setName(seqData.name);
-      setProfileType(seqData.profile_type);
-      setTriggerStage(seqData.trigger_stage);
+    if (sequenceData?.steps && sequenceData.steps.length > 0) {
+      setSteps(sequenceData.steps as SequenceStep[]);
     }
-
-    const { data: stepsData } = await (supabase as any)
-      .from('email_sequence_steps')
-      .select('*')
-      .eq('sequence_id', sequenceId)
-      .order('step_number');
-
-    if (stepsData && stepsData.length > 0) {
-      setSteps(stepsData as SequenceStep[]);
-    }
-  };
+  }, [sequenceData]);
 
   const addStep = () => {
     setSteps([...steps, { step_number: steps.length + 1, template_key: '', delay_hours: 24 }]);

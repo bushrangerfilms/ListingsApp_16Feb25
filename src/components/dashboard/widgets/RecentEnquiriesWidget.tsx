@@ -18,7 +18,7 @@ export const RecentEnquiriesWidget = () => {
       
       const { data } = await supabase
         .from("property_enquiries")
-        .select("*")
+        .select("id, name, property_title, created_at")
         .eq("organization_id", targetOrg.id)
         .order("created_at", { ascending: false })
         .limit(5);

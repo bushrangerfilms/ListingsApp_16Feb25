@@ -1,12 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders } from '../_shared/cors.ts';
+import { checkRateLimit } from '../_shared/rate-limit.ts';
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get('origin'));
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -31,6 +30,17 @@ serve(async (req) => {
       );
     }
 
+    // Per-file size limit: 10MB max per image
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    for (let i = 0; i < images.length; i++) {
+      if (images[i].size > MAX_FILE_SIZE) {
+        return new Response(
+          JSON.stringify({ error: `Image ${i + 1} exceeds 10MB limit (${(images[i].size / 1024 / 1024).toFixed(1)}MB)` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     console.log(`Processing ${images.length} images for client: ${clientSlug}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -38,6 +48,20 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       db: { schema: 'public' }
     });
+
+    // Rate limit: 20 per hour per client
+    const rateLimitId = clientSlug || 'unknown';
+    const rateCheck = await checkRateLimit(supabase, rateLimitId, {
+      feature: 'process-images',
+      maxRequests: 20,
+      windowMinutes: 60,
+    });
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded', resetTime: rateCheck.resetTime }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const uploadedUrls: string[] = [];
     let heroPhotoUrl = '';

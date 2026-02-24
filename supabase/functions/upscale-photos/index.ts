@@ -1,10 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { getCorsHeaders } from '../_shared/cors.ts';
+import { checkRateLimit } from '../_shared/rate-limit.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// CORS headers set per-request in handler
 
 const KIE_API_URL = 'https://api.kie.ai/api/v1/jobs/createTask';
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB limit for upscaling
@@ -169,6 +168,8 @@ async function submitUpscaleJob(
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get('origin'));
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -220,6 +221,19 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'User organization not found' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Rate limit: 30 upscale requests per hour per organization
+    const rateCheck = await checkRateLimit(supabase, userOrg.organization_id, {
+      feature: 'upscale-photos',
+      maxRequests: 30,
+      windowMinutes: 60,
+    });
+    if (!rateCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Photo upscale rate limit exceeded', resetTime: rateCheck.resetTime }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

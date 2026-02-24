@@ -11,8 +11,20 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  // L3: Authenticate — only allow service_role or shared secret
+  const authHeader = req.headers.get('authorization') || '';
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  const providedToken = authHeader.replace('Bearer ', '');
+
+  if (providedToken !== supabaseKey && (!cronSecret || providedToken !== cronSecret)) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   const now = new Date();
@@ -39,7 +51,8 @@ serve(async (req) => {
       const graceEnds = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14-day grace
 
       for (const org of expiredTrials) {
-        const { error: updateError } = await supabase
+        // M8: Conditional update — only if STILL in trial status (prevents race with Stripe webhook)
+        const { error: updateError, count } = await supabase
           .from('organizations')
           .update({
             account_status: 'trial_expired',
@@ -48,7 +61,8 @@ serve(async (req) => {
             grace_period_ends_at: graceEnds.toISOString(),
             updated_at: now.toISOString(),
           })
-          .eq('id', org.id);
+          .eq('id', org.id)
+          .eq('account_status', 'trial');
 
         if (updateError) {
           results.errors.push(`Failed to expire trial for org ${org.id}: ${updateError.message}`);

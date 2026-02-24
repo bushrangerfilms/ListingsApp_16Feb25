@@ -71,6 +71,27 @@ serve(async (req) => {
 
     console.log(`[WEBHOOK] Received event: ${event.type} (${event.id})`);
 
+    // H8: Global event deduplication — prevents retries from causing duplicate side effects
+    const { data: alreadyProcessed } = await supabase
+      .from('processed_stripe_events')
+      .select('event_id')
+      .eq('event_id', event.id)
+      .maybeSingle();
+
+    if (alreadyProcessed) {
+      console.log(`[WEBHOOK] Event ${event.id} already processed, returning 200`);
+      return new Response(
+        JSON.stringify({ received: true, duplicate: true }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Record event as being processed (before handling, to prevent concurrent retries)
+    await supabase.from('processed_stripe_events').insert({
+      event_id: event.id,
+      event_type: event.type,
+    });
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -109,6 +130,20 @@ serve(async (req) => {
         if (invoice.subscription) {
           await handlePaymentFailed(supabase, stripe, invoice);
         }
+        break;
+      }
+
+      // M11: Handle refunds — reverse previously granted credits
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        await handleChargeRefunded(supabase, charge, event.id);
+        break;
+      }
+
+      // M11: Handle disputes — alert and disable spending
+      case 'charge.dispute.created': {
+        const dispute = event.data.object as Stripe.Dispute;
+        await handleDisputeCreated(supabase, dispute, event.id);
         break;
       }
 
@@ -173,7 +208,7 @@ async function handleCheckoutCompleted(
       }, { onConflict: 'organization_id' });
 
     const { data: existingGrant, error: checkError } = await supabase
-      .from('credit_ledger')
+      .from('credit_transactions')
       .select('id')
       .eq('stripe_event_id', eventId)
       .maybeSingle();
@@ -582,4 +617,129 @@ async function handlePaymentRecovery(
 
     console.log(`[WEBHOOK] Payment recovered for org ${profile.organization_id} - restored to active status`);
   }
+}
+
+// M11: Handle charge refunds — debit the previously granted credits
+async function handleChargeRefunded(
+  supabase: ReturnType<typeof createClient>,
+  charge: Stripe.Charge,
+  eventId: string
+) {
+  const amountRefunded = (charge.amount_refunded || 0) / 100; // Stripe uses cents
+
+  // Find the organization via payment intent
+  const { data: originalTx } = await supabase
+    .from('credit_transactions')
+    .select('organization_id, amount')
+    .eq('stripe_payment_intent_id', charge.payment_intent as string)
+    .eq('transaction_type', 'credit')
+    .maybeSingle();
+
+  if (!originalTx) {
+    console.warn(`[WEBHOOK] No credit transaction found for refunded charge ${charge.id}`);
+    return;
+  }
+
+  // Grant a negative adjustment (debit) to reverse the credits
+  const { error: debitError } = await supabase.rpc('sp_grant_credits', {
+    p_organization_id: originalTx.organization_id,
+    p_amount: -amountRefunded, // Negative to debit — but sp_grant_credits rejects <= 0
+  });
+
+  // Since sp_grant_credits rejects negative amounts, insert the reversal directly
+  const { data: balanceData } = await supabase.rpc('sp_get_credit_balance', {
+    p_organization_id: originalTx.organization_id,
+  });
+
+  const currentBalance = balanceData?.[0]?.balance ?? 0;
+  const creditsToReverse = Math.min(originalTx.amount, currentBalance); // Don't go below zero
+  const newBalance = currentBalance - creditsToReverse;
+
+  if (creditsToReverse > 0) {
+    await supabase.from('credit_transactions').insert({
+      organization_id: originalTx.organization_id,
+      transaction_type: 'debit',
+      amount: creditsToReverse,
+      balance_after: newBalance,
+      source: null,
+      feature_type: null,
+      description: `Credit reversal due to refund (charge: ${charge.id})`,
+      stripe_event_id: eventId,
+      stripe_payment_intent_id: charge.payment_intent as string,
+      source_app: 'system',
+    });
+
+    // Update cached balance
+    await supabase
+      .from('organization_credit_balances')
+      .update({ balance: newBalance, last_transaction_at: new Date().toISOString() })
+      .eq('organization_id', originalTx.organization_id);
+  }
+
+  // Log the event
+  await supabase.from('account_lifecycle_log').insert({
+    organization_id: originalTx.organization_id,
+    previous_status: 'active',
+    new_status: 'active',
+    reason: `Charge refunded: ${charge.id} (${creditsToReverse} credits reversed)`,
+    triggered_by: 'webhook',
+    metadata: {
+      charge_id: charge.id,
+      amount_refunded: amountRefunded,
+      credits_reversed: creditsToReverse,
+    },
+  });
+
+  console.log(`[WEBHOOK] Refund processed for org ${originalTx.organization_id}: ${creditsToReverse} credits reversed`);
+}
+
+// M11: Handle charge disputes — disable spending and alert
+async function handleDisputeCreated(
+  supabase: ReturnType<typeof createClient>,
+  dispute: Stripe.Dispute,
+  eventId: string
+) {
+  const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id;
+
+  // Find the organization via the payment intent on the original charge
+  const { data: originalTx } = await supabase
+    .from('credit_transactions')
+    .select('organization_id')
+    .eq('stripe_payment_intent_id', dispute.payment_intent as string)
+    .eq('transaction_type', 'credit')
+    .maybeSingle();
+
+  if (!originalTx) {
+    console.warn(`[WEBHOOK] No credit transaction found for disputed charge ${chargeId}`);
+    return;
+  }
+
+  const now = new Date();
+
+  // Disable credit spending immediately
+  await supabase
+    .from('organizations')
+    .update({
+      credit_spending_enabled: false,
+      read_only_reason: 'Account suspended due to payment dispute. Please contact support.',
+      updated_at: now.toISOString(),
+    })
+    .eq('id', originalTx.organization_id);
+
+  // Log the event
+  await supabase.from('account_lifecycle_log').insert({
+    organization_id: originalTx.organization_id,
+    previous_status: 'active',
+    new_status: 'active',
+    reason: `Payment dispute created (charge: ${chargeId})`,
+    triggered_by: 'webhook',
+    metadata: {
+      dispute_id: dispute.id,
+      charge_id: chargeId,
+      amount: dispute.amount,
+      reason: dispute.reason,
+    },
+  });
+
+  console.log(`[WEBHOOK] Dispute created for org ${originalTx.organization_id} — spending disabled`);
 }
