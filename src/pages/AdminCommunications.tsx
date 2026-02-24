@@ -51,7 +51,7 @@ interface PropertyAlert {
   contacted_at: string | null;
   last_notified_at: string | null;
   notification_count: number;
-  airtable_record_id: string | null;
+  crm_record_id: string | null;
 }
 
 interface EmailTemplate {
@@ -659,9 +659,9 @@ export default function AdminCommunications() {
                           <Badge variant="outline">
                             {alert.notification_count} {alert.notification_count === 1 ? 'email' : 'emails'} sent
                           </Badge>
-                          {alert.airtable_record_id && (
+                          {alert.crm_record_id && (
                             <span className="text-muted-foreground">
-                              Airtable ID: {alert.airtable_record_id.substring(0, 8)}...
+                              CRM ID: {alert.crm_record_id.substring(0, 8)}...
                             </span>
                           )}
                         </div>

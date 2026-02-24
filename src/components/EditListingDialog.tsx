@@ -176,7 +176,7 @@ export function EditListingDialog({
       const finalHeroUrl = photoChanges?.heroPhotoUrl || newHeroUrl || (finalPhotoUrls.length > 0 ? finalPhotoUrls[0] : null);
       const finalSocialMediaUrls = [...(photoChanges?.socialMediaUrls || []), ...newSocialMediaUrls];
 
-      const airtableFields: Record<string, any> = {
+      const listingFields: Record<string, any> = {
         'Listing Title': formData.Title,
         'Price €': formData.Price,
         'Address Line 1': formData["Address Line 1"],
@@ -194,16 +194,16 @@ export function EditListingDialog({
       };
 
       if (photoChanges) {
-        airtableFields['photos'] = finalPhotoUrls;
-        airtableFields['hero_photo'] = finalHeroUrl;
-        airtableFields['social_media_photos'] = finalSocialMediaUrls;
+        listingFields['photos'] = finalPhotoUrls;
+        listingFields['hero_photo'] = finalHeroUrl;
+        listingFields['social_media_photos'] = finalSocialMediaUrls;
       }
 
       const { data, error } = await supabase.functions.invoke('update-listing-details', {
         body: {
           clientSlug,
           recordId: listing.id,
-          fields: airtableFields,
+          fields: listingFields,
         }
       });
 

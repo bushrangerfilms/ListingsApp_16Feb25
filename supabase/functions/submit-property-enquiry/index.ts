@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     console.log('Organization found:', orgData.business_name);
 
     // Fetch property details for email (address and hero image)
-    // Check if propertyId is a UUID format or airtable record ID (same logic as get-listings)
+    // Check if propertyId is a UUID format or CRM record ID (same logic as get-listings)
     let propertyAddress = '';
     let propertyImageUrl = '';
     try {
@@ -62,11 +62,11 @@ Deno.serve(async (req) => {
         .from('listings')
         .select('address, hero_photo');
       
-      // If it's a UUID, check the id field; otherwise check airtable_record_id
+      // If it's a UUID, check the id field; otherwise check the CRM record ID
       if (isUUID) {
         query = query.eq('id', propertyId);
       } else {
-        query = query.eq('airtable_record_id', propertyId);
+        query = query.eq('crm_record_id', propertyId);
       }
       
       const { data: listingData, error: listingError } = await query.single();

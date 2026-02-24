@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     const { data: existingMatches, error: matchesError } = await supabase
       .from('buyer_listing_matches')
       .select('property_alert_id')
-      .eq('listing_airtable_id', listingId);
+      .eq('listing_crm_id', listingId);
 
     if (matchesError) {
       console.error('Error checking existing matches:', matchesError);
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
           .from('buyer_listing_matches')
           .insert({
             property_alert_id: alert.id,
-            listing_airtable_id: listingId,
+            listing_crm_id: listingId,
             listing_title: listingTitle,
             email_sent_at: new Date().toISOString(),
           });
