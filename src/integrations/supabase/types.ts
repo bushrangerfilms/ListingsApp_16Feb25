@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_alert_history: {
@@ -345,6 +320,45 @@ export type Database = {
           },
         ]
       }
+      ai_video_providers: {
+        Row: {
+          api_base_url: string | null
+          cost_per_second: number | null
+          created_at: string | null
+          default_prompt: string | null
+          default_prompt_916: string | null
+          display_name: string
+          id: string
+          is_enabled: boolean | null
+          priority: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_base_url?: string | null
+          cost_per_second?: number | null
+          created_at?: string | null
+          default_prompt?: string | null
+          default_prompt_916?: string | null
+          display_name: string
+          id: string
+          is_enabled?: boolean | null
+          priority?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_base_url?: string | null
+          cost_per_second?: number | null
+          created_at?: string | null
+          default_prompt?: string | null
+          default_prompt_916?: string | null
+          display_name?: string
+          id?: string
+          is_enabled?: boolean | null
+          priority?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       airtable_field_reference: {
         Row: {
           created_at: string | null
@@ -502,11 +516,13 @@ export type Database = {
           completed_at: string | null
           created_at: string
           duration_ms: number | null
+          edge_function: string | null
           error_message: string | null
           execution_id: string
           id: string
           listing_id: string | null
           metadata: Json | null
+          parent_execution_id: string | null
           started_at: string
           step_name: string
           step_status: string
@@ -517,11 +533,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           duration_ms?: number | null
+          edge_function?: string | null
           error_message?: string | null
           execution_id: string
           id?: string
           listing_id?: string | null
           metadata?: Json | null
+          parent_execution_id?: string | null
           started_at?: string
           step_name: string
           step_status?: string
@@ -532,11 +550,13 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           duration_ms?: number | null
+          edge_function?: string | null
           error_message?: string | null
           execution_id?: string
           id?: string
           listing_id?: string | null
           metadata?: Json | null
+          parent_execution_id?: string | null
           started_at?: string
           step_name?: string
           step_status?: string
@@ -585,7 +605,9 @@ export type Database = {
       }
       automation_workflows: {
         Row: {
+          aspect_ratio_requirements: Json | null
           completed_at: string | null
+          content_job_id: string | null
           created_at: string | null
           current_state: string
           current_step_description: string | null
@@ -597,11 +619,13 @@ export type Database = {
           is_active: boolean | null
           is_completed: boolean | null
           is_failed: boolean | null
+          is_test: boolean | null
           last_error: string | null
           last_error_at: string | null
           listing_id: string
           manual_intervention_required: boolean | null
           max_retries: number | null
+          post_type: string | null
           previous_state: string | null
           progress_percentage: number | null
           recovery_options: Json | null
@@ -609,12 +633,15 @@ export type Database = {
           started_at: string | null
           state_data: Json | null
           template_id: string | null
+          test_content_type_id: string | null
           trigger_metadata: Json | null
           triggered_by: string | null
           updated_at: string | null
         }
         Insert: {
+          aspect_ratio_requirements?: Json | null
           completed_at?: string | null
+          content_job_id?: string | null
           created_at?: string | null
           current_state?: string
           current_step_description?: string | null
@@ -626,11 +653,13 @@ export type Database = {
           is_active?: boolean | null
           is_completed?: boolean | null
           is_failed?: boolean | null
+          is_test?: boolean | null
           last_error?: string | null
           last_error_at?: string | null
           listing_id: string
           manual_intervention_required?: boolean | null
           max_retries?: number | null
+          post_type?: string | null
           previous_state?: string | null
           progress_percentage?: number | null
           recovery_options?: Json | null
@@ -638,12 +667,15 @@ export type Database = {
           started_at?: string | null
           state_data?: Json | null
           template_id?: string | null
+          test_content_type_id?: string | null
           trigger_metadata?: Json | null
           triggered_by?: string | null
           updated_at?: string | null
         }
         Update: {
+          aspect_ratio_requirements?: Json | null
           completed_at?: string | null
+          content_job_id?: string | null
           created_at?: string | null
           current_state?: string
           current_step_description?: string | null
@@ -655,11 +687,13 @@ export type Database = {
           is_active?: boolean | null
           is_completed?: boolean | null
           is_failed?: boolean | null
+          is_test?: boolean | null
           last_error?: string | null
           last_error_at?: string | null
           listing_id?: string
           manual_intervention_required?: boolean | null
           max_retries?: number | null
+          post_type?: string | null
           previous_state?: string | null
           progress_percentage?: number | null
           recovery_options?: Json | null
@@ -667,6 +701,7 @@ export type Database = {
           started_at?: string | null
           state_data?: Json | null
           template_id?: string | null
+          test_content_type_id?: string | null
           trigger_metadata?: Json | null
           triggered_by?: string | null
           updated_at?: string | null
@@ -706,6 +741,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "unified_schedule_dashboard"
             referencedColumns: ["template_id"]
+          },
+          {
+            foreignKeyName: "automation_workflows_test_content_type_id_fkey"
+            columns: ["test_content_type_id"]
+            isOneToOne: false
+            referencedRelation: "content_type_definitions"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -764,96 +806,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      blotato_accounts: {
-        Row: {
-          account_id: string | null
-          account_name: string | null
-          account_type: string | null
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          parent_account_id: string | null
-          platform: string | null
-          preferred_aspect_ratio: string | null
-          updated_at: string | null
-          username: string | null
-        }
-        Insert: {
-          account_id?: string | null
-          account_name?: string | null
-          account_type?: string | null
-          created_at?: string | null
-          id: string
-          is_active?: boolean | null
-          parent_account_id?: string | null
-          platform?: string | null
-          preferred_aspect_ratio?: string | null
-          updated_at?: string | null
-          username?: string | null
-        }
-        Update: {
-          account_id?: string | null
-          account_name?: string | null
-          account_type?: string | null
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          parent_account_id?: string | null
-          platform?: string | null
-          preferred_aspect_ratio?: string | null
-          updated_at?: string | null
-          username?: string | null
-        }
-        Relationships: []
-      }
-      blotato_posts: {
-        Row: {
-          blotato_account_id: string | null
-          caption: string | null
-          created_at: string | null
-          error_message: string | null
-          id: string
-          listing_schedule_id: string | null
-          platform: string | null
-          posted_at: string | null
-          status: string | null
-          submission_id: string | null
-          updated_at: string | null
-          video_history_id: string | null
-          video_url: string | null
-        }
-        Insert: {
-          blotato_account_id?: string | null
-          caption?: string | null
-          created_at?: string | null
-          error_message?: string | null
-          id: string
-          listing_schedule_id?: string | null
-          platform?: string | null
-          posted_at?: string | null
-          status?: string | null
-          submission_id?: string | null
-          updated_at?: string | null
-          video_history_id?: string | null
-          video_url?: string | null
-        }
-        Update: {
-          blotato_account_id?: string | null
-          caption?: string | null
-          created_at?: string | null
-          error_message?: string | null
-          id?: string
-          listing_schedule_id?: string | null
-          platform?: string | null
-          posted_at?: string | null
-          status?: string | null
-          submission_id?: string | null
-          updated_at?: string | null
-          video_history_id?: string | null
-          video_url?: string | null
-        }
-        Relationships: []
       }
       buyer_profiles: {
         Row: {
@@ -989,6 +941,7 @@ export type Database = {
           sale_agreed_frequency: string | null
           sold_duration_weeks: string | null
           sold_frequency: string | null
+          tiktok_rotation_state: Json | null
           top_text_font_size_16x9: string | null
           top_text_font_size_9x16: string | null
           top_text_position_16x9_x: string | null
@@ -1045,6 +998,7 @@ export type Database = {
           sale_agreed_frequency?: string | null
           sold_duration_weeks?: string | null
           sold_frequency?: string | null
+          tiktok_rotation_state?: Json | null
           top_text_font_size_16x9?: string | null
           top_text_font_size_9x16?: string | null
           top_text_position_16x9_x?: string | null
@@ -1101,6 +1055,7 @@ export type Database = {
           sale_agreed_frequency?: string | null
           sold_duration_weeks?: string | null
           sold_frequency?: string | null
+          tiktok_rotation_state?: Json | null
           top_text_font_size_16x9?: string | null
           top_text_font_size_9x16?: string | null
           top_text_position_16x9_x?: string | null
@@ -1304,6 +1259,101 @@ export type Database = {
           platform_capabilities?: Json | null
           provider?: string | null
           type_key?: string
+        }
+        Relationships: []
+      }
+      content_type_video_style2_settings: {
+        Row: {
+          ai_provider: string
+          aspect_ratio: string
+          caption_position: string
+          caption_style: string
+          content_type_id: string
+          created_at: string
+          id: string
+          motion_prompt_169: string | null
+          motion_prompt_916: string | null
+          music_mode: string
+          music_track_url: string | null
+          photo_count_max: number
+          photo_count_min: number
+          transition_type: string
+          updated_at: string
+        }
+        Insert: {
+          ai_provider?: string
+          aspect_ratio?: string
+          caption_position?: string
+          caption_style?: string
+          content_type_id: string
+          created_at?: string
+          id?: string
+          motion_prompt_169?: string | null
+          motion_prompt_916?: string | null
+          music_mode?: string
+          music_track_url?: string | null
+          photo_count_max?: number
+          photo_count_min?: number
+          transition_type?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_provider?: string
+          aspect_ratio?: string
+          caption_position?: string
+          caption_style?: string
+          content_type_id?: string
+          created_at?: string
+          id?: string
+          motion_prompt_169?: string | null
+          motion_prompt_916?: string | null
+          music_mode?: string
+          music_track_url?: string | null
+          photo_count_max?: number
+          photo_count_min?: number
+          transition_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_type_video_style2_settings_content_type_id_fkey"
+            columns: ["content_type_id"]
+            isOneToOne: true
+            referencedRelation: "content_type_definitions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creatomate_templates: {
+        Row: {
+          cached_at: string | null
+          category: string | null
+          id: string
+          is_enabled: boolean | null
+          name: string
+          preview_url: string | null
+          template_data: Json | null
+          thumbnail_url: string | null
+        }
+        Insert: {
+          cached_at?: string | null
+          category?: string | null
+          id: string
+          is_enabled?: boolean | null
+          name: string
+          preview_url?: string | null
+          template_data?: Json | null
+          thumbnail_url?: string | null
+        }
+        Update: {
+          cached_at?: string | null
+          category?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          name?: string
+          preview_url?: string | null
+          template_data?: Json | null
+          thumbnail_url?: string | null
         }
         Relationships: []
       }
@@ -1614,6 +1664,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      demo_video_analytics: {
+        Row: {
+          created_at: string | null
+          device_type: string | null
+          event_type: string
+          id: string
+          max_percentage: number | null
+          referrer: string | null
+          session_id: string
+          user_agent: string | null
+          video_duration_seconds: number | null
+          watch_time_seconds: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          device_type?: string | null
+          event_type: string
+          id?: string
+          max_percentage?: number | null
+          referrer?: string | null
+          session_id: string
+          user_agent?: string | null
+          video_duration_seconds?: number | null
+          watch_time_seconds?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          device_type?: string | null
+          event_type?: string
+          id?: string
+          max_percentage?: number | null
+          referrer?: string | null
+          session_id?: string
+          user_agent?: string | null
+          video_duration_seconds?: number | null
+          watch_time_seconds?: number | null
+        }
+        Relationships: []
       }
       discount_code_usage: {
         Row: {
@@ -1971,6 +2060,167 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_magnets: {
+        Row: {
+          brand_config: Json | null
+          created_at: string | null
+          id: string
+          is_enabled: boolean | null
+          organization_id: string
+          slug: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          brand_config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          organization_id: string
+          slug?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          brand_config?: Json | null
+          created_at?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          organization_id?: string
+          slug?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_magnets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_submissions: {
+        Row: {
+          answers_json: Json
+          band: string | null
+          campaign_id: string | null
+          comparable_sales: Json | null
+          confidence: string | null
+          consent: boolean | null
+          created_at: string | null
+          drivers_json: Json | null
+          email: string | null
+          email_sent: boolean | null
+          email_sent_at: string | null
+          estimate_high: number | null
+          estimate_low: number | null
+          headline_gaps: Json | null
+          id: string
+          lead_magnet_id: string | null
+          market_insights: string | null
+          market_trend: string | null
+          name: string | null
+          organization_id: string
+          phone: string | null
+          post_id: string | null
+          research_snapshot_id: string | null
+          research_source: string | null
+          rules_version: string | null
+          score: number | null
+          seller_profile_id: string | null
+          todo_json: Json | null
+          utm_campaign: string | null
+          utm_source: string | null
+          valuation_model_version: string | null
+          version: string | null
+        }
+        Insert: {
+          answers_json?: Json
+          band?: string | null
+          campaign_id?: string | null
+          comparable_sales?: Json | null
+          confidence?: string | null
+          consent?: boolean | null
+          created_at?: string | null
+          drivers_json?: Json | null
+          email?: string | null
+          email_sent?: boolean | null
+          email_sent_at?: string | null
+          estimate_high?: number | null
+          estimate_low?: number | null
+          headline_gaps?: Json | null
+          id?: string
+          lead_magnet_id?: string | null
+          market_insights?: string | null
+          market_trend?: string | null
+          name?: string | null
+          organization_id: string
+          phone?: string | null
+          post_id?: string | null
+          research_snapshot_id?: string | null
+          research_source?: string | null
+          rules_version?: string | null
+          score?: number | null
+          seller_profile_id?: string | null
+          todo_json?: Json | null
+          utm_campaign?: string | null
+          utm_source?: string | null
+          valuation_model_version?: string | null
+          version?: string | null
+        }
+        Update: {
+          answers_json?: Json
+          band?: string | null
+          campaign_id?: string | null
+          comparable_sales?: Json | null
+          confidence?: string | null
+          consent?: boolean | null
+          created_at?: string | null
+          drivers_json?: Json | null
+          email?: string | null
+          email_sent?: boolean | null
+          email_sent_at?: string | null
+          estimate_high?: number | null
+          estimate_low?: number | null
+          headline_gaps?: Json | null
+          id?: string
+          lead_magnet_id?: string | null
+          market_insights?: string | null
+          market_trend?: string | null
+          name?: string | null
+          organization_id?: string
+          phone?: string | null
+          post_id?: string | null
+          research_snapshot_id?: string | null
+          research_source?: string | null
+          rules_version?: string | null
+          score?: number | null
+          seller_profile_id?: string | null
+          todo_json?: Json | null
+          utm_campaign?: string | null
+          utm_source?: string | null
+          valuation_model_version?: string | null
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_submissions_lead_magnet_id_fkey"
+            columns: ["lead_magnet_id"]
+            isOneToOne: false
+            referencedRelation: "lead_magnets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_submissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_post_counters: {
         Row: {
           id: string
@@ -2003,6 +2253,7 @@ export type Database = {
           airtable_listing_id: string | null
           aspect_ratio: string | null
           banner_expires_at: string | null
+          content_job_id: string | null
           content_type: string | null
           created_at: string | null
           error_message: string | null
@@ -2010,13 +2261,21 @@ export type Database = {
           id: string
           is_cancelled: boolean | null
           is_recurring: boolean | null
+          is_test: boolean | null
           jitter_seconds: number | null
           listing_id: string | null
           listing_status: string | null
+          organization_id: string | null
           parent_execution_id: string | null
+          platforms_to_post: string[] | null
+          post_category: string
           post_number: number | null
           post_type: string
           posted_at: string | null
+          quiz_image_url: string | null
+          quiz_image_url_link: string | null
+          quiz_image_url_link_in_bio: string | null
+          quiz_type: string | null
           randomized_time: string | null
           recurring_template_id: string | null
           scheduled_for: string
@@ -2039,6 +2298,7 @@ export type Database = {
           airtable_listing_id?: string | null
           aspect_ratio?: string | null
           banner_expires_at?: string | null
+          content_job_id?: string | null
           content_type?: string | null
           created_at?: string | null
           error_message?: string | null
@@ -2046,13 +2306,21 @@ export type Database = {
           id?: string
           is_cancelled?: boolean | null
           is_recurring?: boolean | null
+          is_test?: boolean | null
           jitter_seconds?: number | null
           listing_id?: string | null
           listing_status?: string | null
+          organization_id?: string | null
           parent_execution_id?: string | null
+          platforms_to_post?: string[] | null
+          post_category?: string
           post_number?: number | null
           post_type: string
           posted_at?: string | null
+          quiz_image_url?: string | null
+          quiz_image_url_link?: string | null
+          quiz_image_url_link_in_bio?: string | null
+          quiz_type?: string | null
           randomized_time?: string | null
           recurring_template_id?: string | null
           scheduled_for: string
@@ -2075,6 +2343,7 @@ export type Database = {
           airtable_listing_id?: string | null
           aspect_ratio?: string | null
           banner_expires_at?: string | null
+          content_job_id?: string | null
           content_type?: string | null
           created_at?: string | null
           error_message?: string | null
@@ -2082,13 +2351,21 @@ export type Database = {
           id?: string
           is_cancelled?: boolean | null
           is_recurring?: boolean | null
+          is_test?: boolean | null
           jitter_seconds?: number | null
           listing_id?: string | null
           listing_status?: string | null
+          organization_id?: string | null
           parent_execution_id?: string | null
+          platforms_to_post?: string[] | null
+          post_category?: string
           post_number?: number | null
           post_type?: string
           posted_at?: string | null
+          quiz_image_url?: string | null
+          quiz_image_url_link?: string | null
+          quiz_image_url_link_in_bio?: string | null
+          quiz_type?: string | null
           randomized_time?: string | null
           recurring_template_id?: string | null
           scheduled_for?: string
@@ -2135,6 +2412,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "unified_schedule_dashboard"
             referencedColumns: ["listing_id"]
+          },
+          {
+            foreignKeyName: "listing_posting_schedule_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "listing_posting_schedule_video_history_id_fkey"
@@ -2401,6 +2685,33 @@ export type Database = {
           },
         ]
       }
+      market_research_cache: {
+        Row: {
+          area_key: string
+          created_at: string | null
+          expires_at: string
+          id: string
+          property_type: string
+          research_json: Json
+        }
+        Insert: {
+          area_key: string
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          property_type: string
+          research_json?: Json
+        }
+        Update: {
+          area_key?: string
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          property_type?: string
+          research_json?: Json
+        }
+        Relationships: []
+      }
       marketing_content: {
         Row: {
           created_at: string | null
@@ -2456,6 +2767,152 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      marketing_demo_clips: {
+        Row: {
+          ai_clip_url: string | null
+          ai_job_id: string | null
+          ai_provider: string | null
+          caption: string | null
+          created_at: string | null
+          duration_seconds: number | null
+          error_message: string | null
+          id: string
+          motion_prompt: string | null
+          order_index: number | null
+          session_id: string | null
+          source_image_url: string
+          status: string | null
+          transition_type: string | null
+          updated_at: string | null
+          upscale_job_id: string | null
+          upscale_status: string | null
+          upscaled_image_url: string | null
+        }
+        Insert: {
+          ai_clip_url?: string | null
+          ai_job_id?: string | null
+          ai_provider?: string | null
+          caption?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          id?: string
+          motion_prompt?: string | null
+          order_index?: number | null
+          session_id?: string | null
+          source_image_url: string
+          status?: string | null
+          transition_type?: string | null
+          updated_at?: string | null
+          upscale_job_id?: string | null
+          upscale_status?: string | null
+          upscaled_image_url?: string | null
+        }
+        Update: {
+          ai_clip_url?: string | null
+          ai_job_id?: string | null
+          ai_provider?: string | null
+          caption?: string | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          id?: string
+          motion_prompt?: string | null
+          order_index?: number | null
+          session_id?: string | null
+          source_image_url?: string
+          status?: string | null
+          transition_type?: string | null
+          updated_at?: string | null
+          upscale_job_id?: string | null
+          upscale_status?: string | null
+          upscaled_image_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_demo_clips_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "marketing_demo_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_demo_sessions: {
+        Row: {
+          ai_provider: string | null
+          aspect_ratio: string | null
+          client_name: string
+          created_at: string | null
+          created_by: string | null
+          end_card_16x9_url: string | null
+          end_card_9x16_url: string | null
+          end_card_background_color: string | null
+          end_card_domain: string | null
+          end_card_license_number: string | null
+          end_card_logo_url: string | null
+          end_card_settings: Json | null
+          end_card_text_color: string | null
+          error_message: string | null
+          expires_at: string | null
+          final_video_url: string | null
+          id: string
+          motion_prompt: string | null
+          property_description: string | null
+          selected_image_urls: string[] | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_provider?: string | null
+          aspect_ratio?: string | null
+          client_name: string
+          created_at?: string | null
+          created_by?: string | null
+          end_card_16x9_url?: string | null
+          end_card_9x16_url?: string | null
+          end_card_background_color?: string | null
+          end_card_domain?: string | null
+          end_card_license_number?: string | null
+          end_card_logo_url?: string | null
+          end_card_settings?: Json | null
+          end_card_text_color?: string | null
+          error_message?: string | null
+          expires_at?: string | null
+          final_video_url?: string | null
+          id?: string
+          motion_prompt?: string | null
+          property_description?: string | null
+          selected_image_urls?: string[] | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_provider?: string | null
+          aspect_ratio?: string | null
+          client_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          end_card_16x9_url?: string | null
+          end_card_9x16_url?: string | null
+          end_card_background_color?: string | null
+          end_card_domain?: string | null
+          end_card_license_number?: string | null
+          end_card_logo_url?: string | null
+          end_card_settings?: Json | null
+          end_card_text_color?: string | null
+          error_message?: string | null
+          expires_at?: string | null
+          final_video_url?: string | null
+          id?: string
+          motion_prompt?: string | null
+          property_description?: string | null
+          selected_image_urls?: string[] | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       migration_plans: {
         Row: {
@@ -2558,6 +3015,271 @@ export type Database = {
         }
         Relationships: []
       }
+      org_end_card_settings: {
+        Row: {
+          background_color: string | null
+          created_at: string | null
+          email: string | null
+          email_size_16x9: number | null
+          email_size_9x16: number | null
+          email_x_16x9: number | null
+          email_x_9x16: number | null
+          email_y_16x9: number | null
+          email_y_9x16: number | null
+          endcard_16x9_path: string | null
+          endcard_9x16_path: string | null
+          id: string
+          logo_size_16x9: number | null
+          logo_size_9x16: number | null
+          logo_url: string | null
+          logo_x_16x9: number | null
+          logo_x_9x16: number | null
+          logo_y_16x9: number | null
+          logo_y_9x16: number | null
+          organization_id: string
+          psr_license_number: string | null
+          psr_size_16x9: number | null
+          psr_size_9x16: number | null
+          psr_x_16x9: number | null
+          psr_x_9x16: number | null
+          psr_y_16x9: number | null
+          psr_y_9x16: number | null
+          show_email: boolean | null
+          show_website: boolean | null
+          text_color: string | null
+          top_text: string | null
+          top_text_size_16x9: number | null
+          top_text_size_9x16: number | null
+          top_text_x_16x9: number | null
+          top_text_x_9x16: number | null
+          top_text_y_16x9: number | null
+          top_text_y_9x16: number | null
+          updated_at: string | null
+          website: string | null
+          website_size_16x9: number | null
+          website_size_9x16: number | null
+          website_x_16x9: number | null
+          website_x_9x16: number | null
+          website_y_16x9: number | null
+          website_y_9x16: number | null
+        }
+        Insert: {
+          background_color?: string | null
+          created_at?: string | null
+          email?: string | null
+          email_size_16x9?: number | null
+          email_size_9x16?: number | null
+          email_x_16x9?: number | null
+          email_x_9x16?: number | null
+          email_y_16x9?: number | null
+          email_y_9x16?: number | null
+          endcard_16x9_path?: string | null
+          endcard_9x16_path?: string | null
+          id?: string
+          logo_size_16x9?: number | null
+          logo_size_9x16?: number | null
+          logo_url?: string | null
+          logo_x_16x9?: number | null
+          logo_x_9x16?: number | null
+          logo_y_16x9?: number | null
+          logo_y_9x16?: number | null
+          organization_id: string
+          psr_license_number?: string | null
+          psr_size_16x9?: number | null
+          psr_size_9x16?: number | null
+          psr_x_16x9?: number | null
+          psr_x_9x16?: number | null
+          psr_y_16x9?: number | null
+          psr_y_9x16?: number | null
+          show_email?: boolean | null
+          show_website?: boolean | null
+          text_color?: string | null
+          top_text?: string | null
+          top_text_size_16x9?: number | null
+          top_text_size_9x16?: number | null
+          top_text_x_16x9?: number | null
+          top_text_x_9x16?: number | null
+          top_text_y_16x9?: number | null
+          top_text_y_9x16?: number | null
+          updated_at?: string | null
+          website?: string | null
+          website_size_16x9?: number | null
+          website_size_9x16?: number | null
+          website_x_16x9?: number | null
+          website_x_9x16?: number | null
+          website_y_16x9?: number | null
+          website_y_9x16?: number | null
+        }
+        Update: {
+          background_color?: string | null
+          created_at?: string | null
+          email?: string | null
+          email_size_16x9?: number | null
+          email_size_9x16?: number | null
+          email_x_16x9?: number | null
+          email_x_9x16?: number | null
+          email_y_16x9?: number | null
+          email_y_9x16?: number | null
+          endcard_16x9_path?: string | null
+          endcard_9x16_path?: string | null
+          id?: string
+          logo_size_16x9?: number | null
+          logo_size_9x16?: number | null
+          logo_url?: string | null
+          logo_x_16x9?: number | null
+          logo_x_9x16?: number | null
+          logo_y_16x9?: number | null
+          logo_y_9x16?: number | null
+          organization_id?: string
+          psr_license_number?: string | null
+          psr_size_16x9?: number | null
+          psr_size_9x16?: number | null
+          psr_x_16x9?: number | null
+          psr_x_9x16?: number | null
+          psr_y_16x9?: number | null
+          psr_y_9x16?: number | null
+          show_email?: boolean | null
+          show_website?: boolean | null
+          text_color?: string | null
+          top_text?: string | null
+          top_text_size_16x9?: number | null
+          top_text_size_9x16?: number | null
+          top_text_x_16x9?: number | null
+          top_text_x_9x16?: number | null
+          top_text_y_16x9?: number | null
+          top_text_y_9x16?: number | null
+          updated_at?: string | null
+          website?: string | null
+          website_size_16x9?: number | null
+          website_size_9x16?: number | null
+          website_x_16x9?: number | null
+          website_x_9x16?: number | null
+          website_y_16x9?: number | null
+          website_y_9x16?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_end_card_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_quiz_image_exclusions: {
+        Row: {
+          created_at: string | null
+          id: string
+          image_category: string
+          image_name: string
+          organization_id: string
+          quiz_type_key: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          image_category: string
+          image_name: string
+          organization_id: string
+          quiz_type_key: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image_category?: string
+          image_name?: string
+          organization_id?: string
+          quiz_type_key?: string
+        }
+        Relationships: []
+      }
+      org_quiz_posting_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_quiz_posting_enabled: boolean | null
+          organization_id: string
+          quiz_frequency_mode: string
+          quiz_frequency_value: number
+          quiz_slot_percentage: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_quiz_posting_enabled?: boolean | null
+          organization_id: string
+          quiz_frequency_mode?: string
+          quiz_frequency_value?: number
+          quiz_slot_percentage?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_quiz_posting_enabled?: boolean | null
+          organization_id?: string
+          quiz_frequency_mode?: string
+          quiz_frequency_value?: number
+          quiz_slot_percentage?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_quiz_posting_config_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_quiz_settings: {
+        Row: {
+          created_at: string | null
+          frequency_weight: number | null
+          id: string
+          is_enabled: boolean | null
+          organization_id: string
+          quiz_type_key: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          frequency_weight?: number | null
+          id?: string
+          is_enabled?: boolean | null
+          organization_id: string
+          quiz_type_key: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          frequency_weight?: number | null
+          id?: string
+          is_enabled?: boolean | null
+          organization_id?: string
+          quiz_type_key?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_quiz_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "org_quiz_settings_quiz_type_key_fkey"
+            columns: ["quiz_type_key"]
+            isOneToOne: false
+            referencedRelation: "quiz_type_definitions"
+            referencedColumns: ["type_key"]
+          },
+        ]
+      }
       org_social_targets: {
         Row: {
           alternate_index: number | null
@@ -2619,6 +3341,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "org_social_targets_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_connected_socials: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          display_name: string | null
+          handle: string | null
+          id: string
+          is_active: boolean | null
+          organization_id: string
+          platform: string
+          profile_picture_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          display_name?: string | null
+          handle?: string | null
+          id?: string
+          is_active?: boolean | null
+          organization_id: string
+          platform: string
+          profile_picture_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          display_name?: string | null
+          handle?: string | null
+          id?: string
+          is_active?: boolean | null
+          organization_id?: string
+          platform?: string
+          profile_picture_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_connected_socials_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2799,37 +3568,30 @@ export type Database = {
       }
       organization_social_accounts: {
         Row: {
-          blotato_account_id: string
           created_at: string | null
           id: string
           is_enabled: boolean | null
           organization_id: string
           updated_at: string | null
+          upload_post_account_id: string
         }
         Insert: {
-          blotato_account_id: string
           created_at?: string | null
           id?: string
           is_enabled?: boolean | null
           organization_id: string
           updated_at?: string | null
+          upload_post_account_id: string
         }
         Update: {
-          blotato_account_id?: string
           created_at?: string | null
           id?: string
           is_enabled?: boolean | null
           organization_id?: string
           updated_at?: string | null
+          upload_post_account_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "organization_social_accounts_blotato_account_id_fkey"
-            columns: ["blotato_account_id"]
-            isOneToOne: false
-            referencedRelation: "blotato_accounts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "organization_social_accounts_organization_id_fkey"
             columns: ["organization_id"]
@@ -2841,6 +3603,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          account_status: string | null
           business_address: string | null
           business_name: string
           contact_email: string | null
@@ -2848,12 +3611,14 @@ export type Database = {
           contact_phone: string | null
           country_code: string | null
           created_at: string | null
+          credit_spending_enabled: boolean | null
           currency: string | null
           custom_domain: string | null
           domain: string | null
           favicon_url: string | null
           from_email: string | null
           from_name: string | null
+          hide_public_site: boolean | null
           id: string
           is_active: boolean | null
           is_comped: boolean | null
@@ -2866,10 +3631,14 @@ export type Database = {
           secondary_color: string | null
           slug: string
           timezone: string | null
+          trial_ends_at: string | null
+          trial_started_at: string | null
           updated_at: string | null
           vat_rate: number | null
+          video_prefs: Json | null
         }
         Insert: {
+          account_status?: string | null
           business_address?: string | null
           business_name: string
           contact_email?: string | null
@@ -2877,28 +3646,34 @@ export type Database = {
           contact_phone?: string | null
           country_code?: string | null
           created_at?: string | null
+          credit_spending_enabled?: boolean | null
           currency?: string | null
           custom_domain?: string | null
           domain?: string | null
           favicon_url?: string | null
           from_email?: string | null
           from_name?: string | null
+          hide_public_site?: boolean | null
           id?: string
           is_active?: boolean | null
           is_comped?: boolean | null
           locale?: string | null
           logo_url?: string | null
-          notification_emails?: string | null
+          notification_emails?: string[] | null
           primary_color?: string | null
           property_services?: string[] | null
           psr_licence_number?: string | null
           secondary_color?: string | null
           slug: string
           timezone?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           updated_at?: string | null
           vat_rate?: number | null
+          video_prefs?: Json | null
         }
         Update: {
+          account_status?: string | null
           business_address?: string | null
           business_name?: string
           contact_email?: string | null
@@ -2906,12 +3681,14 @@ export type Database = {
           contact_phone?: string | null
           country_code?: string | null
           created_at?: string | null
+          credit_spending_enabled?: boolean | null
           currency?: string | null
           custom_domain?: string | null
           domain?: string | null
           favicon_url?: string | null
           from_email?: string | null
           from_name?: string | null
+          hide_public_site?: boolean | null
           id?: string
           is_active?: boolean | null
           is_comped?: boolean | null
@@ -2924,8 +3701,123 @@ export type Database = {
           secondary_color?: string | null
           slug?: string
           timezone?: string | null
+          trial_ends_at?: string | null
+          trial_started_at?: string | null
           updated_at?: string | null
           vat_rate?: number | null
+          video_prefs?: Json | null
+        }
+        Relationships: []
+      }
+      photo_upscale_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          job_id: string | null
+          listing_id: string
+          organization_id: string
+          original_file_size: number | null
+          original_url: string
+          photo_index: number | null
+          photo_type: string
+          scale_factor: number | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          upscaled_file_size: number | null
+          upscaled_url: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id?: string | null
+          listing_id: string
+          organization_id: string
+          original_file_size?: number | null
+          original_url: string
+          photo_index?: number | null
+          photo_type: string
+          scale_factor?: number | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          upscaled_file_size?: number | null
+          upscaled_url?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id?: string | null
+          listing_id?: string
+          organization_id?: string
+          original_file_size?: number | null
+          original_url?: string
+          photo_index?: number | null
+          photo_type?: string
+          scale_factor?: number | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          upscaled_file_size?: number | null
+          upscaled_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_upscale_jobs_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_upscale_jobs_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "unified_schedule_dashboard"
+            referencedColumns: ["listing_id"]
+          },
+          {
+            foreignKeyName: "photo_upscale_jobs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pilot_invite_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          label: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          label?: string | null
+          usage_count?: number | null
         }
         Relationships: []
       }
@@ -3204,6 +4096,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      quiz_caption_templates: {
+        Row: {
+          caption_text: string
+          caption_type: string
+          created_at: string | null
+          id: string
+          organization_id: string
+          quiz_type_key: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          caption_text: string
+          caption_type: string
+          created_at?: string | null
+          id?: string
+          organization_id: string
+          quiz_type_key: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          caption_text?: string
+          caption_type?: string
+          created_at?: string | null
+          id?: string
+          organization_id?: string
+          quiz_type_key?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_caption_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_caption_templates_quiz_type_key_fkey"
+            columns: ["quiz_type_key"]
+            isOneToOne: false
+            referencedRelation: "quiz_type_definitions"
+            referencedColumns: ["type_key"]
+          },
+        ]
+      }
+      quiz_type_definitions: {
+        Row: {
+          created_at: string | null
+          display_name: string
+          id: string
+          is_enabled_globally: boolean | null
+          quiz_path: string
+          type_key: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_name: string
+          id?: string
+          is_enabled_globally?: boolean | null
+          quiz_path: string
+          type_key: string
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string
+          id?: string
+          is_enabled_globally?: boolean | null
+          quiz_path?: string
+          type_key?: string
+        }
+        Relationships: []
       }
       rate_limits: {
         Row: {
@@ -3964,6 +4931,7 @@ export type Database = {
           listing_id: string | null
           listing_status: string | null
           new_listing: boolean | null
+          organization_id: string | null
           property_description: string | null
           render_id: string | null
           shotstack_thumbnail_url: string | null
@@ -3987,6 +4955,7 @@ export type Database = {
           listing_id?: string | null
           listing_status?: string | null
           new_listing?: boolean | null
+          organization_id?: string | null
           property_description?: string | null
           render_id?: string | null
           shotstack_thumbnail_url?: string | null
@@ -4010,6 +4979,7 @@ export type Database = {
           listing_id?: string | null
           listing_status?: string | null
           new_listing?: boolean | null
+          organization_id?: string | null
           property_description?: string | null
           render_id?: string | null
           shotstack_thumbnail_url?: string | null
@@ -4028,7 +4998,65 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "video_history_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      video_music_tracks: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_seconds: number | null
+          file_name: string
+          file_size_bytes: number | null
+          genre: string | null
+          id: string
+          is_active: boolean
+          mood: string | null
+          name: string
+          storage_path: string
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          file_name: string
+          file_size_bytes?: number | null
+          genre?: string | null
+          id?: string
+          is_active?: boolean
+          mood?: string | null
+          name: string
+          storage_path: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          file_name?: string
+          file_size_bytes?: number | null
+          genre?: string | null
+          id?: string
+          is_active?: boolean
+          mood?: string | null
+          name?: string
+          storage_path?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       video_style_params: {
         Row: {
@@ -4092,6 +5120,292 @@ export type Database = {
           style_key?: string
         }
         Relationships: []
+      }
+      video_style2_badge_defaults: {
+        Row: {
+          aspect_ratio: string
+          created_at: string
+          duration_seconds: number
+          font_size: string
+          id: string
+          organization_id: string | null
+          updated_at: string
+          x: string
+          y: string
+        }
+        Insert: {
+          aspect_ratio?: string
+          created_at?: string
+          duration_seconds?: number
+          font_size?: string
+          id?: string
+          organization_id?: string | null
+          updated_at?: string
+          x?: string
+          y?: string
+        }
+        Update: {
+          aspect_ratio?: string
+          created_at?: string
+          duration_seconds?: number
+          font_size?: string
+          id?: string
+          organization_id?: string | null
+          updated_at?: string
+          x?: string
+          y?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_style2_badge_defaults_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_style2_clips: {
+        Row: {
+          ai_clip_url: string | null
+          ai_job_id: string | null
+          ai_provider: string | null
+          auto_selected: boolean | null
+          created_at: string | null
+          duration_seconds: number | null
+          error_message: string | null
+          id: string
+          last_error_code: string | null
+          max_retries: number | null
+          motion_prompt: string | null
+          next_retry_at: string | null
+          order_index: number
+          retry_count: number | null
+          session_id: string
+          source_image_url: string
+          status: string | null
+          transition_type: string | null
+          updated_at: string | null
+          upscale_job_id: string | null
+        }
+        Insert: {
+          ai_clip_url?: string | null
+          ai_job_id?: string | null
+          ai_provider?: string | null
+          auto_selected?: boolean | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          id?: string
+          last_error_code?: string | null
+          max_retries?: number | null
+          motion_prompt?: string | null
+          next_retry_at?: string | null
+          order_index: number
+          retry_count?: number | null
+          session_id: string
+          source_image_url: string
+          status?: string | null
+          transition_type?: string | null
+          updated_at?: string | null
+          upscale_job_id?: string | null
+        }
+        Update: {
+          ai_clip_url?: string | null
+          ai_job_id?: string | null
+          ai_provider?: string | null
+          auto_selected?: boolean | null
+          created_at?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          id?: string
+          last_error_code?: string | null
+          max_retries?: number | null
+          motion_prompt?: string | null
+          next_retry_at?: string | null
+          order_index?: number
+          retry_count?: number | null
+          session_id?: string
+          source_image_url?: string
+          status?: string | null
+          transition_type?: string | null
+          updated_at?: string | null
+          upscale_job_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_style2_clips_ai_provider_fkey"
+            columns: ["ai_provider"]
+            isOneToOne: false
+            referencedRelation: "ai_video_providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_style2_clips_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "video_style2_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_style2_renders: {
+        Row: {
+          captions_json: Json | null
+          created_at: string | null
+          creatomate_render_id: string | null
+          creatomate_template_id: string | null
+          error_message: string | null
+          final_video_url: string | null
+          id: string
+          input_clips_json: Json | null
+          music_track_url: string | null
+          render_type: string
+          session_id: string
+          settings_json: Json | null
+          status: string | null
+          stitched_video_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          captions_json?: Json | null
+          created_at?: string | null
+          creatomate_render_id?: string | null
+          creatomate_template_id?: string | null
+          error_message?: string | null
+          final_video_url?: string | null
+          id?: string
+          input_clips_json?: Json | null
+          music_track_url?: string | null
+          render_type: string
+          session_id: string
+          settings_json?: Json | null
+          status?: string | null
+          stitched_video_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          captions_json?: Json | null
+          created_at?: string | null
+          creatomate_render_id?: string | null
+          creatomate_template_id?: string | null
+          error_message?: string | null
+          final_video_url?: string | null
+          id?: string
+          input_clips_json?: Json | null
+          music_track_url?: string | null
+          render_type?: string
+          session_id?: string
+          settings_json?: Json | null
+          status?: string | null
+          stitched_video_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_style2_renders_creatomate_template_id_fkey"
+            columns: ["creatomate_template_id"]
+            isOneToOne: false
+            referencedRelation: "creatomate_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_style2_renders_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "video_style2_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_style2_sessions: {
+        Row: {
+          ai_provider: string | null
+          aspect_ratio: string | null
+          content_type_id: string | null
+          created_at: string | null
+          error_message: string | null
+          final_video_url: string | null
+          id: string
+          is_test: boolean | null
+          listing_id: string
+          listing_status: string | null
+          metadata: Json | null
+          mode_step1: string | null
+          mode_step2: string | null
+          mode_step3: string | null
+          organization_id: string
+          production_settings: Json | null
+          run_fully_automated: boolean | null
+          schedule_id: string | null
+          selected_image_urls: string[] | null
+          status: string
+          updated_at: string | null
+          upscale_images: boolean | null
+          upscale_jobs: Json | null
+          workflow_id: string | null
+        }
+        Insert: {
+          ai_provider?: string | null
+          aspect_ratio?: string | null
+          content_type_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          final_video_url?: string | null
+          id?: string
+          is_test?: boolean | null
+          listing_id: string
+          listing_status?: string | null
+          metadata?: Json | null
+          mode_step1?: string | null
+          mode_step2?: string | null
+          mode_step3?: string | null
+          organization_id: string
+          production_settings?: Json | null
+          run_fully_automated?: boolean | null
+          schedule_id?: string | null
+          selected_image_urls?: string[] | null
+          status?: string
+          updated_at?: string | null
+          upscale_images?: boolean | null
+          upscale_jobs?: Json | null
+          workflow_id?: string | null
+        }
+        Update: {
+          ai_provider?: string | null
+          aspect_ratio?: string | null
+          content_type_id?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          final_video_url?: string | null
+          id?: string
+          is_test?: boolean | null
+          listing_id?: string
+          listing_status?: string | null
+          metadata?: Json | null
+          mode_step1?: string | null
+          mode_step2?: string | null
+          mode_step3?: string | null
+          organization_id?: string
+          production_settings?: Json | null
+          run_fully_automated?: boolean | null
+          schedule_id?: string | null
+          selected_image_urls?: string[] | null
+          status?: string
+          updated_at?: string | null
+          upscale_images?: boolean | null
+          upscale_jobs?: Json | null
+          workflow_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_style2_sessions_ai_provider_fkey"
+            columns: ["ai_provider"]
+            isOneToOne: false
+            referencedRelation: "ai_video_providers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       webhook_receipts: {
         Row: {
@@ -4200,6 +5514,16 @@ export type Database = {
       }
     }
     Functions: {
+      acquire_gemini_vision_slot: {
+        Args: {
+          p_clip_index: number
+          p_function_name?: string
+          p_max_concurrent?: number
+          p_session_id: string
+          p_ttl_seconds?: number
+        }
+        Returns: string
+      }
       cancel_pending_verifications_for_listing: {
         Args: { p_listing_id: string }
         Returns: number
@@ -4268,6 +5592,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_invite_code_usage: {
+        Args: { code_value: string }
+        Returns: boolean
+      }
       insert_recurring_schedule_template: {
         Args: { template_data: Json }
         Returns: {
@@ -4300,6 +5628,7 @@ export type Database = {
           success: boolean
         }[]
       }
+      invoke_video_style2_recover_cron: { Args: never; Returns: undefined }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       process_due_status_verifications: {
         Args: never
@@ -4310,6 +5639,10 @@ export type Database = {
           verifications_found: number
           verifications_processed: number
         }[]
+      }
+      release_gemini_vision_slot: {
+        Args: { p_lock_id: string }
+        Returns: undefined
       }
       sp_consume_credits:
         | {
@@ -4588,9 +5921,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       ai_feature_type: [
