@@ -1092,25 +1092,25 @@ export type Database = {
       }
       client_social_accounts: {
         Row: {
-          blotato_account_id: string | null
           client_id: string | null
           created_at: string | null
           id: string
           is_enabled: boolean | null
+          upload_post_account_id: string | null
         }
         Insert: {
-          blotato_account_id?: string | null
           client_id?: string | null
           created_at?: string | null
           id: string
           is_enabled?: boolean | null
+          upload_post_account_id?: string | null
         }
         Update: {
-          blotato_account_id?: string | null
           client_id?: string | null
           created_at?: string | null
           id?: string
           is_enabled?: boolean | null
+          upload_post_account_id?: string | null
         }
         Relationships: [
           {
