@@ -137,13 +137,15 @@ export default function AdminReportGenerator() {
           .from("listing_views")
           .select("*")
           .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString());
+          .lte("created_at", endDate.toISOString())
+          .limit(5000);
 
         const { data: enquiries } = await supabase
           .from("property_enquiries")
           .select("*")
           .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString());
+          .lte("created_at", endDate.toISOString())
+          .limit(5000);
 
         reportData.data.listings = {
           totalViews: views?.length || 0,
@@ -168,7 +170,8 @@ export default function AdminReportGenerator() {
           .from("crm_activities")
           .select("*")
           .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString());
+          .lte("created_at", endDate.toISOString())
+          .limit(5000);
 
         reportData.data.crm = {
           totalBuyers: buyers?.length || 0,
@@ -186,14 +189,16 @@ export default function AdminReportGenerator() {
           .select("*")
           .eq("status", "sent")
           .gte("sent_at", startDate.toISOString())
-          .lte("sent_at", endDate.toISOString());
+          .lte("sent_at", endDate.toISOString())
+          .limit(5000);
 
         const emailIds = emailQueue?.map(e => e.id) || [];
         
         const { data: tracking } = await supabase
           .from("email_tracking")
           .select("*")
-          .in("profile_email_queue_id", emailIds);
+          .in("profile_email_queue_id", emailIds)
+          .limit(5000);
 
         const opened = tracking?.filter(t => t.event_type === "opened").length || 0;
         const clicked = tracking?.filter(t => t.event_type === "clicked").length || 0;
@@ -217,7 +222,8 @@ export default function AdminReportGenerator() {
           .from("crm_activities")
           .select("*")
           .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString());
+          .lte("created_at", endDate.toISOString())
+          .limit(5000);
 
         reportData.data.team = {
           totalActivities: activities?.length || 0,

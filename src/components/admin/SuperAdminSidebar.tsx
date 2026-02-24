@@ -35,7 +35,6 @@ import {
   Brain,
   Music,
   Rocket,
-  ImageUp,
 } from "lucide-react";
 import { useAdminPermissions } from "@/hooks/admin/useAdminPermissions";
 
@@ -74,7 +73,6 @@ const navSections: NavSection[] = [
       { path: '/internal/feature-flags', label: 'Feature Flags', icon: Flag },
       { path: '/internal/ai-training', label: 'AI Training', icon: Brain, superAdminOnly: true },
       { path: '/internal/video-music', label: 'Video Music', icon: Music, superAdminOnly: true },
-      { path: '/internal/image-upscaling', label: 'Image Upscaling', icon: ImageUp, superAdminOnly: true },
     ]
   },
   {

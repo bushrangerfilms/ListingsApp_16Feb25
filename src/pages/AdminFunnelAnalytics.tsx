@@ -120,15 +120,17 @@ export default function AdminFunnelAnalytics() {
       // Fetch all buyers and sellers (excluding lost)
       const { data: buyers } = await supabase
         .from("buyer_profiles")
-        .select("*")
+        .select("stage, created_at")
         .neq("stage", "lost")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
       const { data: sellers } = await supabase
         .from("seller_profiles")
-        .select("*")
+        .select("stage, created_at")
         .neq("stage", "lost")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
       const allBuyers = buyers || [];
       const allSellers = sellers || [];

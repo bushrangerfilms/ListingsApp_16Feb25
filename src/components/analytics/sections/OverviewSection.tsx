@@ -50,50 +50,46 @@ export default function OverviewSection() {
 
     setLoading(true);
     try {
-      const [viewsData, buyersData, sellersData, activitiesData, emailQueueData, emailTrackingData, enquiriesData] =
-        await Promise.all([
-          supabase.from("listing_views").select("*").eq("organization_id", targetOrg.id),
-          supabase.from("buyer_profiles").select("*").eq("organization_id", targetOrg.id),
-          supabase.from("seller_profiles").select("*").eq("organization_id", targetOrg.id),
-          supabase.from("crm_activities").select("*").eq("organization_id", targetOrg.id).gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-          supabase.from("profile_email_queue").select("*").eq("organization_id", targetOrg.id),
-          supabase.from("email_tracking").select("*").eq("organization_id", targetOrg.id),
-          supabase.from("property_enquiries").select("*").eq("organization_id", targetOrg.id),
-        ]);
-
-      const views = viewsData.data || [];
-      const buyers = buyersData.data || [];
-      const sellers = sellersData.data || [];
-      const emailsSent = (emailQueueData.data || []).filter((e) => e.status === "sent");
-      const openEvents = (emailTrackingData.data || []).filter((e) => e.event_type === "opened");
-      const enquiries = enquiriesData.data || [];
-
-      const openRate = emailsSent.length > 0 ? (openEvents.length / emailsSent.length) * 100 : 0;
-
-      setMetrics({
-        listings: { total: views.length, active: views.length, avgViews: views.length, trend: 12.5 },
-        crm: {
-          totalBuyers: buyers.length,
-          totalSellers: sellers.length,
-          recentActivity: (activitiesData.data || []).length,
-          trend: 8.3,
-        },
-        email: { totalSent: emailsSent.length, openRate, trend: 15.2 },
-        engagement: { totalEnquiries: enquiries.length, conversionRate: 5.7, trend: 5.7 },
+      // Single RPC call replaces 7 parallel unbounded queries
+      const { data, error } = await supabase.rpc("sp_get_analytics_overview", {
+        p_org_id: targetOrg.id,
+        p_days: 7,
       });
 
-      // Build time series (last 7 days)
-      const timeSeries = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const dateStr = date.toISOString().split("T")[0];
-        timeSeries.push({
-          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-          listings: views.filter((v) => v.created_at?.startsWith(dateStr)).length,
-          enquiries: enquiries.filter((e) => e.created_at?.startsWith(dateStr)).length,
-          emails: emailsSent.filter((e) => e.sent_at?.startsWith(dateStr)).length,
-        });
-      }
+      if (error) throw error;
+
+      const totalSent = data.email?.total_sent ?? 0;
+      const totalOpened = data.email?.total_opened ?? 0;
+      const openRate = totalSent > 0 ? (totalOpened / totalSent) * 100 : 0;
+
+      setMetrics({
+        listings: {
+          total: data.listings?.total_views ?? 0,
+          active: data.listings?.active_listings ?? 0,
+          avgViews: data.listings?.total_views ?? 0,
+          trend: 12.5,
+        },
+        crm: {
+          totalBuyers: data.crm?.total_buyers ?? 0,
+          totalSellers: data.crm?.total_sellers ?? 0,
+          recentActivity: data.crm?.recent_activities ?? 0,
+          trend: 8.3,
+        },
+        email: { totalSent, openRate, trend: 15.2 },
+        engagement: {
+          totalEnquiries: data.engagement?.total_enquiries ?? 0,
+          conversionRate: 5.7,
+          trend: 5.7,
+        },
+      });
+
+      // Time series comes pre-built from the RPC
+      const timeSeries = (data.time_series || []).map((day: any) => ({
+        date: new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        listings: day.views ?? 0,
+        enquiries: day.enquiries ?? 0,
+        emails: day.emails ?? 0,
+      }));
       setTimeSeriesData(timeSeries);
     } catch (error) {
       console.error("Error fetching metrics:", error);

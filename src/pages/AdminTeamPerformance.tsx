@@ -71,19 +71,22 @@ export default function AdminTeamPerformance() {
       // Fetch CRM activities
       const { data: activities } = await supabase
         .from("crm_activities")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("created_at, activity_type")
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
       // Fetch enquiries and valuations for response time metrics
       const { data: enquiries } = await supabase
         .from("property_enquiries")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("created_at, contacted_at")
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
       const { data: valuations } = await supabase
         .from("valuation_requests")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("created_at, contacted_at")
+        .order("created_at", { ascending: false })
+        .limit(5000);
 
       const allActivities = activities || [];
       const allEnquiries = enquiries || [];

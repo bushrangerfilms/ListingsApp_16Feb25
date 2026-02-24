@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,30 +10,20 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function AttributionSection() {
   const { organization } = useOrganization();
-  const { viewAsOrganizationId, selectedOrganization, isOrganizationView } = useOrganizationView();
-  const [sourceData, setSourceData] = useState<any[]>([]);
-  const [totalLeads, setTotalLeads] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const { selectedOrganization, isOrganizationView } = useOrganizationView();
 
-  useEffect(() => {
-    const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
-    if (targetOrg) {
-      fetchData();
-    }
-  }, [organization, viewAsOrganizationId, selectedOrganization, isOrganizationView]);
+  const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
+  const organizationId = targetOrg?.id;
 
-  const fetchData = async () => {
-    const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
-    if (!targetOrg) return;
-
-    try {
-      const { data: buyers } = await supabase.from("buyer_profiles").select("*").eq("organization_id", targetOrg.id);
-      const { data: sellers } = await supabase.from("seller_profiles").select("*").eq("organization_id", targetOrg.id);
+  const { data: queryData, isLoading: loading } = useQuery({
+    queryKey: ['attribution-analytics', organizationId],
+    queryFn: async () => {
+      const { data: buyers } = await supabase.from("buyer_profiles").select("source").eq("organization_id", organizationId!);
+      const { data: sellers } = await supabase.from("seller_profiles").select("source").eq("organization_id", organizationId!);
 
       const allBuyers = buyers || [];
       const allSellers = sellers || [];
-      const total = allBuyers.length + allSellers.length;
-      setTotalLeads(total);
+      const totalLeads = allBuyers.length + allSellers.length;
 
       // Group by source
       const sourceMap = new Map<string, number>();
@@ -42,18 +32,18 @@ export default function AttributionSection() {
         sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
       });
 
-      const data = Array.from(sourceMap.entries()).map(([name, value]) => ({
+      const sourceData = Array.from(sourceMap.entries()).map(([name, value]) => ({
         name: name.charAt(0).toUpperCase() + name.slice(1),
         value,
       }));
 
-      setSourceData(data);
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return { sourceData, totalLeads };
+    },
+    enabled: !!organizationId,
+  });
+
+  const sourceData = queryData?.sourceData ?? [];
+  const totalLeads = queryData?.totalLeads ?? 0;
 
   if (loading) return <Skeleton className="h-96" />;
 

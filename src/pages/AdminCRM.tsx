@@ -83,16 +83,17 @@ export default function AdminCRM() {
       fetchProfiles();
     }
 
+    // Scope real-time subscriptions to this organization to avoid refetches from other orgs' changes
     const channel = supabase
       .channel('crm-updates')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'crm', table: 'seller_profiles' },
+        { event: '*', schema: 'crm', table: 'seller_profiles', filter: `organization_id=eq.${targetOrg.id}` },
         fetchProfiles
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'crm', table: 'buyer_profiles' },
+        { event: '*', schema: 'crm', table: 'buyer_profiles', filter: `organization_id=eq.${targetOrg.id}` },
         fetchProfiles
       )
       .subscribe();
@@ -112,19 +113,22 @@ export default function AdminCRM() {
       const [sellersResult, buyersResult, listingsResult] = await Promise.all([
         (supabase.schema('crm') as any)
           .from('seller_profiles')
-          .select('*')
+          .select('id, name, email, phone, property_address, stage, source, notes, created_at, last_contact_at, valuation_request_id, listed_property_id')
           .eq('organization_id', targetOrg.id)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(200),
         (supabase.schema('crm') as any)
           .from('buyer_profiles')
-          .select('*')
+          .select('id, name, email, phone, bedrooms_required, stage, source, notes, created_at, last_contact_at, property_alert_id, interested_properties, budget_min, budget_max')
           .eq('organization_id', targetOrg.id)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(200),
         (supabase.schema('crm') as any)
           .from('listings')
           .select('id, title, address, crm_record_id')
           .eq('organization_id', targetOrg.id)
           .order('created_at', { ascending: false })
+          .limit(200)
       ]);
 
       if (sellersResult.error) throw sellersResult.error;

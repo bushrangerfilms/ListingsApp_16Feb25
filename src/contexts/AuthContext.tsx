@@ -1,10 +1,57 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useReducer } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 
 // Temporary: Extend auth roles until Supabase types are regenerated after migration
 type AuthRole = Database['public']['Enums']['app_role'] | 'super_admin' | 'developer';
+
+// Consolidated auth state to enable atomic updates via useReducer
+interface AuthState {
+  user: User | null;
+  session: Session | null;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  isDeveloper: boolean;
+  userRole: 'super_admin' | 'developer' | 'admin' | 'user' | null;
+  loading: boolean;
+}
+
+type AuthAction =
+  | { type: 'SET_SESSION'; session: Session | null }
+  | { type: 'SET_ROLES'; roles: AuthRole[] }
+  | { type: 'SET_LOADING'; loading: boolean };
+
+function authReducer(state: AuthState, action: AuthAction): AuthState {
+  switch (action.type) {
+    case 'SET_SESSION': {
+      const user = action.session?.user ?? null;
+      if (!user) {
+        return { user: null, session: null, isAdmin: false, isSuperAdmin: false, isDeveloper: false, userRole: null, loading: false };
+      }
+      return { ...state, user, session: action.session, loading: true };
+    }
+    case 'SET_ROLES': {
+      const roles = action.roles;
+      let highestRole: AuthState['userRole'] = 'user';
+      if (roles.includes('super_admin')) highestRole = 'super_admin';
+      else if (roles.includes('developer')) highestRole = 'developer';
+      else if (roles.includes('admin')) highestRole = 'admin';
+      return {
+        ...state,
+        userRole: highestRole,
+        isSuperAdmin: roles.includes('super_admin'),
+        isDeveloper: roles.includes('developer'),
+        isAdmin: roles.includes('admin') || roles.includes('super_admin'),
+        loading: false,
+      };
+    }
+    case 'SET_LOADING':
+      return { ...state, loading: action.loading };
+    default:
+      return state;
+  }
+}
 
 interface AuthContextType {
   user: User | null;
@@ -46,62 +93,42 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isDeveloper, setIsDeveloper] = useState(false);
-  const [userRole, setUserRole] = useState<'super_admin' | 'developer' | 'admin' | 'user' | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, dispatch] = useReducer(authReducer, {
+    user: null,
+    session: null,
+    isAdmin: false,
+    isSuperAdmin: false,
+    isDeveloper: false,
+    userRole: null,
+    loading: true,
+  });
   const [impersonationState, setImpersonationState] = useState<ImpersonationState | null>(null);
+
+  // Shared role-fetching logic (eliminates duplication)
+  const fetchRoles = useCallback((userId: string) => {
+    setTimeout(() => {
+      supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .then(({ data, error }) => {
+          console.log('AuthContext: Role check result', { data, error });
+          const roles = (data?.map(r => r.role) || []) as AuthRole[];
+          dispatch({ type: 'SET_ROLES', roles });
+        });
+    }, 0);
+  }, []);
 
   useEffect(() => {
     console.log('AuthContext: Initializing auth state');
-    
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('AuthContext: Auth state changed', { event, hasSession: !!session, userId: session?.user?.id });
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        // Check admin roles when session changes
+        dispatch({ type: 'SET_SESSION', session });
         if (session?.user) {
-          // Defer Supabase query to avoid auth state change deadlock
-          setTimeout(() => {
-            supabase
-              .from('user_roles')
-              .select('role')
-              .eq('user_id', session.user.id)
-              .then(({ data, error }) => {
-                console.log('AuthContext: Role check result', { data, error });
-                const roles = (data?.map(r => r.role) || []) as AuthRole[];
-                
-                // Determine highest role (super_admin > developer > admin > user)
-                let highestRole: 'super_admin' | 'developer' | 'admin' | 'user' | null = null;
-                if (roles.includes('super_admin')) {
-                  highestRole = 'super_admin';
-                } else if (roles.includes('developer')) {
-                  highestRole = 'developer';
-                } else if (roles.includes('admin')) {
-                  highestRole = 'admin';
-                } else {
-                  highestRole = 'user';
-                }
-                
-                setUserRole(highestRole);
-                setIsSuperAdmin(roles.includes('super_admin'));
-                setIsDeveloper(roles.includes('developer'));
-                setIsAdmin(roles.includes('admin') || roles.includes('super_admin'));
-                setLoading(false);
-              });
-          }, 0);
-        } else {
-          setIsAdmin(false);
-          setIsSuperAdmin(false);
-          setIsDeveloper(false);
-          setUserRole(null);
-          setLoading(false);
+          fetchRoles(session.user.id);
         }
       }
     );
@@ -109,58 +136,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       console.log('AuthContext: Initial session check', { hasSession: !!session, userId: session?.user?.id, error });
-      setSession(session);
-      setUser(session?.user ?? null);
-      
+      dispatch({ type: 'SET_SESSION', session });
       if (session?.user) {
-        setTimeout(() => {
-          supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', session.user.id)
-            .then(({ data, error }) => {
-              console.log('AuthContext: Initial role check result', { data, error });
-              const roles = (data?.map(r => r.role) || []) as AuthRole[];
-              
-              // Determine highest role (super_admin > developer > admin > user)
-              let highestRole: 'super_admin' | 'developer' | 'admin' | 'user' | null = null;
-              if (roles.includes('super_admin')) {
-                highestRole = 'super_admin';
-              } else if (roles.includes('developer')) {
-                highestRole = 'developer';
-              } else if (roles.includes('admin')) {
-                highestRole = 'admin';
-              } else {
-                highestRole = 'user';
-              }
-              
-              setUserRole(highestRole);
-              setIsSuperAdmin(roles.includes('super_admin'));
-              setIsDeveloper(roles.includes('developer'));
-              setIsAdmin(roles.includes('admin') || roles.includes('super_admin'));
-              setLoading(false);
-            });
-        }, 0);
-      } else {
-        setLoading(false);
+        fetchRoles(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchRoles]);
 
   // Load active impersonation session on auth state change
   useEffect(() => {
-    if (user && isSuperAdmin) {
+    if (state.user && state.isSuperAdmin) {
       loadActiveImpersonation();
     } else {
       setImpersonationState(null);
       localStorage.removeItem('impersonationState');
     }
-  }, [user, isSuperAdmin]);
+  }, [state.user, state.isSuperAdmin]);
 
   const loadActiveImpersonation = async () => {
-    if (!user) return;
+    if (!state.user) return;
     
     try {
       // Temporary: Type assertion until Supabase types are regenerated
@@ -198,8 +194,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const startImpersonation = async (orgId: string, reason?: string) => {
-    if (!user || !isSuperAdmin) {
+  const startImpersonation = useCallback(async (orgId: string, reason?: string) => {
+    if (!state.user || !state.isSuperAdmin) {
       console.error('Only super admins can impersonate');
       return;
     }
@@ -211,19 +207,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Load the active impersonation state
       await loadActiveImpersonation();
-      
+
       // Trigger organization context reload
       window.dispatchEvent(new CustomEvent('impersonation-changed'));
-      
+
       console.log('Started impersonation via Edge Function');
     } catch (err) {
       console.error('Error starting impersonation:', err);
       throw err;
     }
-  };
+  }, [state.user, state.isSuperAdmin]);
 
-  const endImpersonation = async () => {
-    if (!user) return;
+  const endImpersonation = useCallback(async () => {
+    if (!state.user) return;
 
     const currentState = impersonationState;
 
@@ -237,39 +233,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setImpersonationState(null);
       localStorage.removeItem('impersonationState');
-      
+
       // Trigger organization context reload
       window.dispatchEvent(new CustomEvent('impersonation-changed'));
-      
+
       console.log('Ended impersonation via Edge Function');
     } catch (err) {
       console.error('Error ending impersonation:', err);
       throw err;
     }
-  };
+  }, [state.user, impersonationState]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     // End any active impersonation before signing out
     if (impersonationState) {
       await endImpersonation();
     }
     await supabase.auth.signOut();
-  };
+  }, [impersonationState, endImpersonation]);
+
+  const contextValue = useMemo(() => ({
+    user: state.user,
+    session: state.session,
+    isAdmin: state.isAdmin,
+    isSuperAdmin: state.isSuperAdmin,
+    isDeveloper: state.isDeveloper,
+    userRole: state.userRole,
+    loading: state.loading,
+    signOut,
+    impersonationState,
+    startImpersonation,
+    endImpersonation,
+  }), [state, impersonationState, signOut, startImpersonation, endImpersonation]);
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      isAdmin, 
-      isSuperAdmin,
-      isDeveloper, 
-      userRole, 
-      loading, 
-      signOut,
-      impersonationState,
-      startImpersonation,
-      endImpersonation
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

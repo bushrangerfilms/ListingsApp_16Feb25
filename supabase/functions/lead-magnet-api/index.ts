@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { publicCorsHeaders } from '../_shared/cors.ts';
+import { checkRateLimit } from '../_shared/rate-limit.ts';
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  ...publicCorsHeaders,
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
@@ -99,6 +100,22 @@ serve(async (req: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Rate limit: 50 per hour per IP (public endpoint)
+  const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+                   req.headers.get('x-real-ip') ||
+                   'unknown';
+  const rateCheck = await checkRateLimit(supabase, clientIp, {
+    feature: 'lead-magnet-api',
+    maxRequests: 50,
+    windowMinutes: 60,
+  });
+  if (!rateCheck.allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Too many requests. Please try again later.', resetTime: rateCheck.resetTime }),
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
   const url = new URL(req.url);
   const pathParts = url.pathname.split("/").filter(Boolean);

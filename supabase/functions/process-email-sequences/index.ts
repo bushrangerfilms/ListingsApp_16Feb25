@@ -1,9 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getCorsHeaders } from '../_shared/cors.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const BATCH_SIZE = 50;
+const MAX_RETRIES = 3;
+const STALE_LOCK_MINUTES = 10;
 
 interface EmailQueueItem {
   id: string;
@@ -12,19 +12,7 @@ interface EmailQueueItem {
   sequence_id: string;
   current_step: number;
   scheduled_for: string;
-}
-
-interface EmailSequenceStep {
-  id: string;
-  step_number: number;
-  email_template_id: string;
-  delay_days: number;
-}
-
-interface EmailTemplate {
-  template_key: string;
-  subject: string;
-  body_html: string;
+  retry_count: number;
 }
 
 interface Profile {
@@ -36,10 +24,14 @@ interface Profile {
   bedrooms_required?: string[];
   budget_min?: number;
   budget_max?: number;
+  organization_id: string;
+  email_unsubscribed?: boolean;
+  email_preferences_token?: string;
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
+  const corsHeaders = getCorsHeaders(req.headers.get('origin'));
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -50,23 +42,25 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      db: { schema: 'public' }
+      db: { schema: 'public' },
     });
 
-    // Fetch all active queued emails that are ready to send
+    const now = new Date().toISOString();
+    const staleCutoff = new Date(Date.now() - STALE_LOCK_MINUTES * 60 * 1000).toISOString();
+
+    // 1. Fetch batch of pending items + stale processing items (crash recovery)
     const { data: queueItems, error: queueError } = await supabase
       .from('profile_email_queue')
       .select('*')
-      .eq('status', 'pending')
-      .lte('scheduled_for', new Date().toISOString())
-      .order('scheduled_for', { ascending: true });
+      .lte('scheduled_for', now)
+      .or(`status.eq.pending,and(status.eq.processing,processing_started_at.lt.${staleCutoff})`)
+      .order('scheduled_for', { ascending: true })
+      .limit(BATCH_SIZE);
 
     if (queueError) {
       console.error('Error fetching queue items:', queueError);
       throw queueError;
     }
-
-    console.log(`Found ${queueItems?.length || 0} emails to process`);
 
     if (!queueItems || queueItems.length === 0) {
       return new Response(
@@ -75,16 +69,95 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log(`Found ${queueItems.length} emails to process`);
+
+    // 2. Lock entire batch atomically — prevents concurrent invocations from double-processing
+    const itemIds = queueItems.map((item) => item.id);
+    await supabase
+      .from('profile_email_queue')
+      .update({ status: 'processing', processing_started_at: now })
+      .in('id', itemIds);
+
+    // 3. Batch-fetch all profiles (eliminates N+1 profile queries)
+    const sellerIds = queueItems
+      .filter((i) => i.seller_profile_id)
+      .map((i) => i.seller_profile_id!);
+    const buyerIds = queueItems
+      .filter((i) => i.buyer_profile_id)
+      .map((i) => i.buyer_profile_id!);
+
+    const [sellersResult, buyersResult] = await Promise.all([
+      sellerIds.length
+        ? supabase
+            .from('seller_profiles')
+            .select('id, name, email, phone, property_address, organization_id, email_unsubscribed, email_preferences_token')
+            .in('id', sellerIds)
+        : { data: [] },
+      buyerIds.length
+        ? supabase
+            .from('buyer_profiles')
+            .select('id, name, email, phone, property_address, bedrooms_required, budget_min, budget_max, organization_id, email_unsubscribed, email_preferences_token')
+            .in('id', buyerIds)
+        : { data: [] },
+    ]);
+
+    const sellerMap = new Map(
+      (sellersResult.data || []).map((p: any) => [p.id, p as Profile])
+    );
+    const buyerMap = new Map(
+      (buyersResult.data || []).map((p: any) => [p.id, p as Profile])
+    );
+
     let processedCount = 0;
     let errorCount = 0;
 
-    // Process each queued email
+    // 4. Process each item
     for (const queueItem of queueItems as EmailQueueItem[]) {
       try {
         console.log(`Processing queue item ${queueItem.id}`);
 
-        // Fetch the sequence and current step
-        const { data: steps, error: stepsError } = await supabase
+        // Get profile from pre-fetched map (no extra query needed)
+        let profile: Profile | undefined;
+        let profileType: 'seller' | 'buyer';
+
+        if (queueItem.seller_profile_id) {
+          profile = sellerMap.get(queueItem.seller_profile_id);
+          profileType = 'seller';
+        } else if (queueItem.buyer_profile_id) {
+          profile = buyerMap.get(queueItem.buyer_profile_id);
+          profileType = 'buyer';
+        } else {
+          await markFailed(supabase, queueItem, 'No profile ID on queue item');
+          errorCount++;
+          continue;
+        }
+
+        if (!profile) {
+          await markFailed(supabase, queueItem, 'Profile not found');
+          errorCount++;
+          continue;
+        }
+
+        // Skip unsubscribed profiles
+        if (profile.email_unsubscribed) {
+          console.log(`Profile ${profile.id} is unsubscribed, skipping`);
+          await supabase
+            .from('profile_email_queue')
+            .update({ status: 'cancelled' })
+            .eq('id', queueItem.id);
+          continue;
+        }
+
+        // organization_id is already on the profile — no extra query needed
+        const organizationId = profile.organization_id;
+        if (!organizationId) {
+          await markFailed(supabase, queueItem, 'Organization ID not found on profile');
+          errorCount++;
+          continue;
+        }
+
+        // Fetch sequence step + template
+        const { data: step, error: stepsError } = await supabase
           .from('email_sequence_steps')
           .select('*, email_templates(*)')
           .eq('sequence_id', queueItem.sequence_id)
@@ -92,117 +165,20 @@ Deno.serve(async (req) => {
           .eq('is_active', true)
           .maybeSingle();
 
-        if (stepsError || !steps) {
-          console.error(`Error fetching step for queue item ${queueItem.id}:`, stepsError);
+        if (stepsError || !step) {
+          await markRetry(supabase, queueItem, `Step not found: ${stepsError?.message || 'no active step'}`);
+          errorCount++;
           continue;
         }
 
-        const step = steps as any;
-        const template = step.email_templates as EmailTemplate;
-
-        // Fetch profile data (seller or buyer)
-        let profile: Profile | null = null;
-        let profileType: 'seller' | 'buyer' | null = null;
-        let preferencesToken: string | null = null;
-
-        if (queueItem.seller_profile_id) {
-          const { data } = await supabase
-            .from('seller_profiles')
-            .select('*, email_unsubscribed, email_preferences_token')
-            .eq('id', queueItem.seller_profile_id)
-            .single();
-          
-          // Skip if unsubscribed
-          if (data?.email_unsubscribed) {
-            console.log(`Profile ${queueItem.seller_profile_id} is unsubscribed, skipping`);
-            await supabase
-              .from('profile_email_queue')
-              .update({ status: 'cancelled' })
-              .eq('id', queueItem.id);
-            continue;
-          }
-          
-          profile = data;
-          profileType = 'seller';
-          preferencesToken = data?.email_preferences_token || null;
-        } else if (queueItem.buyer_profile_id) {
-          const { data } = await supabase
-            .from('buyer_profiles')
-            .select('*, email_unsubscribed, email_preferences_token')
-            .eq('id', queueItem.buyer_profile_id)
-            .single();
-          
-          // Skip if unsubscribed
-          if (data?.email_unsubscribed) {
-            console.log(`Profile ${queueItem.buyer_profile_id} is unsubscribed, skipping`);
-            await supabase
-              .from('profile_email_queue')
-              .update({ status: 'cancelled' })
-              .eq('id', queueItem.id);
-            continue;
-          }
-          
-          profile = data;
-          profileType = 'buyer';
-          preferencesToken = data?.email_preferences_token || null;
-        }
-
-        if (!profile) {
-          console.error(`Profile not found for queue item ${queueItem.id}`);
+        const template = (step as any).email_templates;
+        if (!template) {
+          await markRetry(supabase, queueItem, 'Template not found for step');
+          errorCount++;
           continue;
         }
 
-        // Get organization_id from profile
-        let organizationId: string | null = null;
-        if (profileType === 'seller') {
-          const { data: sellerData } = await supabase
-            .from('seller_profiles')
-            .select('organization_id')
-            .eq('id', profile.id)
-            .single();
-          organizationId = sellerData?.organization_id || null;
-        } else {
-          const { data: buyerData } = await supabase
-            .from('buyer_profiles')
-            .select('organization_id')
-            .eq('id', profile.id)
-            .single();
-          organizationId = buyerData?.organization_id || null;
-        }
-
-        if (!organizationId) {
-          console.error(`Organization ID not found for profile ${profile.id}`);
-          continue;
-        }
-
-        // Replace template variables
-        let subject = template.subject;
-        let bodyHtml = template.body_html;
-
-        // Replace common variables
-        subject = subject.replace(/{{name}}/g, profile.name || '');
-        bodyHtml = bodyHtml.replace(/{{name}}/g, profile.name || '');
-
-        if (profile.property_address) {
-          subject = subject.replace(/{{property_address}}/g, profile.property_address);
-          bodyHtml = bodyHtml.replace(/{{property_address}}/g, profile.property_address);
-        }
-
-        if (profile.bedrooms_required) {
-          const bedrooms = Array.isArray(profile.bedrooms_required) 
-            ? profile.bedrooms_required.join(', ') 
-            : profile.bedrooms_required;
-          subject = subject.replace(/{{bedrooms}}/g, bedrooms);
-          bodyHtml = bodyHtml.replace(/{{bedrooms}}/g, bedrooms);
-        }
-
-        if (profile.budget_min && profile.budget_max) {
-          const budget = `£${profile.budget_min.toLocaleString()} - £${profile.budget_max.toLocaleString()}`;
-          subject = subject.replace(/{{budget}}/g, budget);
-          bodyHtml = bodyHtml.replace(/{{budget}}/g, budget);
-        }
-
-        // Send email with tracking
+        // Send email via send-email function
         console.log(`Sending email to ${profile.email}`);
         const { error: emailError } = await supabase.functions.invoke('send-email', {
           body: {
@@ -212,16 +188,23 @@ Deno.serve(async (req) => {
             variables: {
               name: profile.name || '',
               property_address: profile.property_address || '',
-              bedrooms: profile.bedrooms_required ? (Array.isArray(profile.bedrooms_required) ? profile.bedrooms_required.join(', ') : profile.bedrooms_required) : '',
-              budget: (profile.budget_min && profile.budget_max) ? `£${profile.budget_min.toLocaleString()} - £${profile.budget_max.toLocaleString()}` : '',
+              bedrooms: profile.bedrooms_required
+                ? Array.isArray(profile.bedrooms_required)
+                  ? profile.bedrooms_required.join(', ')
+                  : profile.bedrooms_required
+                : '',
+              budget:
+                profile.budget_min && profile.budget_max
+                  ? `£${profile.budget_min.toLocaleString()} - £${profile.budget_max.toLocaleString()}`
+                  : '',
               queueId: queueItem.id,
-              preferencesToken: preferencesToken
-            }
-          }
+              preferencesToken: profile.email_preferences_token || null,
+            },
+          },
         });
 
         if (emailError) {
-          console.error(`Error sending email for queue item ${queueItem.id}:`, emailError);
+          await markRetry(supabase, queueItem, `Email send failed: ${emailError.message}`);
           errorCount++;
           continue;
         }
@@ -234,11 +217,12 @@ Deno.serve(async (req) => {
             to: profile.email,
             template_key: template.template_key,
             sequence_id: queueItem.sequence_id,
-            step_number: queueItem.current_step
-          }
+            step_number: queueItem.current_step,
+          },
+          organization_id: organizationId,
         });
 
-        // Check if there are more steps in the sequence
+        // Check for next step in sequence
         const { data: nextSteps } = await supabase
           .from('email_sequence_steps')
           .select('step_number, delay_days')
@@ -250,7 +234,6 @@ Deno.serve(async (req) => {
 
         const hasNextStep = nextSteps && nextSteps.length > 0;
 
-        // Update queue item
         if (hasNextStep) {
           const nextStep = nextSteps[0];
           const nextSendDate = new Date();
@@ -259,32 +242,35 @@ Deno.serve(async (req) => {
           await supabase
             .from('profile_email_queue')
             .update({
+              status: 'pending',
               current_step: nextStep.step_number,
               last_sent_at: new Date().toISOString(),
-              scheduled_send_at: nextSendDate.toISOString()
+              scheduled_send_at: nextSendDate.toISOString(),
+              processing_started_at: null,
+              error_message: null,
             })
             .eq('id', queueItem.id);
         } else {
-          // No more steps, mark as completed
           await supabase
             .from('profile_email_queue')
             .update({
               status: 'completed',
-              last_sent_at: new Date().toISOString()
+              last_sent_at: new Date().toISOString(),
+              processing_started_at: null,
             })
             .eq('id', queueItem.id);
         }
 
-        // Log activity
-        const activityData: any = {
+        // Log CRM activity
+        const activityData: Record<string, any> = {
           activity_type: 'automation_email_sent',
           title: `Automation email sent: ${template.template_key}`,
           description: `Email sent as part of automated sequence (Step ${queueItem.current_step})`,
-          metadata: { 
+          metadata: {
             template_key: template.template_key,
             sequence_id: queueItem.sequence_id,
-            step_number: queueItem.current_step
-          }
+            step_number: queueItem.current_step,
+          },
         };
 
         if (profileType === 'seller') {
@@ -293,28 +279,20 @@ Deno.serve(async (req) => {
           activityData.buyer_profile_id = profile.id;
         }
 
-        await supabase
-          .from('crm_activities')
-          .insert(activityData);
+        await supabase.from('crm_activities').insert(activityData);
 
         // Update last_contact_at on profile
-        if (profileType === 'seller') {
-          await supabase
-            .from('seller_profiles')
-            .update({ last_contact_at: new Date().toISOString() })
-            .eq('id', profile.id);
-        } else {
-          await supabase
-            .from('buyer_profiles')
-            .update({ last_contact_at: new Date().toISOString() })
-            .eq('id', profile.id);
-        }
+        const profileTable = profileType === 'seller' ? 'seller_profiles' : 'buyer_profiles';
+        await supabase
+          .from(profileTable)
+          .update({ last_contact_at: new Date().toISOString() })
+          .eq('id', profile.id);
 
         processedCount++;
         console.log(`Successfully processed queue item ${queueItem.id}`);
-
       } catch (error) {
         console.error(`Error processing queue item ${queueItem.id}:`, error);
+        await markRetry(supabase, queueItem, error instanceof Error ? error.message : 'Unknown error');
         errorCount++;
       }
     }
@@ -322,15 +300,14 @@ Deno.serve(async (req) => {
     console.log(`Processing complete. Processed: ${processedCount}, Errors: ${errorCount}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         processed: processedCount,
         errors: errorCount,
-        total: queueItems.length
+        total: queueItems.length,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error) {
     console.error('Error in process-email-sequences:', error);
     return new Response(
@@ -339,3 +316,58 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+/**
+ * Mark a queue item as failed (dead-letter) after exceeding max retries,
+ * or increment retry count and return to pending.
+ */
+async function markRetry(
+  supabase: any,
+  queueItem: EmailQueueItem,
+  errorMessage: string
+) {
+  const newRetryCount = (queueItem.retry_count || 0) + 1;
+
+  if (newRetryCount >= MAX_RETRIES) {
+    console.error(`Queue item ${queueItem.id} exceeded max retries, marking as failed`);
+    await supabase
+      .from('profile_email_queue')
+      .update({
+        status: 'failed',
+        retry_count: newRetryCount,
+        error_message: errorMessage,
+        processing_started_at: null,
+      })
+      .eq('id', queueItem.id);
+  } else {
+    console.warn(`Queue item ${queueItem.id} retry ${newRetryCount}/${MAX_RETRIES}: ${errorMessage}`);
+    await supabase
+      .from('profile_email_queue')
+      .update({
+        status: 'pending',
+        retry_count: newRetryCount,
+        error_message: errorMessage,
+        processing_started_at: null,
+      })
+      .eq('id', queueItem.id);
+  }
+}
+
+/**
+ * Mark a queue item as permanently failed (non-retryable error like missing profile).
+ */
+async function markFailed(
+  supabase: any,
+  queueItem: EmailQueueItem,
+  errorMessage: string
+) {
+  console.error(`Queue item ${queueItem.id} permanently failed: ${errorMessage}`);
+  await supabase
+    .from('profile_email_queue')
+    .update({
+      status: 'failed',
+      error_message: errorMessage,
+      processing_started_at: null,
+    })
+    .eq('id', queueItem.id);
+}

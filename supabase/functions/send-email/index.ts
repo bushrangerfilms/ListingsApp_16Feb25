@@ -1,10 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
 import { Resend } from 'https://esm.sh/resend@4.0.0';
+import { getCorsHeaders } from '../_shared/cors.ts';
+import { checkRateLimit } from '../_shared/rate-limit.ts';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// CORS headers set per-request in handler
 
 interface SendEmailRequest {
   templateKey: string;
@@ -26,6 +25,8 @@ interface OrganizationEmailConfig {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get('origin'));
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -47,6 +48,21 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       db: { schema: 'public' }
     });
+
+    // Rate limit: 200 emails per hour per organization
+    if (organizationId) {
+      const rateCheck = await checkRateLimit(supabase, organizationId, {
+        feature: 'send-email',
+        maxRequests: 200,
+        windowMinutes: 60,
+      });
+      if (!rateCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: 'Email rate limit exceeded', resetTime: rateCheck.resetTime }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Fetch organization config for branding and sender identity
     let orgConfig: OrganizationEmailConfig | null = null;

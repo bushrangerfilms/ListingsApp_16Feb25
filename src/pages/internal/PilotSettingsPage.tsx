@@ -109,7 +109,7 @@ export default function PilotSettingsPage() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('waitlist_signups')
-        .select('*')
+        .select('id, email, name, source, created_at, converted_at, is_converted')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -139,7 +139,7 @@ export default function PilotSettingsPage() {
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('pilot_invite_codes')
-        .select('*')
+        .select('id, code, label, is_active, usage_count, created_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;

@@ -248,15 +248,13 @@ export default function AITrainingPage() {
 
   const getChangeTypeColor = (type: string) => {
     switch (type) {
-      case 'create': return 'default';
-      case 'update': return 'secondary';
-      case 'delete': return 'destructive';
-      case 'duplicate': return 'outline';
-      default: return 'secondary';
+      case 'created': return 'default';
+      case 'updated': return 'secondary';
+      case 'deleted': return 'destructive';
+      default: return 'outline';
     }
   };
 
-  // Filter instructions based on scope and locale
   const filteredInstructions = instructions?.filter((instruction) => {
     if (scopeFilter !== 'all' && instruction.scope !== scopeFilter) return false;
     if (localeFilter !== 'all') {
@@ -331,40 +329,6 @@ export default function AITrainingPage() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Locale</Label>
-          <Select
-            value={formData.locale || '__global__'}
-            onValueChange={(v) => setFormData({ ...formData, locale: v === '__global__' ? '' : v })}
-          >
-            <SelectTrigger data-testid="select-locale">
-              <SelectValue placeholder="All Locales" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__global__">All Locales (Default)</SelectItem>
-              {LOCALES.filter(l => l.value).map((locale) => (
-                <SelectItem key={locale.value} value={locale.value}>
-                  {locale.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="priority">Priority</Label>
-          <Input
-            id="priority"
-            type="number"
-            value={formData.priority}
-            onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
-            data-testid="input-priority"
-          />
-          <p className="text-xs text-muted-foreground">Higher = applied first</p>
-        </div>
-      </div>
-
       <div className="space-y-2">
         <Label>Banned Phrases</Label>
         <div className="flex gap-2">
@@ -435,6 +399,40 @@ export default function AITrainingPage() {
           className="min-h-[120px]"
           data-testid="input-freeform"
         />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Locale</Label>
+          <Select
+            value={formData.locale}
+            onValueChange={(v) => setFormData({ ...formData, locale: v })}
+          >
+            <SelectTrigger data-testid="select-locale">
+              <SelectValue placeholder="All Locales (Default)" />
+            </SelectTrigger>
+            <SelectContent>
+              {LOCALES.map((locale) => (
+                <SelectItem key={locale.value || 'all'} value={locale.value}>
+                  {locale.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="priority">Priority</Label>
+          <Input
+            id="priority"
+            type="number"
+            min="0"
+            max="100"
+            value={formData.priority}
+            onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
+            data-testid="input-priority"
+          />
+          <p className="text-xs text-muted-foreground">Higher priority instructions take precedence</p>
+        </div>
       </div>
 
       <div className="flex items-center justify-between">

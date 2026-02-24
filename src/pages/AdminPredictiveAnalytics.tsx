@@ -80,13 +80,13 @@ export default function AdminPredictiveAnalytics() {
         { data: emailQueue },
         { data: emailTracking },
       ] = await Promise.all([
-        supabase.from("crm_activities").select("*").eq("organization_id", organizationId).gte("created_at", thirtyDaysAgo.toISOString()),
-        supabase.from("buyer_profiles").select("*").eq("organization_id", organizationId),
-        supabase.from("seller_profiles").select("*").eq("organization_id", organizationId),
-        supabase.from("listing_views").select("*").eq("organization_id", organizationId).gte("created_at", thirtyDaysAgo.toISOString()),
-        supabase.from("property_enquiries").select("*").eq("organization_id", organizationId).gte("created_at", thirtyDaysAgo.toISOString()),
-        supabase.from("profile_email_queue").select("*").eq("organization_id", organizationId).eq("status", "sent"),
-        supabase.from("email_tracking").select("*").eq("organization_id", organizationId),
+        supabase.from("crm_activities").select("created_at").eq("organization_id", organizationId).gte("created_at", thirtyDaysAgo.toISOString()).limit(5000),
+        supabase.from("buyer_profiles").select("stage").eq("organization_id", organizationId).limit(5000),
+        supabase.from("seller_profiles").select("stage").eq("organization_id", organizationId).limit(5000),
+        supabase.from("listing_views").select("created_at").eq("organization_id", organizationId).gte("created_at", thirtyDaysAgo.toISOString()).limit(5000),
+        supabase.from("property_enquiries").select("created_at").eq("organization_id", organizationId).gte("created_at", thirtyDaysAgo.toISOString()).limit(5000),
+        supabase.from("profile_email_queue").select("id").eq("organization_id", organizationId).eq("status", "sent").limit(5000),
+        supabase.from("email_tracking").select("event_type").eq("organization_id", organizationId).limit(5000),
       ]);
 
       // Generate insights

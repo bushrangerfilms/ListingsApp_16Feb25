@@ -81,7 +81,7 @@ export function EmailAnalytics({ profileId, profileType }: EmailAnalyticsProps) 
       // Get tracking events for these emails
       const { data: trackingEvents, error: trackingError } = await supabase
         .from('email_tracking')
-        .select('*')
+        .select('id, event_type, profile_email_queue_id, created_at')
         .in('profile_email_queue_id', queueIds)
         .order('created_at', { ascending: false });
 

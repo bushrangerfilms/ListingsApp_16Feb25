@@ -69,7 +69,7 @@ export default function AdminSequenceAnalytics() {
       // Fetch all sequences
       const { data: sequences, error: seqError } = await supabase
         .from('email_sequences')
-        .select('*')
+        .select('id, name, profile_type, is_active, created_at')
         .order('created_at', { ascending: false });
 
       if (seqError) throw seqError;
@@ -82,7 +82,8 @@ export default function AdminSequenceAnalytics() {
         const { data: queueData } = await supabase
           .from('profile_email_queue')
           .select('id, status, buyer_profile_id, seller_profile_id')
-          .eq('sequence_id', sequence.id);
+          .eq('sequence_id', sequence.id)
+          .limit(5000);
 
         const totalEnrolled = new Set([
           ...((queueData || []).filter(q => q.buyer_profile_id).map(q => q.buyer_profile_id)),

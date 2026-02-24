@@ -12,8 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const { domain } = await req.json();
-    
+    const body = await req.json();
+    const { domain } = body;
+    const page = parseInt(body.page || '1', 10) || 1;
+    const pageSize = Math.min(parseInt(body.pageSize || '100', 10) || 100, 500);
+
     if (!domain) {
       return new Response(
         JSON.stringify({ error: 'Domain is required' }),
@@ -47,14 +50,18 @@ serve(async (req) => {
 
     console.log('[GET_PUBLIC_LISTINGS] Found organization:', org.business_name);
 
-    // Fetch published listings for this organization
-    const { data: listings, error: listingsError } = await supabase
+    // Fetch published listings for this organization (with pagination)
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data: listings, error: listingsError, count: totalCount } = await supabase
       .from('listings')
-      .select('*')
+      .select('id, title, description, building_type, price, bedrooms, bathrooms, floor_area_size, land_size, address, address_detail, address_town, county, eircode, ber_rating, category, furnished, specs, hero_photo, photos, social_media_photos, booking_link, status, date_posted', { count: 'exact' })
       .eq('organization_id', org.id)
       .eq('archived', false)
       .in('status', ['Published', 'Sale Agreed', 'Let Agreed'])
-      .order('date_posted', { ascending: false });
+      .order('date_posted', { ascending: false })
+      .range(from, to);
 
     if (listingsError) {
       console.error('[GET_PUBLIC_LISTINGS] Error fetching listings:', listingsError);
@@ -109,8 +116,12 @@ serve(async (req) => {
           slug: org.slug,
         },
         listings: processedListings,
+        totalCount: totalCount ?? processedListings.length,
+        page,
+        pageSize,
+        hasMore: (totalCount ?? processedListings.length) > from + processedListings.length,
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' } }
     );
   } catch (error: any) {
     console.error('[GET_PUBLIC_LISTINGS] Unexpected error:', error);
