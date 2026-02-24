@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     // Update archive status in Supabase
     console.log('[SUPABASE] Updating archive status in Supabase...');
     
-    // Check if recordId is a UUID or Airtable ID
+    // Check if recordId is a UUID or CRM record ID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const isUUID = uuidRegex.test(recordId);
     
@@ -59,9 +59,9 @@ Deno.serve(async (req) => {
       .eq('organization_id', orgData.id);
     
     if (isUUID) {
-      listingQuery = listingQuery.or(`id.eq.${recordId},airtable_record_id.eq.${recordId}`);
+      listingQuery = listingQuery.or(`id.eq.${recordId},crm_record_id.eq.${recordId}`);
     } else {
-      listingQuery = listingQuery.eq('airtable_record_id', recordId);
+      listingQuery = listingQuery.eq('crm_record_id', recordId);
     }
     
     const { data: existingListing } = await listingQuery.single();
@@ -82,9 +82,9 @@ Deno.serve(async (req) => {
       .eq('organization_id', orgData.id);
     
     if (isUUID) {
-      updateQuery = updateQuery.or(`id.eq.${recordId},airtable_record_id.eq.${recordId}`);
+      updateQuery = updateQuery.or(`id.eq.${recordId},crm_record_id.eq.${recordId}`);
     } else {
-      updateQuery = updateQuery.eq('airtable_record_id', recordId);
+      updateQuery = updateQuery.eq('crm_record_id', recordId);
     }
     
     const { error: supabaseError } = await updateQuery;

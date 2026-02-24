@@ -511,10 +511,10 @@ export type Database = {
       }
       automation_logs: {
         Row: {
-          airtable_record_id: string | null
           client_id: string | null
           completed_at: string | null
           created_at: string
+          crm_record_id: string | null
           duration_ms: number | null
           edge_function: string | null
           error_message: string | null
@@ -528,10 +528,10 @@ export type Database = {
           step_status: string
         }
         Insert: {
-          airtable_record_id?: string | null
           client_id?: string | null
           completed_at?: string | null
           created_at?: string
+          crm_record_id?: string | null
           duration_ms?: number | null
           edge_function?: string | null
           error_message?: string | null
@@ -545,10 +545,10 @@ export type Database = {
           step_status?: string
         }
         Update: {
-          airtable_record_id?: string | null
           client_id?: string | null
           completed_at?: string | null
           created_at?: string
+          crm_record_id?: string | null
           duration_ms?: number | null
           edge_function?: string | null
           error_message?: string | null
@@ -2546,7 +2546,6 @@ export type Database = {
           address: string | null
           address_detail: string | null
           address_town: string | null
-          airtable_record_id: string | null
           archived: boolean | null
           automation_enabled: boolean | null
           bathrooms: number | null
@@ -2558,6 +2557,7 @@ export type Database = {
           client_id: string | null
           county: string | null
           created_at: string | null
+          crm_record_id: string | null
           date_posted: string | null
           description: string | null
           eircode: string | null
@@ -2588,7 +2588,6 @@ export type Database = {
           address?: string | null
           address_detail?: string | null
           address_town?: string | null
-          airtable_record_id?: string | null
           archived?: boolean | null
           automation_enabled?: boolean | null
           bathrooms?: number | null
@@ -2600,6 +2599,7 @@ export type Database = {
           client_id?: string | null
           county?: string | null
           created_at?: string | null
+          crm_record_id?: string | null
           date_posted?: string | null
           description?: string | null
           eircode?: string | null
@@ -2630,7 +2630,6 @@ export type Database = {
           address?: string | null
           address_detail?: string | null
           address_town?: string | null
-          airtable_record_id?: string | null
           archived?: boolean | null
           automation_enabled?: boolean | null
           bathrooms?: number | null
@@ -2642,6 +2641,7 @@ export type Database = {
           client_id?: string | null
           county?: string | null
           created_at?: string | null
+          crm_record_id?: string | null
           date_posted?: string | null
           description?: string | null
           eircode?: string | null

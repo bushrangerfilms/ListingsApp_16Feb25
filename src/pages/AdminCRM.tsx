@@ -51,7 +51,7 @@ interface Listing {
   id: string;
   title: string;
   address: string | null;
-  airtable_record_id: string | null;
+  crm_record_id: string | null;
 }
 
 export default function AdminCRM() {
@@ -122,7 +122,7 @@ export default function AdminCRM() {
           .order('created_at', { ascending: false }),
         (supabase.schema('crm') as any)
           .from('listings')
-          .select('id, title, address, airtable_record_id')
+          .select('id, title, address, crm_record_id')
           .eq('organization_id', targetOrg.id)
           .order('created_at', { ascending: false })
       ]);
@@ -153,19 +153,19 @@ export default function AdminCRM() {
     if (propertyFilter === "all") return true;
     
     const interestedProperties = buyer.interested_properties || [];
-    const selectedListing = listings.find(l => l.id === propertyFilter || l.airtable_record_id === propertyFilter);
+    const selectedListing = listings.find(l => l.id === propertyFilter || l.crm_record_id === propertyFilter);
     
     if (!selectedListing) return false;
     
     return interestedProperties.includes(selectedListing.id) || 
-           (selectedListing.airtable_record_id && interestedProperties.includes(selectedListing.airtable_record_id));
+           (selectedListing.crm_record_id && interestedProperties.includes(selectedListing.crm_record_id));
   });
   
   const propertiesWithInterestedBuyers = listings.filter(listing => {
     return buyers.some(buyer => {
       const interestedProperties = buyer.interested_properties || [];
       return interestedProperties.includes(listing.id) || 
-             (listing.airtable_record_id && interestedProperties.includes(listing.airtable_record_id));
+             (listing.crm_record_id && interestedProperties.includes(listing.crm_record_id));
     });
   });
 

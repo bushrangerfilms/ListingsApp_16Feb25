@@ -81,12 +81,12 @@ serve(async (req) => {
     console.log('DEBUG: Sample listings records:', debugListings);
     console.log('DEBUG: Looking for client_id matching:', organizationId);
 
-    // Helper function to extract URL from photo (either string URL or Airtable JSON string)
+    // Helper function to extract URL from photo (either string URL or JSON string)
     const extractPhotoUrl = (photo: any): string | null => {
       if (!photo) return null;
       if (typeof photo === 'string') {
         try {
-          // Try to parse as JSON (Airtable format)
+          // Try to parse as JSON
           const parsed = JSON.parse(photo);
           return parsed.url || null;
         } catch {
@@ -110,11 +110,11 @@ serve(async (req) => {
         .select('*')
         .eq('organization_id', organizationId);
       
-      // If it's a UUID, check the id field; otherwise check airtable_record_id
+      // If it's a UUID, check the id field; otherwise check the CRM record ID
       if (isUUID) {
         query = query.eq('id', recordId);
       } else {
-        query = query.eq('airtable_record_id', recordId);
+        query = query.eq('crm_record_id', recordId);
       }
       
       const { data, error } = await query.maybeSingle();
@@ -141,7 +141,7 @@ serve(async (req) => {
 
       // Transform Supabase record to match frontend format
       const listing = {
-        id: data.airtable_record_id || data.id,
+        id: data.crm_record_id || data.id,
         title: data.title,
         status: data.status || 'Published',
         category: data.category || 'Listing', // Include category (backwards compatible)
@@ -253,7 +253,7 @@ serve(async (req) => {
       const category = record.category || 'Listing';
       
       const base = {
-        id: record.airtable_record_id || record.id,
+        id: record.crm_record_id || record.id,
         title: record.title,
         status: record.status || 'Published',
         category, // Include category in response

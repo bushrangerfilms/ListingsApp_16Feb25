@@ -50,23 +50,23 @@ serve(async (req) => {
     // STEP 1: Update in Supabase FIRST (primary source of truth)
     console.log('[SUPABASE] Updating status in Supabase...');
     
-    // Check if recordId is a UUID or Airtable ID
+    // Check if recordId is a UUID or CRM record ID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const isUUID = uuidRegex.test(recordId);
     
     // SECURITY: Find listing by recordId AND verify it belongs to the organization
-    // Support both Airtable-migrated (airtable_record_id) and Supabase-native (id) listings
+    // Support both CRM-migrated (crm_record_id) and Supabase-native (id) listings
     let listingQuery = supabase
       .from('listings')
       .select('id')
       .eq('organization_id', orgData.id);
     
     if (isUUID) {
-      // If it's a UUID, search by id OR airtable_record_id
-      listingQuery = listingQuery.or(`id.eq.${recordId},airtable_record_id.eq.${recordId}`);
+      // If it's a UUID, search by id or crm_record_id
+      listingQuery = listingQuery.or(`id.eq.${recordId},crm_record_id.eq.${recordId}`);
     } else {
-      // If it's not a UUID, only search by airtable_record_id
-      listingQuery = listingQuery.eq('airtable_record_id', recordId);
+      // If it's not a UUID, search only by crm_record_id
+      listingQuery = listingQuery.eq('crm_record_id', recordId);
     }
     
     const { data: existingListing, error: listingError} = await listingQuery.maybeSingle();
@@ -107,11 +107,11 @@ serve(async (req) => {
       .eq('organization_id', orgData.id);
     
     if (isUUID) {
-      // If it's a UUID, match by id OR airtable_record_id
-      updateQuery = updateQuery.or(`id.eq.${recordId},airtable_record_id.eq.${recordId}`);
+      // If it's a UUID, match by id or crm_record_id
+      updateQuery = updateQuery.or(`id.eq.${recordId},crm_record_id.eq.${recordId}`);
     } else {
-      // If it's not a UUID, only match by airtable_record_id
-      updateQuery = updateQuery.eq('airtable_record_id', recordId);
+      // If it's not a UUID, match only by crm_record_id
+      updateQuery = updateQuery.eq('crm_record_id', recordId);
     }
     
     const { error: supabaseError } = await updateQuery;

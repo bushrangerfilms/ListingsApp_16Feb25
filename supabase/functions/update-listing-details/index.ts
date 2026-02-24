@@ -106,21 +106,21 @@ Deno.serve(async (req) => {
     // STEP 1: Update in Supabase FIRST (primary source of truth)
     console.log('[SUPABASE] Updating listing in Supabase...');
     
-    // Check if recordId is a UUID or Airtable ID
+    // Check if recordId is a UUID or CRM record ID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const isUUID = uuidRegex.test(recordId);
     
     // SECURITY: Find listing by recordId AND verify it belongs to the organization
-    // Support both Airtable-migrated (airtable_record_id) and Supabase-native (id) listings
+    // Support both CRM-migrated (crm_record_id) and Supabase-native (id) listings
     let listingQuery = supabase
       .from('listings')
       .select('id')
       .eq('organization_id', orgData.id);
     
     if (isUUID) {
-      listingQuery = listingQuery.or(`id.eq.${recordId},airtable_record_id.eq.${recordId}`);
+      listingQuery = listingQuery.or(`id.eq.${recordId},crm_record_id.eq.${recordId}`);
     } else {
-      listingQuery = listingQuery.eq('airtable_record_id', recordId);
+      listingQuery = listingQuery.eq('crm_record_id', recordId);
     }
     
     const { data: existingListing, error: listingError } = await listingQuery.maybeSingle();
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Map Airtable fields to Supabase columns (basic mapping)
+    // Map request fields to Supabase columns
     const supabaseFields: any = {};
     if (fields['Listing Title']) supabaseFields.title = fields['Listing Title'];
     if (fields['Description']) supabaseFields.description = fields['Description'];
@@ -168,9 +168,9 @@ Deno.serve(async (req) => {
       .eq('organization_id', orgData.id);
     
     if (isUUID) {
-      updateQuery = updateQuery.or(`id.eq.${recordId},airtable_record_id.eq.${recordId}`);
+      updateQuery = updateQuery.or(`id.eq.${recordId},crm_record_id.eq.${recordId}`);
     } else {
-      updateQuery = updateQuery.eq('airtable_record_id', recordId);
+      updateQuery = updateQuery.eq('crm_record_id', recordId);
     }
     
     const { error: supabaseError } = await updateQuery;
