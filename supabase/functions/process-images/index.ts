@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { reportToSentry } from '../_shared/sentry-report.ts';
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req.headers.get('origin'));
@@ -122,6 +123,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
+    reportToSentry(error, { functionName: 'process-images' }).catch(() => {});
     console.error('Error in process-images:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
