@@ -52,6 +52,7 @@ const AdminSettings = lazy(() => import("./pages/AdminSettings"));
 const ListingsDashboard = lazy(() => import("./pages/ListingsDashboard"));
 const CreateListing = lazy(() => import("./pages/CreateListing"));
 const ReviewListing = lazy(() => import("./pages/ReviewListing"));
+const BrochureEditor = lazy(() => import("./pages/BrochureEditor"));
 const AdminBilling = lazy(() => import("./pages/AdminBilling"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 
@@ -218,6 +219,7 @@ function AdminRoutes() {
         <Route path="/admin/listings" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><ListingsDashboard /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/create" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><CreateListing /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/review-listing" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><ReviewListing /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
+        <Route path="/admin/brochure/:listingId" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><BrochureEditor /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/analytics" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminAnalyticsHub /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/crm" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminCRM /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/communications" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminCommunicationsHub /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />

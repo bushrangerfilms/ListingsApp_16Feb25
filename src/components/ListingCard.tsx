@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, Bath, Edit, Archive, Trash2, X, ExternalLink } from "lucide-react";
+import { Bed, Bath, Edit, Archive, Trash2, X, ExternalLink, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isPublicSite } from "@/lib/domainDetection";
 import { useLocale } from "@/hooks/useLocale";
@@ -32,12 +32,13 @@ interface ListingCardProps {
   onEdit?: (listing: any) => void;
   onArchive?: (id: string, archived: boolean) => void;
   onDelete?: (id: string, title: string) => void;
+  onBrochure?: (id: string) => void;
   isPublicView?: boolean;
   orgSlug?: string;
   organizationDomain?: string;
 }
 
-export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDelete, isPublicView = false, orgSlug, organizationDomain }: ListingCardProps) {
+export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDelete, onBrochure, isPublicView = false, orgSlug, organizationDomain }: ListingCardProps) {
   const { t, formatCurrency } = useLocale();
   
   // "New" badge is now driven by status, not date calculation
@@ -185,6 +186,14 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
                 <Edit className="h-4 w-4 mr-1" />{t('listings.card.editListing')}
               </Button>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => onBrochure?.(listing.id)}
+            >
+              <FileText className="h-4 w-4 mr-1" />Brochure
+            </Button>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1" onClick={() => onArchive?.(listing.id, listing.archived || false)}>
                 <Archive className="h-4 w-4 mr-1" />{listing.archived ? t('listings.card.unarchiveListing') : t('listings.card.archiveListing')}
