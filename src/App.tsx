@@ -1,8 +1,9 @@
+import * as Sentry from "@sentry/react";
 import { lazy, Suspense, useMemo, useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
@@ -104,6 +105,14 @@ const queryClient = new QueryClient({
       retry: 1,
     },
   },
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      // Only capture server errors (5xx) to Sentry, not user validation errors
+      if (error instanceof Error && /^5\d\d/.test(error.message)) {
+        Sentry.captureException(error, { tags: { source: 'react-query-mutation' } });
+      }
+    },
+  }),
 });
 
 function GlobalLoadingFallback() {
