@@ -322,6 +322,8 @@ export default function BrochureEditor() {
             photos={photos}
             onRegenerateSection={handleRegenerateSection}
             regeneratingSection={regeneratingSection}
+            branding={branding}
+            onBrandingChange={setBranding}
           />
         </div>
 
