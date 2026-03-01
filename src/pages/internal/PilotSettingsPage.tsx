@@ -25,7 +25,14 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { Loader2, Users, Building2, Mail, Rocket, Shield, Check, X, Trash2, KeyRound, Copy, Plus, Power, PowerOff } from 'lucide-react';
+import { Loader2, Users, Building2, Mail, Rocket, Shield, Check, X, Trash2, KeyRound, Copy, Plus, Power, PowerOff, CreditCard, ExternalLink } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useSuperAdminPermissions } from '@/hooks/useSuperAdminPermissions';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
 
@@ -64,6 +71,15 @@ interface Organization {
   created_at: string;
 }
 
+const PILOT_CHECKOUT_ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL || 'https://sjcfcxjpukgeaxxkffpq.supabase.co'}/functions/v1/pilot-checkout`;
+const PILOT_CHECKOUT_KEY = '305ffd8fd1d3d1183e61753e96e266908a44a41a4ecb881c8ea49bd58db6410d';
+
+const PILOT_PLANS = [
+  { priceId: 'price_1T5YUQIncirHB4pnb6Mi7eO4', label: 'AutoListing — \u20AC60/week' },
+  { priceId: 'price_1T5YRtIncirHB4pnYzxb7Baf', label: 'AutoListing — \u20AC70/week' },
+  { priceId: 'price_1T5YVDIncirHB4pnl4FqCLRV', label: 'AutoListing — \u20AC100/week' },
+];
+
 function generateInviteCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -82,6 +98,15 @@ export default function PilotSettingsPage() {
   const [showCreateCode, setShowCreateCode] = useState(false);
   const [newCodeLabel, setNewCodeLabel] = useState('');
   const [newCodeValue, setNewCodeValue] = useState('');
+
+  // Checkout link generator state
+  const [checkoutPriceId, setCheckoutPriceId] = useState(PILOT_PLANS[0].priceId);
+  const [checkoutEmail, setCheckoutEmail] = useState('');
+  const [checkoutClientRef, setCheckoutClientRef] = useState('');
+  const [checkoutTrialDays, setCheckoutTrialDays] = useState(7);
+  const [checkoutUrl, setCheckoutUrl] = useState('');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
 
   const pilotFlagKeys = [
     FEATURE_FLAGS.PILOT_MODE,
@@ -241,6 +266,45 @@ export default function PilotSettingsPage() {
     },
   });
 
+  const generateCheckoutLink = async () => {
+    if (!checkoutEmail.trim()) {
+      toast({ title: 'Email is required', variant: 'destructive' });
+      return;
+    }
+    setCheckoutLoading(true);
+    setCheckoutUrl('');
+    setCheckoutError('');
+    try {
+      const res = await fetch(PILOT_CHECKOUT_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-key': PILOT_CHECKOUT_KEY,
+        },
+        body: JSON.stringify({
+          priceId: checkoutPriceId,
+          customerEmail: checkoutEmail.trim(),
+          trialDays: checkoutTrialDays,
+          clientRef: checkoutClientRef.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setCheckoutUrl(data.url);
+        toast({ title: 'Checkout link generated' });
+      } else {
+        setCheckoutError(data.error || 'Failed to generate link');
+        toast({ title: 'Failed to generate link', description: data.error, variant: 'destructive' });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error';
+      setCheckoutError(msg);
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   const getFlagDisplayName = (name: string) => {
     switch (name) {
       case FEATURE_FLAGS.PILOT_MODE:
@@ -389,6 +453,106 @@ export default function PilotSettingsPage() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Generate Checkout Link
+          </CardTitle>
+          <CardDescription>
+            Create a Stripe checkout URL to send to a customer. They enter card details and get a 7-day free trial.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="checkoutPlan">Plan</Label>
+              <Select value={checkoutPriceId} onValueChange={setCheckoutPriceId}>
+                <SelectTrigger id="checkoutPlan">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PILOT_PLANS.map((plan) => (
+                    <SelectItem key={plan.priceId} value={plan.priceId}>
+                      {plan.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="checkoutEmail">Customer Email</Label>
+              <Input
+                id="checkoutEmail"
+                type="email"
+                value={checkoutEmail}
+                onChange={(e) => setCheckoutEmail(e.target.value)}
+                placeholder="client@agency.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="checkoutRef">Client Reference (optional)</Label>
+              <Input
+                id="checkoutRef"
+                value={checkoutClientRef}
+                onChange={(e) => setCheckoutClientRef(e.target.value)}
+                placeholder="e.g. Agency Name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="checkoutTrial">Free Trial (days)</Label>
+              <Input
+                id="checkoutTrial"
+                type="number"
+                min={0}
+                max={730}
+                value={checkoutTrialDays}
+                onChange={(e) => setCheckoutTrialDays(parseInt(e.target.value) || 0)}
+              />
+            </div>
+          </div>
+
+          <Button onClick={generateCheckoutLink} disabled={checkoutLoading || !checkoutEmail.trim()}>
+            {checkoutLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Generate Link
+          </Button>
+
+          {checkoutUrl && (
+            <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800 space-y-3">
+              <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">Checkout URL</p>
+              <p className="text-sm text-green-800 dark:text-green-300 break-all font-mono">{checkoutUrl}</p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    navigator.clipboard.writeText(checkoutUrl);
+                    toast({ title: 'URL copied to clipboard' });
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy URL
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(checkoutUrl, '_blank')}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {checkoutError && (
+            <div className="p-4 border rounded-lg bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800">
+              <p className="text-sm text-red-700 dark:text-red-400">{checkoutError}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
