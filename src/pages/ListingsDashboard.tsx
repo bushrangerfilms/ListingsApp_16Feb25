@@ -551,6 +551,7 @@ const ListingsDashboard = () => {
               onEdit={handleEdit}
               onArchive={handleArchive}
               onDelete={handleDeleteClick}
+              onBrochure={(id) => navigate(`/admin/brochure/${id}`)}
               orgSlug={targetOrg?.slug}
               organizationDomain={targetOrg?.domain}
             />
