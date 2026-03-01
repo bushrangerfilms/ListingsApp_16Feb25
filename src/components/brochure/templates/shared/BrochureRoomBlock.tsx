@@ -1,5 +1,6 @@
 import { View, Text, Image } from '@react-pdf/renderer';
 import type { BrochureRoom } from '@/lib/brochure/types';
+import type { LayoutDimensions } from '@/lib/brochure/designTokens';
 import { TYPE, COLORS, SPACING, normalizeText } from '@/lib/brochure/designTokens';
 
 interface BrochureRoomBlockProps {
@@ -8,6 +9,7 @@ interface BrochureRoomBlockProps {
   accentColor?: string;
   imageRadius?: number;
   imageBorder?: Record<string, unknown>;
+  dims?: LayoutDimensions;
 }
 
 export function BrochureRoomBlock({
@@ -16,7 +18,13 @@ export function BrochureRoomBlock({
   accentColor,
   imageRadius = 3,
   imageBorder = {},
+  dims,
 }: BrochureRoomBlockProps) {
+  const compactW = dims?.roomPhotoCompact.width ?? 80;
+  const compactH = dims?.roomPhotoCompact.height ?? 55;
+  const stdW = dims?.roomPhotoStandard.width ?? 100;
+  const stdH = dims?.roomPhotoStandard.height ?? 75;
+
   if (compact) {
     if (room.photoUrl) {
       return (
@@ -24,8 +32,8 @@ export function BrochureRoomBlock({
           <Image
             src={room.photoUrl}
             style={{
-              width: 80,
-              height: 55,
+              width: compactW,
+              height: compactH,
               objectFit: 'cover',
               borderRadius: imageRadius,
               ...imageBorder,
@@ -79,8 +87,8 @@ export function BrochureRoomBlock({
         <Image
           src={room.photoUrl}
           style={{
-            width: 100,
-            height: 75,
+            width: stdW,
+            height: stdH,
             objectFit: 'cover',
             borderRadius: imageRadius,
             ...imageBorder,

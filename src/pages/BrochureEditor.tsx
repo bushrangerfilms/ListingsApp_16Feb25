@@ -13,8 +13,17 @@ import {
   Save,
   Loader2,
   Check,
+  ChevronDown,
+  BookOpen,
+  FileStack,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 import type { BrochureContent, BrochureBranding } from '@/lib/brochure/types';
 import { DEFAULT_BROCHURE_CONTENT } from '@/lib/brochure/types';
@@ -154,14 +163,26 @@ export default function BrochureEditor() {
     }
   }, [listingId, organization, content, generateMutation, toast]);
 
-  // Download PDF
-  const handleDownload = useCallback(async () => {
+  // Download PDF — format-aware (standard, reader, or print-ready)
+  const handleDownload = useCallback(async (format?: 'reader' | 'print-ready') => {
     if (!content || !branding) return;
 
     setIsDownloading(true);
     try {
       const template = getTemplate('classic-1');
-      const TemplateComponent = template.component;
+      const pageFormat = branding.styleOptions?.pageFormat || 'a4';
+
+      let TemplateComponent;
+      let filenameSuffix = 'Brochure';
+      if (pageFormat === 'a5' && format === 'print-ready') {
+        TemplateComponent = template.a5PrintReadyComponent || template.component;
+        filenameSuffix = 'Booklet (Print)';
+      } else if (pageFormat === 'a5') {
+        TemplateComponent = template.a5ReaderComponent || template.component;
+        filenameSuffix = 'Booklet (Reader)';
+      } else {
+        TemplateComponent = template.component;
+      }
 
       const blob = await pdf(
         <TemplateComponent content={content} branding={branding} />
@@ -171,7 +192,7 @@ export default function BrochureEditor() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${content.cover.address || 'Property'} - Brochure.pdf`;
+      a.download = `${content.cover.address || 'Property'} - ${filenameSuffix}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -301,14 +322,46 @@ export default function BrochureEditor() {
             <Printer className="h-3.5 w-3.5 mr-1" />
             Print
           </Button>
-          <Button size="sm" onClick={handleDownload} disabled={isDownloading}>
-            {isDownloading ? (
-              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-            ) : (
-              <Download className="h-3.5 w-3.5 mr-1" />
-            )}
-            Download PDF
-          </Button>
+          {branding?.styleOptions?.pageFormat === 'a5' ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" disabled={isDownloading}>
+                  {isDownloading ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5 mr-1" />
+                  )}
+                  Download PDF
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleDownload('reader')}>
+                  <BookOpen className="h-3.5 w-3.5 mr-2" />
+                  <div>
+                    <div className="text-xs font-medium">Reader PDF</div>
+                    <div className="text-[10px] text-muted-foreground">4 A5 pages — digital viewing</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload('print-ready')}>
+                  <FileStack className="h-3.5 w-3.5 mr-2" />
+                  <div>
+                    <div className="text-xs font-medium">Print-Ready PDF</div>
+                    <div className="text-[10px] text-muted-foreground">2 A4 sheets — duplex print, fold to booklet</div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button size="sm" onClick={() => handleDownload()} disabled={isDownloading}>
+              {isDownloading ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5 mr-1" />
+              )}
+              Download PDF
+            </Button>
+          )}
         </div>
       </div>
 

@@ -77,6 +77,7 @@ export interface BrochureStyleOptions {
   certificationLogos: CertificationLogo[];
   showInnerPrice: boolean;
   showBackCoverPrice: boolean;
+  pageFormat: 'a4' | 'a5';
 }
 
 export const DEFAULT_STYLE_OPTIONS: BrochureStyleOptions = {
@@ -86,7 +87,10 @@ export const DEFAULT_STYLE_OPTIONS: BrochureStyleOptions = {
   certificationLogos: [],
   showInnerPrice: false,
   showBackCoverPrice: false,
+  pageFormat: 'a4',
 };
+
+export type BrochureExportFormat = 'standard' | 'reader' | 'print-ready';
 
 export interface BrochureBranding {
   businessName: string;

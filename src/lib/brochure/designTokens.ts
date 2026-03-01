@@ -39,6 +39,80 @@ export const PRICE_ZONE = {
   minFromTrim: 42,
 } as const;
 
+// ── Page Format & Layout Dimensions ──────────────────────────────────
+
+export type BrochurePageFormat = 'a4' | 'a5';
+
+export interface LayoutDimensions {
+  heroImageHeight: number;
+  accentPhotoHeight: number;
+  backGalleryHeight: number;          // 2x2 grid photo height (with floor plans)
+  backGalleryHeightLarge: number;     // 2x2 grid photo height (no floor plans)
+  backSinglePhotoHeight: number;      // single large photo (with floor plans)
+  backSinglePhotoHeightLarge: number; // single large photo (no floor plans)
+  roomPhotoCompact: { width: number; height: number };
+  roomPhotoStandard: { width: number; height: number };
+  innerGutter: number;
+  outerTrim: number;
+  floorPlanMaxHeight: number;
+  logoMaxWidth: number;
+  logoMaxHeight: number;
+  certLogoHeight: number;
+}
+
+/** Returns all layout-variable dimensions scaled for the target page format */
+export function getLayoutDimensions(format: BrochurePageFormat): LayoutDimensions {
+  if (format === 'a5') {
+    return {
+      heroImageHeight: 190,              // 280 * 0.68
+      accentPhotoHeight: 65,             // 95 * 0.68
+      backGalleryHeight: 62,             // 90 * 0.69
+      backGalleryHeightLarge: 125,       // 180 * 0.69
+      backSinglePhotoHeight: 150,        // 220 * 0.68
+      backSinglePhotoHeightLarge: 220,   // 320 * 0.69
+      roomPhotoCompact: { width: 56, height: 38 },
+      roomPhotoStandard: { width: 70, height: 52 },
+      innerGutter: 36,                   // 51 * 0.71
+      outerTrim: 24,                     // 34 * 0.71
+      floorPlanMaxHeight: 155,
+      logoMaxWidth: 70,
+      logoMaxHeight: 35,
+      certLogoHeight: 18,
+    };
+  }
+  // A4 defaults (current values)
+  return {
+    heroImageHeight: HERO_IMAGE_HEIGHT,  // 280
+    accentPhotoHeight: 95,
+    backGalleryHeight: 90,
+    backGalleryHeightLarge: 180,
+    backSinglePhotoHeight: 220,
+    backSinglePhotoHeightLarge: 320,
+    roomPhotoCompact: { width: 80, height: 55 },
+    roomPhotoStandard: { width: 100, height: 75 },
+    innerGutter: INNER_GUTTER,           // 51
+    outerTrim: OUTER_TRIM,               // 34
+    floorPlanMaxHeight: 220,
+    logoMaxWidth: 100,
+    logoMaxHeight: 50,
+    certLogoHeight: 24,
+  };
+}
+
+/** Font size overrides for display-level text at A5 (body text stays the same) */
+export function getTypeOverrides(format: BrochurePageFormat): Record<string, { fontSize: number }> {
+  if (format === 'a5') {
+    return {
+      coverAddress: { fontSize: 14 },
+      coverPrice: { fontSize: 17 },
+      priceBanner: { fontSize: 18 },
+      backPrice: { fontSize: 14 },
+      headerBusinessName: { fontSize: 10 },
+    };
+  }
+  return {};
+}
+
 // ── Gutter-Aware Margins ───────────────────────────────────────────────
 
 const INNER_GUTTER = 51; // ~18mm (fold side)
@@ -49,11 +123,13 @@ const OUTER_TRIM = 34;   // ~12mm (trim side)
  * Pages 1,3 are recto (right-hand): gutter on LEFT.
  * Pages 2,4 are verso (left-hand): gutter on RIGHT.
  */
-export function getPageMargins(pageNumber: 1 | 2 | 3 | 4) {
+export function getPageMargins(pageNumber: 1 | 2 | 3 | 4, dims?: LayoutDimensions) {
+  const gutter = dims?.innerGutter ?? INNER_GUTTER;
+  const trim = dims?.outerTrim ?? OUTER_TRIM;
   const isRecto = pageNumber % 2 === 1;
   return {
-    paddingLeft: isRecto ? INNER_GUTTER : OUTER_TRIM,
-    paddingRight: isRecto ? OUTER_TRIM : INNER_GUTTER,
+    paddingLeft: isRecto ? gutter : trim,
+    paddingRight: isRecto ? trim : gutter,
   };
 }
 
