@@ -1,51 +1,24 @@
-import { View, Image, Text, StyleSheet } from '@react-pdf/renderer';
+import { View, Image, Text } from '@react-pdf/renderer';
 import type { BrochureGalleryItem } from '@/lib/brochure/types';
-
-const styles = StyleSheet.create({
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  photoContainer: {
-    width: '48%',
-    marginBottom: 8,
-    marginRight: '2%',
-  },
-  photo: {
-    width: '100%',
-    height: 120,
-    objectFit: 'cover',
-    borderRadius: 2,
-  },
-  caption: {
-    fontSize: 7,
-    fontFamily: 'Helvetica-Oblique',
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  // ── Compact ──
-  photoContainerCompact: {
-    width: '48%',
-    marginBottom: 4,
-    marginRight: '2%',
-  },
-  photoCompact: {
-    width: '100%',
-    height: 80,
-    objectFit: 'cover',
-    borderRadius: 2,
-  },
-});
+import { TYPE, COLORS } from '@/lib/brochure/designTokens';
 
 interface BrochurePhotoGridProps {
   photos: BrochureGalleryItem[];
   columns?: 2 | 3;
   compact?: boolean;
   maxPhotos?: number;
+  imageRadius?: number;
+  imageBorder?: Record<string, unknown>;
 }
 
-export function BrochurePhotoGrid({ photos, columns = 2, compact = false, maxPhotos }: BrochurePhotoGridProps) {
+export function BrochurePhotoGrid({
+  photos,
+  columns = 2,
+  compact = false,
+  maxPhotos,
+  imageRadius = 3,
+  imageBorder = {},
+}: BrochurePhotoGridProps) {
   const displayPhotos = maxPhotos ? photos.slice(0, maxPhotos) : photos;
   const photoWidth = columns === 3 ? '31%' : '48%';
   const marginRight = columns === 3 ? '2.3%' : '2%';
@@ -53,10 +26,24 @@ export function BrochurePhotoGrid({ photos, columns = 2, compact = false, maxPho
   if (compact) {
     const compactHeight = columns === 3 ? 65 : 80;
     return (
-      <View style={styles.grid}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {displayPhotos.map((photo) => (
-          <View key={photo.id} style={[styles.photoContainerCompact, { width: photoWidth, marginRight }]}>
-            <Image src={photo.url} style={[styles.photoCompact, { height: compactHeight }]} />
+          <View key={photo.id} style={{ width: photoWidth, marginBottom: 4, marginRight }}>
+            <Image
+              src={photo.url}
+              style={{
+                width: '100%',
+                height: compactHeight,
+                objectFit: 'cover',
+                borderRadius: imageRadius,
+                ...imageBorder,
+              }}
+            />
+            {photo.caption && (
+              <Text style={{ ...TYPE.caption, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 }}>
+                {photo.caption}
+              </Text>
+            )}
           </View>
         ))}
       </View>
@@ -65,12 +52,23 @@ export function BrochurePhotoGrid({ photos, columns = 2, compact = false, maxPho
 
   const photoHeight = columns === 3 ? 100 : 120;
   return (
-    <View style={styles.grid}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
       {displayPhotos.map((photo) => (
-        <View key={photo.id} style={[styles.photoContainer, { width: photoWidth, marginRight }]}>
-          <Image src={photo.url} style={[styles.photo, { height: photoHeight }]} />
+        <View key={photo.id} style={{ width: photoWidth, marginBottom: 8, marginRight }}>
+          <Image
+            src={photo.url}
+            style={{
+              width: '100%',
+              height: photoHeight,
+              objectFit: 'cover',
+              borderRadius: imageRadius,
+              ...imageBorder,
+            }}
+          />
           {photo.caption && (
-            <Text style={styles.caption}>{photo.caption}</Text>
+            <Text style={{ ...TYPE.caption, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 }}>
+              {photo.caption}
+            </Text>
           )}
         </View>
       ))}

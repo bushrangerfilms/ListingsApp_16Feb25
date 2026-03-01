@@ -63,6 +63,27 @@ export interface BrochureContent {
   sectionOrder: string[];
 }
 
+export interface CertificationLogo {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+}
+
+export interface BrochureStyleOptions {
+  frameStyle: 'classic' | 'minimal';
+  imageCornerRadius: 'rounded' | 'square';
+  imageBorder: boolean;
+  certificationLogos: CertificationLogo[];
+}
+
+export const DEFAULT_STYLE_OPTIONS: BrochureStyleOptions = {
+  frameStyle: 'classic',
+  imageCornerRadius: 'rounded',
+  imageBorder: true,
+  certificationLogos: [],
+};
+
 export interface BrochureBranding {
   businessName: string;
   logoUrl: string | null;
@@ -76,6 +97,7 @@ export interface BrochureBranding {
   locale: string;
   currency: string;
   countryCode: string;
+  styleOptions?: BrochureStyleOptions;
 }
 
 export interface ListingBrochure {

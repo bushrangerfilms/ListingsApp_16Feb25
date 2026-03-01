@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { BrochureContent } from '@/lib/brochure/types';
+import type { BrochureContent, BrochureBranding } from '@/lib/brochure/types';
 import { BrochureSectionHeader } from './BrochureSectionHeader';
 import { BrochureCoverEditor } from './BrochureCoverEditor';
 import { BrochureDescriptionEditor } from './BrochureDescriptionEditor';
@@ -8,6 +8,9 @@ import { BrochureFeaturesEditor } from './BrochureFeaturesEditor';
 import { BrochureLocationEditor } from './BrochureLocationEditor';
 import { BrochureLegalEditor } from './BrochureLegalEditor';
 import { BrochureGalleryEditor } from './BrochureGalleryEditor';
+import { BrochureStyleEditor } from './BrochureStyleEditor';
+import { BrochureCertificationEditor } from './BrochureCertificationEditor';
+import { ChevronDown, ChevronRight, Settings2, Award } from 'lucide-react';
 
 interface BrochureEditPanelProps {
   content: BrochureContent;
@@ -15,6 +18,8 @@ interface BrochureEditPanelProps {
   photos: string[];
   onRegenerateSection?: (section: string) => void;
   regeneratingSection?: string | null;
+  branding?: BrochureBranding | null;
+  onBrandingChange?: (branding: BrochureBranding) => void;
 }
 
 export function BrochureEditPanel({
@@ -23,8 +28,11 @@ export function BrochureEditPanel({
   photos,
   onRegenerateSection,
   regeneratingSection,
+  branding,
+  onBrandingChange,
 }: BrochureEditPanelProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    style: false,
     cover: true,
     description: true,
     rooms: true,
@@ -33,6 +41,7 @@ export function BrochureEditPanel({
     gallery: false,
     floorPlans: false,
     legal: false,
+    certifications: false,
   });
 
   const toggleExpand = useCallback((section: string) => {
@@ -53,6 +62,27 @@ export function BrochureEditPanel({
 
   return (
     <div className="space-y-1.5 overflow-y-auto">
+      {/* Style Options — only shown when branding is available */}
+      {branding && onBrandingChange && (
+        <div>
+          <div
+            className="flex items-center gap-2 py-2 px-3 bg-muted/50 rounded-lg cursor-pointer select-none"
+            onClick={() => toggleExpand('style')}
+          >
+            <Settings2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="font-semibold text-sm flex-1">Style</span>
+            {expanded.style ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+          {expanded.style && (
+            <BrochureStyleEditor branding={branding} onChange={onBrandingChange} />
+          )}
+        </div>
+      )}
+
       {/* Cover */}
       <div>
         <BrochureSectionHeader
@@ -184,6 +214,27 @@ export function BrochureEditPanel({
           />
         )}
       </div>
+
+      {/* Certifications — only shown when branding is available */}
+      {branding && onBrandingChange && (
+        <div>
+          <div
+            className="flex items-center gap-2 py-2 px-3 bg-muted/50 rounded-lg cursor-pointer select-none"
+            onClick={() => toggleExpand('certifications')}
+          >
+            <Award className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="font-semibold text-sm flex-1">Certifications</span>
+            {expanded.certifications ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+          {expanded.certifications && (
+            <BrochureCertificationEditor branding={branding} onChange={onBrandingChange} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

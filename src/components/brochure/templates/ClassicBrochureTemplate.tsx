@@ -1,9 +1,21 @@
 import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import type { BrochureContent, BrochureBranding } from '@/lib/brochure/types';
+import {
+  SPACING,
+  COLORS,
+  TYPE,
+  HERO_IMAGE_HEIGHT,
+  ACCENT_STRIP_HEIGHT,
+  RULE_WEIGHT,
+  RULE_WEIGHT_HEAVY,
+  getPageMargins,
+  getImageRadius,
+  getImageBorderStyle,
+  PAGE_VERTICAL,
+} from '@/lib/brochure/designTokens';
 import { BrochureHeader } from './shared/BrochureHeader';
 import { BrochureFooter } from './shared/BrochureFooter';
 import { BrochureRoomBlock } from './shared/BrochureRoomBlock';
-import { BrochurePhotoGrid } from './shared/BrochurePhotoGrid';
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -26,7 +38,6 @@ function splitRoomsByFloor(rooms: BrochureContent['rooms']) {
   );
   const upper = rooms.filter((r) => !ground.includes(r));
 
-  // Fallback: if everything ended up in one bucket, split roughly in half
   if (upper.length === 0 && ground.length > 5) {
     const mid = Math.ceil(ground.length / 2);
     return { page2Rooms: ground.slice(0, mid), page3Rooms: ground.slice(mid) };
@@ -50,57 +61,110 @@ function groupByFloor(rooms: BrochureContent['rooms']) {
   return groups;
 }
 
+/** Render a bullet item with proper two-part layout */
+function BulletItem({ text, style }: { text: string; style?: 'feature' | 'keyFeature' | 'default' }) {
+  const fontSize = style === 'keyFeature' ? TYPE.keyFeature.fontSize : TYPE.bullet.fontSize;
+  const color = style === 'keyFeature' ? COLORS.textPrimary : COLORS.textSecondary;
+  return (
+    <View style={{ flexDirection: 'row', marginBottom: 2.5 }}>
+      <Text style={{ fontSize, width: 8, color: COLORS.textSecondary }}>{'\u2022'}</Text>
+      <Text style={{ fontSize, flex: 1, color, lineHeight: TYPE.bullet.lineHeight }}>{text}</Text>
+    </View>
+  );
+}
+
+/** Render a section title with accent-color underline rule */
+function SectionTitle({ title, primaryColor, accentColor, ruleWidth }: {
+  title: string;
+  primaryColor: string;
+  accentColor?: string;
+  ruleWidth?: string;
+}) {
+  return (
+    <View style={{ marginBottom: SPACING.HALF, marginTop: SPACING.S1 }}>
+      <Text style={{ ...TYPE.sectionTitle, color: primaryColor, marginBottom: 3 }}>
+        {title}
+      </Text>
+      {accentColor && (
+        <View style={{
+          borderBottomWidth: RULE_WEIGHT_HEAVY,
+          borderBottomColor: accentColor,
+          width: ruleWidth || '40%',
+        }} />
+      )}
+    </View>
+  );
+}
+
+/** Render a floor heading with accent-color bottom rule */
+function FloorHeading({ floor, accentColor }: { floor: string; accentColor: string }) {
+  return (
+    <View style={{ marginBottom: 4, marginTop: SPACING.HALF }}>
+      <Text style={{ ...TYPE.floorHeading, color: accentColor, marginBottom: 2 }}>
+        {floor}
+      </Text>
+      <View style={{
+        borderBottomWidth: RULE_WEIGHT_HEAVY,
+        borderBottomColor: accentColor,
+        width: '30%',
+      }} />
+    </View>
+  );
+}
+
 // ── Styles ───────────────────────────────────────────────────────────────
+
+const p1Margins = getPageMargins(1);
+const p2Margins = getPageMargins(2);
+const p3Margins = getPageMargins(3);
+const p4Margins = getPageMargins(4);
 
 const styles = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',
-    fontSize: 10,
-    color: '#222',
-    backgroundColor: '#fff',
+    fontSize: TYPE.body.fontSize,
+    color: COLORS.textPrimary,
+    backgroundColor: COLORS.white,
   },
 
   /* ── Page 1: Cover ── */
   coverContent: {
     flex: 1,
-    paddingHorizontal: 30,
-    paddingTop: 12,
+    ...p1Margins,
+    paddingTop: PAGE_VERTICAL.top,
     paddingBottom: 16,
     justifyContent: 'space-between',
   },
-  heroImage: {
-    width: '100%',
-    height: 280,
-    objectFit: 'cover',
-    borderRadius: 3,
-  },
   coverTextBlock: {
     alignItems: 'center',
-    paddingTop: 10,
-    paddingBottom: 4,
+    paddingTop: SPACING.HALF,
+    paddingBottom: 2,
   },
   coverAddress: {
-    fontSize: 22,
-    fontFamily: 'Helvetica-Bold',
+    ...TYPE.coverAddress,
     textAlign: 'center',
-    marginBottom: 2,
+    marginBottom: 4,
     lineHeight: 1.2,
+    color: COLORS.textPrimary,
   },
   coverSaleMethod: {
-    fontSize: 13,
-    fontFamily: 'Helvetica-Bold',
+    ...TYPE.coverSaleMethod,
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 3,
+  },
+  coverDivider: {
+    borderBottomWidth: RULE_WEIGHT,
+    alignSelf: 'center',
+    width: '60%',
+    marginVertical: SPACING.HALF,
   },
   coverDescriptionBlock: {
     paddingHorizontal: 6,
-    marginTop: 6,
+    marginTop: 4,
   },
   coverDescriptionText: {
-    fontSize: 8.5,
-    fontFamily: 'Helvetica',
-    lineHeight: 1.45,
-    color: '#333',
+    ...TYPE.coverDescription,
+    color: COLORS.textSecondary,
     textAlign: 'justify',
     marginBottom: 4,
   },
@@ -110,10 +174,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 6,
     paddingBottom: 8,
+    marginTop: 'auto',
   },
   coverPrice: {
-    fontSize: 24,
-    fontFamily: 'Helvetica-Bold',
+    ...TYPE.coverPrice,
     textAlign: 'center',
   },
   berBadge: {
@@ -127,91 +191,38 @@ const styles = StyleSheet.create({
   },
 
   /* ── Pages 2–3: Content ── */
-  contentBody: {
-    paddingHorizontal: 30,
-    paddingTop: 10,
-    paddingBottom: 50,
+  contentBodyP2: {
+    ...p2Margins,
+    paddingTop: PAGE_VERTICAL.top,
+    paddingBottom: PAGE_VERTICAL.bottom,
     flex: 1,
   },
-  sectionTitle: {
-    fontSize: 11,
-    fontFamily: 'Helvetica-Bold',
-    marginBottom: 6,
-    marginTop: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  sectionTitleAccent: {
-    fontSize: 11,
-    fontFamily: 'Helvetica-Bold',
-    marginBottom: 6,
-    marginTop: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  floorHeading: {
-    fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
-    marginBottom: 5,
-    marginTop: 8,
-    textDecoration: 'underline',
+  contentBodyP3: {
+    ...p3Margins,
+    paddingTop: PAGE_VERTICAL.top,
+    paddingBottom: PAGE_VERTICAL.bottom,
+    flex: 1,
   },
   separator: {
-    borderBottomWidth: 0.5,
-    marginVertical: 8,
+    borderBottomWidth: RULE_WEIGHT,
+    marginVertical: SPACING.HALF,
   },
 
-  /* ── Features (compact 2-col) ── */
+  /* ── Features (compact columns) ── */
   featureColumns: {
     flexDirection: 'row',
-    marginBottom: 6,
+    marginBottom: SPACING.HALF,
   },
   featureColumn: {
     flex: 1,
-    marginRight: 12,
-  },
-  featureTitle: {
-    fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
-    marginBottom: 3,
-    textTransform: 'uppercase',
-  },
-  bulletItem: {
-    fontSize: 7.5,
-    fontFamily: 'Helvetica',
-    color: '#444',
-    marginBottom: 2,
-    paddingLeft: 6,
-  },
-  keyFeatureItem: {
-    fontSize: 8,
-    fontFamily: 'Helvetica',
-    color: '#333',
-    marginBottom: 2,
-    paddingLeft: 8,
-  },
-
-  /* ── Location ── */
-  locationText: {
-    fontSize: 8.5,
-    fontFamily: 'Helvetica',
-    lineHeight: 1.35,
-    color: '#333',
-    marginBottom: 6,
-    textAlign: 'justify',
+    marginRight: 10,
   },
 
   /* ── Photo pair (2 side-by-side on Page 3) ── */
   photoPair: {
     flexDirection: 'row',
-    marginTop: 6,
-    marginBottom: 6,
-  },
-  photoPairImage: {
-    width: '48%',
-    height: 95,
-    objectFit: 'cover',
-    borderRadius: 2,
+    marginTop: SPACING.HALF,
+    marginBottom: SPACING.HALF,
   },
   photoPairSpacer: {
     width: '4%',
@@ -220,69 +231,35 @@ const styles = StyleSheet.create({
   /* ── Price banner ── */
   priceBanner: {
     marginTop: 'auto',
-    paddingVertical: 10,
+    paddingVertical: 8,
     alignItems: 'center',
   },
   priceBannerText: {
-    fontSize: 26,
-    fontFamily: 'Helvetica-Bold',
+    ...TYPE.priceBanner,
     textAlign: 'center',
   },
 
   /* ── Page 4: Back Cover ── */
-  accentBand: {
-    height: 6,
-    width: '100%',
-  },
   backCoverBody: {
     flex: 1,
-    paddingHorizontal: 30,
-    paddingTop: 12,
-    paddingBottom: 50,
+    ...p4Margins,
+    paddingTop: PAGE_VERTICAL.top,
+    paddingBottom: PAGE_VERTICAL.bottom,
   },
-  backCoverPhoto: {
-    width: '100%',
-    height: 220,
-    objectFit: 'cover',
-    borderRadius: 3,
-    marginBottom: 10,
-  },
-  backCoverPhotoLarge: {
-    width: '100%',
-    height: 320,
-    objectFit: 'cover',
-    borderRadius: 3,
-    marginBottom: 10,
-  },
-  floorPlanImage: {
-    width: '100%',
-    maxHeight: 260,
-    objectFit: 'contain',
-    marginBottom: 4,
-  },
-  floorPlanLabel: {
-    fontSize: 10,
-    fontFamily: 'Helvetica-Bold',
-    textAlign: 'center',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  floorPlanNote: {
-    fontSize: 7,
-    fontFamily: 'Helvetica-Oblique',
-    color: '#888',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
+
   backPriceBanner: {
-    paddingVertical: 8,
+    paddingVertical: 6,
     alignItems: 'center',
-    marginTop: 'auto',
   },
   backPriceText: {
-    fontSize: 22,
-    fontFamily: 'Helvetica-Bold',
+    ...TYPE.backPrice,
     textAlign: 'center',
+  },
+
+  /* ── Contact block on back cover ── */
+  contactBlock: {
+    alignItems: 'center',
+    paddingVertical: SPACING.HALF,
   },
 });
 
@@ -297,6 +274,9 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
   const visible = content.visibleSections || {};
   const accentColor = branding.secondaryColor || '#c53030';
   const primaryColor = branding.primaryColor || '#1a365d';
+  const styleOptions = branding.styleOptions;
+  const imgRadius = getImageRadius(styleOptions);
+  const imgBorder = getImageBorderStyle(styleOptions);
   const pageSize = ['en-US', 'en-CA'].includes(branding.locale)
     ? ('LETTER' as const)
     : ('A4' as const);
@@ -318,7 +298,10 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
   // Gallery photos for Page 3 accent pair (pick first 2 gallery items)
   const accentPhotos = content.gallery.slice(0, 2);
 
-  // Back cover photo: explicit backCoverPhotoUrl, or 3rd gallery item, or hero
+  // Back cover: use up to 4 gallery photos for the grid
+  const backCoverGallery = content.gallery.slice(0, 4);
+
+  // Back cover photo fallback (used if fewer than 2 gallery photos)
   const backCoverPhoto =
     content.cover.backCoverPhotoUrl ||
     content.gallery[2]?.url ||
@@ -329,19 +312,39 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
   const hasFloorPlans =
     visible.floorPlans !== false && content.floorPlans.length > 0;
 
+  // Certification logos
+  const certLogos = styleOptions?.certificationLogos?.filter(l => l.enabled) || [];
+
+  // Whether "nearby" column has content
+  const hasNearby = content.features.nearby && content.features.nearby.length > 0;
+  const hasServices = content.features.services.length > 0;
+  const hasExternal = content.features.external.length > 0;
+
   return (
     <Document title={content.cover.headline} author={branding.businessName}>
       {/* ═══════════════════════════════════════════════════════════════════
           PAGE 1 — FRONT COVER
           ═══════════════════════════════════════════════════════════════════ */}
       <Page size={pageSize} style={styles.page}>
-        <BrochureHeader branding={branding} />
+        <BrochureHeader branding={branding} margins={p1Margins} />
 
         <View style={styles.coverContent}>
           {/* Hero Image */}
           {content.cover.heroPhotoUrl && (
-            <Image src={content.cover.heroPhotoUrl} style={styles.heroImage} />
+            <Image
+              src={content.cover.heroPhotoUrl}
+              style={{
+                width: '100%',
+                height: HERO_IMAGE_HEIGHT,
+                objectFit: 'cover',
+                borderRadius: imgRadius,
+                ...imgBorder,
+              }}
+            />
           )}
+
+          {/* Thin divider rule */}
+          <View style={[styles.coverDivider, { borderBottomColor: accentColor }]} />
 
           {/* Address + Sale Method */}
           <View style={styles.coverTextBlock}>
@@ -362,7 +365,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
             </View>
           )}
 
-          {/* Price + BER */}
+          {/* Price + BER — anchored to bottom */}
           <View style={styles.coverBottomRow}>
             {content.cover.price && (
               <Text style={[styles.coverPrice, { color: accentColor }]}>
@@ -387,19 +390,17 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
           PAGE 2 — ACCOMMODATION (Ground Floor)
           ═══════════════════════════════════════════════════════════════════ */}
       <Page size={pageSize} style={styles.page}>
-        <BrochureHeader branding={branding} compact />
+        <BrochureHeader branding={branding} compact margins={p2Margins} />
 
-        <View style={styles.contentBody}>
-          {/* Key Features (moved here from old description page) */}
+        <View style={styles.contentBodyP2}>
+          {/* Key Features */}
           {visible.description !== false && keyFeatures.length > 0 && (
-            <View style={{ marginBottom: 6 }}>
-              <Text style={[styles.featureTitle, { color: primaryColor }]}>
+            <View style={{ marginBottom: SPACING.HALF }}>
+              <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
                 Key Features
               </Text>
               {keyFeatures.map((feature, i) => (
-                <Text key={i} style={styles.keyFeatureItem}>
-                  • {feature}
-                </Text>
+                <BulletItem key={i} text={feature} style="keyFeature" />
               ))}
             </View>
           )}
@@ -409,26 +410,24 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
           {/* Accommodation heading */}
           {visible.rooms !== false && page2Rooms.length > 0 && (
             <View>
-              <Text
-                style={[
-                  styles.sectionTitleAccent,
-                  { color: primaryColor, textDecoration: 'underline', textDecorationColor: accentColor },
-                ]}
-              >
-                Accommodation Comprises Of The Following
-              </Text>
+              <SectionTitle
+                title="Accommodation Comprises Of The Following"
+                primaryColor={primaryColor}
+                accentColor={accentColor}
+                ruleWidth="50%"
+              />
 
               {Object.entries(page2Groups).map(([floor, rooms]) => (
                 <View key={floor}>
-                  <Text style={[styles.floorHeading, { color: accentColor }]}>
-                    {floor}
-                  </Text>
+                  <FloorHeading floor={floor} accentColor={accentColor} />
                   {rooms.map((room) => (
                     <BrochureRoomBlock
                       key={room.id}
                       room={room}
                       compact
                       accentColor={accentColor}
+                      imageRadius={imgRadius}
+                      imageBorder={imgBorder}
                     />
                   ))}
                 </View>
@@ -442,23 +441,23 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
           PAGE 3 — UPPER FLOOR + FEATURES + LOCATION + PRICE
           ═══════════════════════════════════════════════════════════════════ */}
       <Page size={pageSize} style={styles.page}>
-        <BrochureHeader branding={branding} compact />
+        <BrochureHeader branding={branding} compact margins={p3Margins} />
 
-        <View style={styles.contentBody}>
+        <View style={styles.contentBodyP3}>
           {/* Remaining rooms */}
           {visible.rooms !== false && page3Rooms.length > 0 && (
             <View>
               {Object.entries(page3Groups).map(([floor, rooms]) => (
                 <View key={floor}>
-                  <Text style={[styles.floorHeading, { color: accentColor }]}>
-                    {floor}
-                  </Text>
+                  <FloorHeading floor={floor} accentColor={accentColor} />
                   {rooms.map((room) => (
                     <BrochureRoomBlock
                       key={room.id}
                       room={room}
                       compact
                       accentColor={accentColor}
+                      imageRadius={imgRadius}
+                      imageBorder={imgBorder}
                     />
                   ))}
                 </View>
@@ -468,30 +467,36 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
 
           <View style={[styles.separator, { borderBottomColor: accentColor }]} />
 
-          {/* Features: Services | External (2-column) */}
-          {visible.features !== false && (
+          {/* Features: Services | External | Nearby (2 or 3 columns) */}
+          {visible.features !== false && (hasServices || hasExternal) && (
             <View style={styles.featureColumns}>
-              {content.features.services.length > 0 && (
+              {hasServices && (
                 <View style={styles.featureColumn}>
-                  <Text style={[styles.featureTitle, { color: primaryColor }]}>
+                  <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
                     Services
                   </Text>
                   {content.features.services.map((service, i) => (
-                    <Text key={i} style={styles.bulletItem}>
-                      • {service}
-                    </Text>
+                    <BulletItem key={i} text={service} />
                   ))}
                 </View>
               )}
-              {content.features.external.length > 0 && (
+              {hasExternal && (
                 <View style={styles.featureColumn}>
-                  <Text style={[styles.featureTitle, { color: primaryColor }]}>
+                  <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
                     Features
                   </Text>
                   {content.features.external.map((feature, i) => (
-                    <Text key={i} style={styles.bulletItem}>
-                      • {feature}
-                    </Text>
+                    <BulletItem key={i} text={feature} />
+                  ))}
+                </View>
+              )}
+              {hasNearby && (
+                <View style={styles.featureColumn}>
+                  <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
+                    Nearby
+                  </Text>
+                  {content.features.nearby.map((item, i) => (
+                    <BulletItem key={i} text={item} />
                   ))}
                 </View>
               )}
@@ -499,38 +504,76 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
           )}
 
           {/* Location */}
-          {visible.location !== false && (
+          {visible.location !== false && content.location.text && (
             <View>
-              <Text style={[styles.sectionTitle, { color: primaryColor }]}>
-                Location
+              <SectionTitle title="Location" primaryColor={primaryColor} accentColor={accentColor} ruleWidth="25%" />
+              <Text style={{ ...TYPE.location, color: COLORS.textSecondary, textAlign: 'justify' }}>
+                {content.location.text}
               </Text>
-              <Text style={styles.locationText}>{content.location.text}</Text>
             </View>
           )}
 
-          {/* Two accent photos side-by-side */}
+          {/* Two accent photos side-by-side with captions */}
           {visible.gallery !== false && accentPhotos.length >= 2 && (
             <View style={styles.photoPair}>
-              <Image
-                src={accentPhotos[0].url}
-                style={styles.photoPairImage}
-              />
-              <View style={styles.photoPairSpacer} />
-              <Image
-                src={accentPhotos[1].url}
-                style={styles.photoPairImage}
-              />
-            </View>
-          )}
-          {visible.gallery !== false &&
-            accentPhotos.length === 1 && (
-              <View style={styles.photoPair}>
+              <View style={{ width: '48%' }}>
                 <Image
                   src={accentPhotos[0].url}
-                  style={[styles.photoPairImage, { width: '100%' }]}
+                  style={{
+                    width: '100%',
+                    height: 95,
+                    objectFit: 'cover',
+                    borderRadius: imgRadius,
+                    ...imgBorder,
+                  }}
                 />
+                {accentPhotos[0].caption && (
+                  <Text style={{ ...TYPE.caption, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 }}>
+                    {accentPhotos[0].caption}
+                  </Text>
+                )}
               </View>
-            )}
+              <View style={styles.photoPairSpacer} />
+              <View style={{ width: '48%' }}>
+                <Image
+                  src={accentPhotos[1].url}
+                  style={{
+                    width: '100%',
+                    height: 95,
+                    objectFit: 'cover',
+                    borderRadius: imgRadius,
+                    ...imgBorder,
+                  }}
+                />
+                {accentPhotos[1].caption && (
+                  <Text style={{ ...TYPE.caption, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 }}>
+                    {accentPhotos[1].caption}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
+          {visible.gallery !== false && accentPhotos.length === 1 && (
+            <View style={styles.photoPair}>
+              <View style={{ width: '100%' }}>
+                <Image
+                  src={accentPhotos[0].url}
+                  style={{
+                    width: '100%',
+                    height: 95,
+                    objectFit: 'cover',
+                    borderRadius: imgRadius,
+                    ...imgBorder,
+                  }}
+                />
+                {accentPhotos[0].caption && (
+                  <Text style={{ ...TYPE.caption, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 }}>
+                    {accentPhotos[0].caption}
+                  </Text>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Guide Price banner — pushed to bottom */}
           {content.cover.price && (
@@ -547,31 +590,162 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
           PAGE 4 — BACK COVER
           ═══════════════════════════════════════════════════════════════════ */}
       <Page size={pageSize} style={styles.page}>
-        {/* Accent colour band */}
-        <View style={[styles.accentBand, { backgroundColor: accentColor }]} />
+        <BrochureHeader branding={branding} compact margins={p4Margins} />
 
         <View style={styles.backCoverBody}>
-          {/* Large feature photo */}
-          {backCoverPhoto && (
+          {/* Gallery photos — 2x2 captioned grid or single large photo */}
+          {backCoverGallery.length >= 2 ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: SPACING.S1 }}>
+              {backCoverGallery.map((photo, idx) => (
+                <View
+                  key={photo.id}
+                  style={{
+                    width: '48%',
+                    marginRight: idx % 2 === 0 ? '4%' : 0,
+                    marginBottom: SPACING.HALF,
+                  }}
+                >
+                  <Image
+                    src={photo.url}
+                    style={{
+                      width: '100%',
+                      height: hasFloorPlans ? 90 : 110,
+                      objectFit: 'cover',
+                      borderRadius: imgRadius,
+                      ...imgBorder,
+                    }}
+                  />
+                  {photo.caption && (
+                    <Text style={{ ...TYPE.caption, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 }}>
+                      {photo.caption}
+                    </Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          ) : backCoverPhoto ? (
             <Image
               src={backCoverPhoto}
-              style={hasFloorPlans ? styles.backCoverPhoto : styles.backCoverPhotoLarge}
+              style={{
+                width: '100%',
+                height: hasFloorPlans ? 220 : 280,
+                objectFit: 'cover',
+                borderRadius: imgRadius,
+                ...imgBorder,
+                marginBottom: SPACING.S1,
+              }}
             />
-          )}
+          ) : null}
 
-          {/* Floor Plans */}
+          {/* Floor Plans — framed container */}
           {hasFloorPlans &&
             content.floorPlans.map((plan) => (
-              <View key={plan.id}>
-                <Image src={plan.imageUrl} style={styles.floorPlanImage} />
+              <View
+                key={plan.id}
+                style={{
+                  backgroundColor: COLORS.subtleBg,
+                  borderWidth: RULE_WEIGHT,
+                  borderColor: COLORS.borderLight,
+                  borderRadius: imgRadius,
+                  padding: 12,
+                  marginBottom: SPACING.HALF,
+                  alignItems: 'center',
+                }}
+              >
+                <Image
+                  src={plan.imageUrl}
+                  style={{
+                    width: '90%',
+                    maxHeight: 220,
+                    objectFit: 'contain',
+                  }}
+                />
                 {plan.label && (
-                  <Text style={styles.floorPlanLabel}>{plan.label}</Text>
+                  <Text style={{
+                    ...TYPE.floorPlanLabel,
+                    color: primaryColor,
+                    textAlign: 'center',
+                    marginTop: 6,
+                  }}>
+                    {plan.label}
+                  </Text>
                 )}
-                <Text style={styles.floorPlanNote}>
+                <Text style={{
+                  ...TYPE.floorPlanNote,
+                  color: COLORS.textMuted,
+                  textAlign: 'center',
+                  marginTop: 2,
+                }}>
                   For illustration purposes only. Not to scale.
                 </Text>
               </View>
             ))}
+
+          {/* Flexible space pushes everything below to the bottom */}
+          <View style={{ flex: 1 }} />
+
+          {/* Thin separator rule */}
+          <View style={{
+            borderBottomWidth: RULE_WEIGHT,
+            borderBottomColor: COLORS.rule,
+            marginBottom: SPACING.HALF,
+          }} />
+
+          {/* Contact block */}
+          <View style={styles.contactBlock}>
+            <Text style={{
+              ...TYPE.headerContact,
+              color: COLORS.textSecondary,
+            }}>
+              {[
+                branding.contactPhone ? `Tel: ${branding.contactPhone}` : null,
+                branding.contactEmail,
+              ].filter(Boolean).join('  \u00B7  ')}
+            </Text>
+          </View>
+
+          {/* Certification logos band — dark background for white logos */}
+          {certLogos.length > 0 && (
+            <View style={{
+              backgroundColor: primaryColor,
+              borderRadius: 3,
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              flexDirection: 'row',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginVertical: SPACING.HALF,
+            }}>
+              {certLogos.map((logo) => (
+                logo.url ? (
+                  <Image
+                    key={logo.id}
+                    src={logo.url}
+                    style={{
+                      height: 24,
+                      maxWidth: 80,
+                      objectFit: 'contain',
+                      marginHorizontal: 10,
+                    }}
+                  />
+                ) : (
+                  <View
+                    key={logo.id}
+                    style={{
+                      paddingHorizontal: 6,
+                      paddingVertical: 3,
+                      borderWidth: 0.5,
+                      borderColor: 'rgba(255,255,255,0.4)',
+                      borderRadius: 2,
+                      marginHorizontal: 6,
+                    }}
+                  >
+                    <Text style={{ fontSize: 6.5, color: COLORS.white }}>{logo.name}</Text>
+                  </View>
+                )
+              ))}
+            </View>
+          )}
 
           {/* Price echo on back cover */}
           {content.cover.price && (
@@ -588,7 +762,8 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
           <BrochureFooter
             branding={branding}
             legal={content.legal}
-            showContact
+            showContact={false}
+            margins={p4Margins}
           />
         )}
       </Page>
