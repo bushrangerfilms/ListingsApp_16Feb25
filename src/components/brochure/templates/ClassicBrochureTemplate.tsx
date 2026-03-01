@@ -80,7 +80,10 @@ export function buildPageRenderContext(
   const page3Groups = groupByFloor(page3Rooms);
 
   const accentPhotos = content.gallery.slice(0, 2);
-  const backCoverGallery = content.gallery.slice(0, 4);
+  const dedupedGallery = content.gallery.slice(2);
+  const backCoverGallery = dedupedGallery.length >= 2
+    ? dedupedGallery.slice(0, 4)
+    : content.gallery.slice(0, 4);
   const backCoverPhoto =
     content.cover.backCoverPhotoUrl ||
     content.gallery[2]?.url ||
@@ -363,16 +366,8 @@ export function CoverPageContent({ ctx, margins }: PageContentProps) {
         </Text>
       </View>
 
-      {/* Marketing Description on cover */}
-      {visible.description !== false && coverParagraphs.length > 0 && (
-        <View style={styles.coverDescriptionBlock}>
-          {coverParagraphs.map((paragraph, i) => (
-            <Text key={i} style={styles.coverDescriptionText}>
-              {normalizeText(paragraph)}
-            </Text>
-          ))}
-        </View>
-      )}
+      {/* Flex spacer — pushes price toward bottom third */}
+      <View style={{ flex: 1 }} />
 
       {/* Price + BER — anchored to bottom */}
       <View style={styles.coverBottomRow}>
@@ -398,7 +393,7 @@ export function CoverPageContent({ ctx, margins }: PageContentProps) {
 
 /** PAGE 2 — ACCOMMODATION (Ground Floor) */
 export function AccommodationPageContent({ ctx, margins }: PageContentProps) {
-  const { content, accentColor, primaryColor, imgRadius, imgBorder, visible, keyFeatures, page2Rooms, page2Groups, dims } = ctx;
+  const { content, accentColor, primaryColor, imgRadius, imgBorder, visible, keyFeatures, page2Rooms, page2Groups, dims, coverParagraphs } = ctx;
 
   return (
     <View style={{
@@ -407,6 +402,17 @@ export function AccommodationPageContent({ ctx, margins }: PageContentProps) {
       paddingBottom: PAGE_VERTICAL.bottom,
       flex: 1,
     }}>
+      {/* Marketing Description — moved from cover */}
+      {visible.description !== false && coverParagraphs.length > 0 && (
+        <View style={styles.coverDescriptionBlock}>
+          {coverParagraphs.map((paragraph, i) => (
+            <Text key={i} style={styles.coverDescriptionText}>
+              {normalizeText(paragraph)}
+            </Text>
+          ))}
+        </View>
+      )}
+
       {/* Key Features */}
       {visible.description !== false && keyFeatures.length > 0 && (
         <View style={{ marginBottom: SPACING.HALF }}>
@@ -425,7 +431,7 @@ export function AccommodationPageContent({ ctx, margins }: PageContentProps) {
       {visible.rooms !== false && page2Rooms.length > 0 && (
         <View>
           <SectionTitle
-            title="Accommodation Comprises Of The Following"
+            title="Accommodation"
             primaryColor={primaryColor}
             accentColor={accentColor}
             ruleWidth="50%"

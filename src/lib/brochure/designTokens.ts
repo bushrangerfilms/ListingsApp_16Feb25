@@ -64,13 +64,13 @@ export interface LayoutDimensions {
 export function getLayoutDimensions(format: BrochurePageFormat): LayoutDimensions {
   if (format === 'a5') {
     return {
-      heroImageHeight: 190,              // 280 * 0.68
-      accentPhotoHeight: 65,             // 95 * 0.68
+      heroImageHeight: 275,              // 400 * 0.69
+      accentPhotoHeight: 90,             // 130 * 0.69
       backGalleryHeight: 62,             // 90 * 0.69
-      backGalleryHeightLarge: 125,       // 180 * 0.69
+      backGalleryHeightLarge: 155,       // 220 * 0.70
       backSinglePhotoHeight: 150,        // 220 * 0.68
-      backSinglePhotoHeightLarge: 220,   // 320 * 0.69
-      roomPhotoCompact: { width: 56, height: 38 },
+      backSinglePhotoHeightLarge: 265,   // 380 * 0.70
+      roomPhotoCompact: { width: 84, height: 56 },
       roomPhotoStandard: { width: 70, height: 52 },
       innerGutter: 36,                   // 51 * 0.71
       outerTrim: 24,                     // 34 * 0.71
@@ -82,13 +82,13 @@ export function getLayoutDimensions(format: BrochurePageFormat): LayoutDimension
   }
   // A4 defaults (current values)
   return {
-    heroImageHeight: HERO_IMAGE_HEIGHT,  // 280
-    accentPhotoHeight: 95,
+    heroImageHeight: HERO_IMAGE_HEIGHT,  // 400
+    accentPhotoHeight: 130,
     backGalleryHeight: 90,
-    backGalleryHeightLarge: 180,
+    backGalleryHeightLarge: 220,
     backSinglePhotoHeight: 220,
-    backSinglePhotoHeightLarge: 320,
-    roomPhotoCompact: { width: 80, height: 55 },
+    backSinglePhotoHeightLarge: 380,
+    roomPhotoCompact: { width: 120, height: 80 },
     roomPhotoStandard: { width: 100, height: 75 },
     innerGutter: INNER_GUTTER,           // 51
     outerTrim: OUTER_TRIM,               // 34
@@ -213,7 +213,7 @@ export function getImageBorderStyle(styleOptions?: BrochureStyleOptions) {
 export const ACCENT_STRIP_HEIGHT = 4;
 
 /** Height of the hero image on the cover */
-export const HERO_IMAGE_HEIGHT = 280;
+export const HERO_IMAGE_HEIGHT = 400;
 
 /** Thin rule weight for separators */
 export const RULE_WEIGHT = 0.5;

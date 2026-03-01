@@ -38,7 +38,7 @@ export function BrochureDescriptionEditor({ description, onChange }: BrochureDes
         <div className="flex items-center justify-between">
           <Label className="text-xs">Marketing Description</Label>
           <span className={`text-[10px] ${wordCount > 160 ? 'text-destructive' : 'text-muted-foreground'}`}>
-            {wordCount} words {wordCount > 160 ? '(may overflow cover)' : ''}
+            {wordCount} words {wordCount > 160 ? '(may overflow page)' : ''}
           </span>
         </div>
         <Textarea
@@ -48,7 +48,7 @@ export function BrochureDescriptionEditor({ description, onChange }: BrochureDes
           className="min-h-[120px] text-sm"
         />
         <p className="text-[10px] text-muted-foreground mt-0.5">
-          ~120-150 words / 2 paragraphs recommended for cover page fit
+          ~120-150 words / 2 paragraphs recommended
         </p>
       </div>
       <div>
