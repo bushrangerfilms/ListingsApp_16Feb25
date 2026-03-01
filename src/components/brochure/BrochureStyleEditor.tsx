@@ -20,6 +20,30 @@ export function BrochureStyleEditor({ branding, onChange }: BrochureStyleEditorP
 
   return (
     <div className="space-y-3 px-3 py-2">
+      {/* Page Format */}
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-xs font-medium">Page Format</Label>
+          <p className="text-[10px] text-muted-foreground">
+            {opts.pageFormat === 'a5' ? 'A5 booklet (half-page, folds from A4)' : 'A4 full page (standard)'}
+          </p>
+        </div>
+        <div className="flex gap-1">
+          <button
+            className={`text-xs px-2.5 py-1 rounded ${opts.pageFormat !== 'a5' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+            onClick={() => update({ pageFormat: 'a4' })}
+          >
+            A4
+          </button>
+          <button
+            className={`text-xs px-2.5 py-1 rounded ${opts.pageFormat === 'a5' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+            onClick={() => update({ pageFormat: 'a5' })}
+          >
+            A5 Booklet
+          </button>
+        </div>
+      </div>
+
       {/* Frame Style */}
       <div className="flex items-center justify-between">
         <div>
@@ -77,6 +101,36 @@ export function BrochureStyleEditor({ branding, onChange }: BrochureStyleEditorP
         <Switch
           checked={opts.imageBorder}
           onCheckedChange={(checked) => update({ imageBorder: checked })}
+        />
+      </div>
+
+      {/* Price Display */}
+      <div className="pt-2 border-t border-border/50">
+        <Label className="text-xs font-medium text-muted-foreground">Price Display</Label>
+        <p className="text-[10px] text-muted-foreground mb-2">
+          Price always shown on front cover. Optionally repeat on inner pages.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-xs font-medium">Inner Page Price</Label>
+          <p className="text-[10px] text-muted-foreground">Price banner on accommodation page</p>
+        </div>
+        <Switch
+          checked={opts.showInnerPrice ?? false}
+          onCheckedChange={(checked) => update({ showInnerPrice: checked })}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-xs font-medium">Back Cover Price</Label>
+          <p className="text-[10px] text-muted-foreground">Price echo on back cover</p>
+        </div>
+        <Switch
+          checked={opts.showBackCoverPrice ?? false}
+          onCheckedChange={(checked) => update({ showBackCoverPrice: checked })}
         />
       </div>
     </div>

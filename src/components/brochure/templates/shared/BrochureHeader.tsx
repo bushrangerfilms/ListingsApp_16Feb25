@@ -1,5 +1,6 @@
 import { View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import type { BrochureBranding } from '@/lib/brochure/types';
+import type { LayoutDimensions } from '@/lib/brochure/designTokens';
 import {
   SPACING,
   COLORS,
@@ -13,13 +14,16 @@ interface BrochureHeaderProps {
   branding: BrochureBranding;
   compact?: boolean;
   margins?: { paddingLeft: number; paddingRight: number };
+  dims?: LayoutDimensions;
 }
 
-export function BrochureHeader({ branding, compact = false, margins }: BrochureHeaderProps) {
+export function BrochureHeader({ branding, compact = false, margins, dims }: BrochureHeaderProps) {
   const accentColor = branding.secondaryColor || '#c53030';
   const frameStyle = branding.styleOptions?.frameStyle || 'classic';
   const pl = margins?.paddingLeft ?? 30;
   const pr = margins?.paddingRight ?? 30;
+  const logoW = dims?.logoMaxWidth ?? 100;
+  const logoH = dims?.logoMaxHeight ?? 50;
 
   return (
     <View>
@@ -60,7 +64,7 @@ export function BrochureHeader({ branding, compact = false, margins }: BrochureH
         {branding.logoUrl && (
           <Image
             src={branding.logoUrl}
-            style={{ maxWidth: 100, maxHeight: 50, objectFit: 'contain' }}
+            style={{ maxWidth: logoW, maxHeight: logoH, objectFit: 'contain' }}
           />
         )}
       </View>

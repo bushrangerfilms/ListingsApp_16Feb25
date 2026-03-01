@@ -12,7 +12,10 @@ interface BrochureLivePreviewProps {
 
 export function BrochureLivePreview({ content, branding, templateId = 'classic-1' }: BrochureLivePreviewProps) {
   const template = getTemplate(templateId);
-  const TemplateComponent = template.component;
+  const pageFormat = branding.styleOptions?.pageFormat || 'a4';
+  const TemplateComponent = pageFormat === 'a5'
+    ? (template.a5ReaderComponent || template.component)
+    : template.component;
 
   // Debounce the content to avoid excessive re-renders of the PDF
   const [debouncedContent, setDebouncedContent] = useState(content);
