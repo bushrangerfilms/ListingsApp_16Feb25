@@ -2,6 +2,7 @@ import { View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import type { BrochureRoom } from '@/lib/brochure/types';
 
 const styles = StyleSheet.create({
+  // ── Standard (non-compact) ──
   roomRow: {
     flexDirection: 'row',
     marginBottom: 8,
@@ -55,13 +56,99 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     marginLeft: 0,
   },
+  // ── Compact ──
+  roomRowCompact: {
+    flexDirection: 'row',
+    marginBottom: 5,
+  },
+  roomPhotoCompact: {
+    width: 80,
+    height: 55,
+    objectFit: 'cover',
+    borderRadius: 2,
+    marginRight: 8,
+  },
+  roomNameCompact: {
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
+    marginBottom: 1,
+  },
+  roomDimensionsCompact: {
+    fontSize: 8,
+    fontFamily: 'Helvetica',
+    color: '#333',
+    marginBottom: 1,
+  },
+  roomDescriptionCompact: {
+    fontSize: 7.5,
+    fontFamily: 'Helvetica',
+    color: '#555',
+    lineHeight: 1.2,
+  },
+  roomRowNoPhotoCompact: {
+    flexDirection: 'row',
+    marginBottom: 3,
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
+  roomNameInlineCompact: {
+    fontSize: 8.5,
+    fontFamily: 'Helvetica-Bold',
+  },
+  roomDimensionsInlineCompact: {
+    fontSize: 8,
+    fontFamily: 'Helvetica',
+    color: '#333',
+  },
+  roomDescriptionFullCompact: {
+    fontSize: 7.5,
+    fontFamily: 'Helvetica',
+    color: '#555',
+    marginBottom: 3,
+  },
 });
 
 interface BrochureRoomBlockProps {
   room: BrochureRoom;
+  compact?: boolean;
+  accentColor?: string;
 }
 
-export function BrochureRoomBlock({ room }: BrochureRoomBlockProps) {
+export function BrochureRoomBlock({ room, compact = false, accentColor }: BrochureRoomBlockProps) {
+  if (compact) {
+    if (room.photoUrl) {
+      return (
+        <View style={styles.roomRowCompact}>
+          <Image src={room.photoUrl} style={styles.roomPhotoCompact} />
+          <View style={styles.roomDetails}>
+            <Text style={styles.roomNameCompact}>{room.name}</Text>
+            {room.dimensions && (
+              <Text style={styles.roomDimensionsCompact}>{room.dimensions}</Text>
+            )}
+            {room.description && (
+              <Text style={styles.roomDescriptionCompact}>{room.description}</Text>
+            )}
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View>
+        <View style={styles.roomRowNoPhotoCompact}>
+          <Text style={styles.roomNameInlineCompact}>{room.name}</Text>
+          {room.dimensions && (
+            <Text style={styles.roomDimensionsInlineCompact}>{room.dimensions}</Text>
+          )}
+        </View>
+        {room.description && (
+          <Text style={styles.roomDescriptionFullCompact}>{room.description}</Text>
+        )}
+      </View>
+    );
+  }
+
+  // Standard (non-compact) layout
   if (room.photoUrl) {
     return (
       <View style={styles.roomRow}>

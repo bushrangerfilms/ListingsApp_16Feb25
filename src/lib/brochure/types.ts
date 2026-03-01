@@ -5,6 +5,7 @@ export interface BrochureCover {
   saleMethod: string;
   heroPhotoUrl: string;
   energyRating?: string;
+  backCoverPhotoUrl?: string;
 }
 
 export interface BrochureDescription {

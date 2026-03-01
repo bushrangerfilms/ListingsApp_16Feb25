@@ -153,7 +153,7 @@ export function BrochureEditPanel({
       {/* Gallery */}
       <div>
         <BrochureSectionHeader
-          title={`Photo Gallery (${content.gallery.length})`}
+          title={`Accent Photos (${content.gallery.length}/4)`}
           isExpanded={expanded.gallery}
           isVisible={isVisible('gallery')}
           onToggleExpand={() => toggleExpand('gallery')}
