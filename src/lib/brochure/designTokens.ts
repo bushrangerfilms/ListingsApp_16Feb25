@@ -22,6 +22,23 @@ export const SPACING = {
   HALF: UNIT / 2,
 } as const;
 
+/** Tighter spacing variant (10-15% reduction for refined vertical rhythm) */
+export const TIGHT = {
+  S1: UNIT * 0.85,   // ~9.6pt (vs 11.34pt)
+  S2: UNIT * 1.7,    // ~19.3pt (vs 22.68pt)
+  HALF: UNIT * 0.42, // ~4.8pt (vs 5.67pt)
+} as const;
+
+/** Price zone spacing — min clearance above/below price elements */
+export const PRICE_ZONE = {
+  /** Space above price: 2× body line height (~27pt) */
+  above: UNIT * 2.4,
+  /** Space below price: 1.5× body line height (~20pt) */
+  below: UNIT * 1.8,
+  /** Min distance from bottom trim (~15mm = ~42pt) */
+  minFromTrim: 42,
+} as const;
+
 // ── Gutter-Aware Margins ───────────────────────────────────────────────
 
 const INNER_GUTTER = 51; // ~18mm (fold side)
@@ -43,7 +60,7 @@ export function getPageMargins(pageNumber: 1 | 2 | 3 | 4) {
 /** Top/bottom padding for content areas */
 export const PAGE_VERTICAL = {
   top: 10,
-  bottom: SPACING.S4, // ~45pt — clearance for absolute footer
+  bottom: SPACING.S2, // ~23pt — standard bottom padding (footer is in-flow)
 } as const;
 
 // ── Typography Scale ───────────────────────────────────────────────────
@@ -127,3 +144,16 @@ export const RULE_WEIGHT = 0.5;
 
 /** Heavier rule weight for section dividers */
 export const RULE_WEIGHT_HEAVY = 0.75;
+
+// ── Text Normalization ────────────────────────────────────────────────
+
+/** Strip soft hyphens, zero-width chars, fix encoding artifacts before PDF rendering */
+export function normalizeText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/\u00AD/g, '')                // soft hyphens
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // zero-width spaces, joiners, BOM
+    .replace(/\u201C/g, '"')               // left curly double quote → straight
+    .replace(/\u201D/g, '"')               // right curly double quote → straight
+    .trim();
+}

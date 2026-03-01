@@ -36,6 +36,12 @@ public/video-thumbnail.png
 attached_assets
 .replit
 
+# Claude Code
+.claude/
+
+# Render pipeline build artifacts
+scripts/.render-bundle.*
+
 # deps & builds
 node_modules
 dist

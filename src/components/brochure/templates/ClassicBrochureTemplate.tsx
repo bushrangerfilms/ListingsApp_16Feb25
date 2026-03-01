@@ -2,6 +2,8 @@ import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/render
 import type { BrochureContent, BrochureBranding } from '@/lib/brochure/types';
 import {
   SPACING,
+  TIGHT,
+  PRICE_ZONE,
   COLORS,
   TYPE,
   HERO_IMAGE_HEIGHT,
@@ -12,6 +14,7 @@ import {
   getImageRadius,
   getImageBorderStyle,
   PAGE_VERTICAL,
+  normalizeText,
 } from '@/lib/brochure/designTokens';
 import { BrochureHeader } from './shared/BrochureHeader';
 import { BrochureFooter } from './shared/BrochureFooter';
@@ -132,8 +135,7 @@ const styles = StyleSheet.create({
     flex: 1,
     ...p1Margins,
     paddingTop: PAGE_VERTICAL.top,
-    paddingBottom: 16,
-    justifyContent: 'space-between',
+    paddingBottom: PRICE_ZONE.minFromTrim,
   },
   coverTextBlock: {
     alignItems: 'center',
@@ -172,9 +174,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: 6,
-    paddingBottom: 8,
-    marginTop: 'auto',
+    marginTop: PRICE_ZONE.above,
+    paddingTop: TIGHT.HALF,
+    paddingBottom: TIGHT.HALF,
   },
   coverPrice: {
     ...TYPE.coverPrice,
@@ -221,8 +223,8 @@ const styles = StyleSheet.create({
   /* ── Photo pair (2 side-by-side on Page 3) ── */
   photoPair: {
     flexDirection: 'row',
-    marginTop: SPACING.HALF,
-    marginBottom: SPACING.HALF,
+    marginTop: TIGHT.HALF,
+    marginBottom: TIGHT.HALF,
   },
   photoPairSpacer: {
     width: '4%',
@@ -230,8 +232,9 @@ const styles = StyleSheet.create({
 
   /* ── Price banner ── */
   priceBanner: {
-    marginTop: 'auto',
-    paddingVertical: 8,
+    marginTop: PRICE_ZONE.above,
+    paddingVertical: TIGHT.HALF,
+    paddingBottom: PRICE_ZONE.below,
     alignItems: 'center',
   },
   priceBannerText: {
@@ -277,6 +280,8 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
   const styleOptions = branding.styleOptions;
   const imgRadius = getImageRadius(styleOptions);
   const imgBorder = getImageBorderStyle(styleOptions);
+  const showInnerPrice = styleOptions?.showInnerPrice ?? false;
+  const showBackCoverPrice = styleOptions?.showBackCoverPrice ?? false;
   const pageSize = ['en-US', 'en-CA'].includes(branding.locale)
     ? ('LETTER' as const)
     : ('A4' as const);
@@ -359,7 +364,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
             <View style={styles.coverDescriptionBlock}>
               {coverParagraphs.map((paragraph, i) => (
                 <Text key={i} style={styles.coverDescriptionText}>
-                  {paragraph}
+                  {normalizeText(paragraph)}
                 </Text>
               ))}
             </View>
@@ -400,12 +405,12 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
                 Key Features
               </Text>
               {keyFeatures.map((feature, i) => (
-                <BulletItem key={i} text={feature} style="keyFeature" />
+                <BulletItem key={i} text={normalizeText(feature)} style="keyFeature" />
               ))}
             </View>
           )}
 
-          <View style={[styles.separator, { borderBottomColor: accentColor }]} />
+          <View style={[styles.separator, { borderBottomColor: accentColor, marginVertical: TIGHT.HALF }]} />
 
           {/* Accommodation heading */}
           {visible.rooms !== false && page2Rooms.length > 0 && (
@@ -476,7 +481,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
                     Services
                   </Text>
                   {content.features.services.map((service, i) => (
-                    <BulletItem key={i} text={service} />
+                    <BulletItem key={i} text={normalizeText(service)} />
                   ))}
                 </View>
               )}
@@ -486,7 +491,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
                     Features
                   </Text>
                   {content.features.external.map((feature, i) => (
-                    <BulletItem key={i} text={feature} />
+                    <BulletItem key={i} text={normalizeText(feature)} />
                   ))}
                 </View>
               )}
@@ -496,7 +501,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
                     Nearby
                   </Text>
                   {content.features.nearby.map((item, i) => (
-                    <BulletItem key={i} text={item} />
+                    <BulletItem key={i} text={normalizeText(item)} />
                   ))}
                 </View>
               )}
@@ -508,7 +513,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
             <View>
               <SectionTitle title="Location" primaryColor={primaryColor} accentColor={accentColor} ruleWidth="25%" />
               <Text style={{ ...TYPE.location, color: COLORS.textSecondary, textAlign: 'justify' }}>
-                {content.location.text}
+                {normalizeText(content.location.text)}
               </Text>
             </View>
           )}
@@ -529,7 +534,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
                 />
                 {accentPhotos[0].caption && (
                   <Text style={{ ...TYPE.caption, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 }}>
-                    {accentPhotos[0].caption}
+                    {normalizeText(accentPhotos[0].caption)}
                   </Text>
                 )}
               </View>
@@ -547,7 +552,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
                 />
                 {accentPhotos[1].caption && (
                   <Text style={{ ...TYPE.caption, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 }}>
-                    {accentPhotos[1].caption}
+                    {normalizeText(accentPhotos[1].caption)}
                   </Text>
                 )}
               </View>
@@ -568,15 +573,15 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
                 />
                 {accentPhotos[0].caption && (
                   <Text style={{ ...TYPE.caption, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 }}>
-                    {accentPhotos[0].caption}
+                    {normalizeText(accentPhotos[0].caption)}
                   </Text>
                 )}
               </View>
             </View>
           )}
 
-          {/* Guide Price banner — pushed to bottom */}
-          {content.cover.price && (
+          {/* Guide Price banner — shown only if toggled on */}
+          {showInnerPrice && content.cover.price && (
             <View style={styles.priceBanner}>
               <Text style={[styles.priceBannerText, { color: accentColor }]}>
                 Guide Price: {content.cover.price}
@@ -609,7 +614,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
                     src={photo.url}
                     style={{
                       width: '100%',
-                      height: hasFloorPlans ? 90 : 110,
+                      height: hasFloorPlans ? 90 : 180,
                       objectFit: 'cover',
                       borderRadius: imgRadius,
                       ...imgBorder,
@@ -617,7 +622,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
                   />
                   {photo.caption && (
                     <Text style={{ ...TYPE.caption, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 }}>
-                      {photo.caption}
+                      {normalizeText(photo.caption)}
                     </Text>
                   )}
                 </View>
@@ -628,7 +633,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
               src={backCoverPhoto}
               style={{
                 width: '100%',
-                height: hasFloorPlans ? 220 : 280,
+                height: hasFloorPlans ? 220 : 320,
                 objectFit: 'cover',
                 borderRadius: imgRadius,
                 ...imgBorder,
@@ -667,7 +672,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
                     textAlign: 'center',
                     marginTop: 6,
                   }}>
-                    {plan.label}
+                    {normalizeText(plan.label)}
                   </Text>
                 )}
                 <Text style={{
@@ -747,25 +752,26 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
             </View>
           )}
 
-          {/* Price echo on back cover */}
-          {content.cover.price && (
+          {/* Price echo on back cover — shown only if toggled on */}
+          {showBackCoverPrice && content.cover.price && (
             <View style={styles.backPriceBanner}>
               <Text style={[styles.backPriceText, { color: accentColor }]}>
                 Guide Price: {content.cover.price}
               </Text>
             </View>
           )}
-        </View>
 
-        {/* Legal footer */}
-        {visible.legal !== false && (
-          <BrochureFooter
-            branding={branding}
-            legal={content.legal}
-            showContact={false}
-            margins={p4Margins}
-          />
-        )}
+          {/* Legal footer — in document flow */}
+          {visible.legal !== false && (
+            <BrochureFooter
+              branding={branding}
+              legal={content.legal}
+              showContact={false}
+              margins={p4Margins}
+              inFlow
+            />
+          )}
+        </View>
       </Page>
     </Document>
   );

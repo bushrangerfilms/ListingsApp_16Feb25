@@ -75,6 +75,8 @@ export interface BrochureStyleOptions {
   imageCornerRadius: 'rounded' | 'square';
   imageBorder: boolean;
   certificationLogos: CertificationLogo[];
+  showInnerPrice: boolean;
+  showBackCoverPrice: boolean;
 }
 
 export const DEFAULT_STYLE_OPTIONS: BrochureStyleOptions = {
@@ -82,6 +84,8 @@ export const DEFAULT_STYLE_OPTIONS: BrochureStyleOptions = {
   imageCornerRadius: 'rounded',
   imageBorder: true,
   certificationLogos: [],
+  showInnerPrice: false,
+  showBackCoverPrice: false,
 };
 
 export interface BrochureBranding {

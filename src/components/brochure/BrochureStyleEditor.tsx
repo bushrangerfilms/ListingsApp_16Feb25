@@ -79,6 +79,36 @@ export function BrochureStyleEditor({ branding, onChange }: BrochureStyleEditorP
           onCheckedChange={(checked) => update({ imageBorder: checked })}
         />
       </div>
+
+      {/* Price Display */}
+      <div className="pt-2 border-t border-border/50">
+        <Label className="text-xs font-medium text-muted-foreground">Price Display</Label>
+        <p className="text-[10px] text-muted-foreground mb-2">
+          Price always shown on front cover. Optionally repeat on inner pages.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-xs font-medium">Inner Page Price</Label>
+          <p className="text-[10px] text-muted-foreground">Price banner on accommodation page</p>
+        </div>
+        <Switch
+          checked={opts.showInnerPrice ?? false}
+          onCheckedChange={(checked) => update({ showInnerPrice: checked })}
+        />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-xs font-medium">Back Cover Price</Label>
+          <p className="text-[10px] text-muted-foreground">Price echo on back cover</p>
+        </div>
+        <Switch
+          checked={opts.showBackCoverPrice ?? false}
+          onCheckedChange={(checked) => update({ showBackCoverPrice: checked })}
+        />
+      </div>
     </div>
   );
 }
