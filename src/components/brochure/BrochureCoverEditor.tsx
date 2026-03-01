@@ -76,7 +76,7 @@ export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEd
         </Select>
       </div>
       <div>
-        <Label className="text-xs">Hero Photo</Label>
+        <Label className="text-xs">Hero Photo (Front Cover)</Label>
         <div className="flex gap-2 flex-wrap mt-1">
           {photos.slice(0, 8).map((photo, i) => (
             <button
@@ -85,6 +85,35 @@ export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEd
               onClick={() => update('heroPhotoUrl', photo)}
               className={`w-16 h-12 rounded border-2 overflow-hidden ${
                 cover.heroPhotoUrl === photo ? 'border-primary' : 'border-transparent'
+              }`}
+            >
+              <img src={photo} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Back Cover Photo (Page 4)</Label>
+        <p className="text-[10px] text-muted-foreground mb-1">
+          Large feature photo for the back page. Defaults to a gallery photo if not set.
+        </p>
+        <div className="flex gap-2 flex-wrap mt-1">
+          <button
+            type="button"
+            onClick={() => update('backCoverPhotoUrl', '')}
+            className={`w-16 h-12 rounded border-2 flex items-center justify-center text-[10px] text-muted-foreground ${
+              !cover.backCoverPhotoUrl ? 'border-primary bg-muted' : 'border-muted'
+            }`}
+          >
+            Auto
+          </button>
+          {photos.slice(0, 8).map((photo, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => update('backCoverPhotoUrl', photo)}
+              className={`w-16 h-12 rounded border-2 overflow-hidden ${
+                cover.backCoverPhotoUrl === photo ? 'border-primary' : 'border-transparent'
               }`}
             >
               <img src={photo} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />

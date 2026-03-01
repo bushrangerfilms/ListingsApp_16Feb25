@@ -11,6 +11,7 @@ interface BrochureDescriptionEditorProps {
 }
 
 export function BrochureDescriptionEditor({ description, onChange }: BrochureDescriptionEditorProps) {
+  const wordCount = description.marketingText.trim().split(/\s+/).filter(Boolean).length;
   const addFeature = () => {
     onChange({
       ...description,
@@ -34,13 +35,21 @@ export function BrochureDescriptionEditor({ description, onChange }: BrochureDes
   return (
     <div className="space-y-3 p-3">
       <div>
-        <Label className="text-xs">Marketing Description</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Marketing Description</Label>
+          <span className={`text-[10px] ${wordCount > 160 ? 'text-destructive' : 'text-muted-foreground'}`}>
+            {wordCount} words {wordCount > 160 ? '(may overflow cover)' : ''}
+          </span>
+        </div>
         <Textarea
           value={description.marketingText}
           onChange={(e) => onChange({ ...description, marketingText: e.target.value })}
           placeholder="Property marketing description..."
           className="min-h-[120px] text-sm"
         />
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          ~120-150 words / 2 paragraphs recommended for cover page fit
+        </p>
       </div>
       <div>
         <div className="flex items-center justify-between mb-1">

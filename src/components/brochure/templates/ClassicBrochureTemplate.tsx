@@ -5,6 +5,53 @@ import { BrochureFooter } from './shared/BrochureFooter';
 import { BrochureRoomBlock } from './shared/BrochureRoomBlock';
 import { BrochurePhotoGrid } from './shared/BrochurePhotoGrid';
 
+// ── Helpers ──────────────────────────────────────────────────────────────
+
+function getBerLabel(locale: string): string {
+  switch (locale) {
+    case 'en-GB': return 'EPC';
+    case 'en-US': return 'HERS';
+    case 'en-AU': return 'NatHERS';
+    case 'en-CA': return 'EnerGuide';
+    default: return 'BER';
+  }
+}
+
+/** Split rooms into ground-floor and upper-floor groups */
+function splitRoomsByFloor(rooms: BrochureContent['rooms']) {
+  const ground = rooms.filter(
+    (r) =>
+      r.floor?.toLowerCase().includes('ground') ||
+      r.floor?.toLowerCase().includes('main'),
+  );
+  const upper = rooms.filter((r) => !ground.includes(r));
+
+  // Fallback: if everything ended up in one bucket, split roughly in half
+  if (upper.length === 0 && ground.length > 5) {
+    const mid = Math.ceil(ground.length / 2);
+    return { page2Rooms: ground.slice(0, mid), page3Rooms: ground.slice(mid) };
+  }
+  if (ground.length === 0 && upper.length > 5) {
+    const mid = Math.ceil(upper.length / 2);
+    return { page2Rooms: upper.slice(0, mid), page3Rooms: upper.slice(mid) };
+  }
+
+  return { page2Rooms: ground, page3Rooms: upper };
+}
+
+/** Group rooms by floor label for rendering headings */
+function groupByFloor(rooms: BrochureContent['rooms']) {
+  const groups: Record<string, typeof rooms> = {};
+  for (const room of rooms) {
+    const floor = room.floor || 'Other';
+    if (!groups[floor]) groups[floor] = [];
+    groups[floor].push(room);
+  }
+  return groups;
+}
+
+// ── Styles ───────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   page: {
     fontFamily: 'Helvetica',
@@ -12,44 +59,60 @@ const styles = StyleSheet.create({
     color: '#222',
     backgroundColor: '#fff',
   },
-  // ── Cover Page ──
+
+  /* ── Page 1: Cover ── */
   coverContent: {
     flex: 1,
     paddingHorizontal: 30,
-    paddingTop: 15,
+    paddingTop: 12,
+    paddingBottom: 16,
     justifyContent: 'space-between',
   },
   heroImage: {
     width: '100%',
-    height: 350,
+    height: 280,
     objectFit: 'cover',
     borderRadius: 3,
   },
   coverTextBlock: {
     alignItems: 'center',
-    paddingVertical: 15,
+    paddingTop: 10,
+    paddingBottom: 4,
   },
   coverAddress: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
     lineHeight: 1.2,
   },
   coverSaleMethod: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 4,
+  },
+  coverDescriptionBlock: {
+    paddingHorizontal: 6,
+    marginTop: 6,
+  },
+  coverDescriptionText: {
+    fontSize: 8.5,
+    fontFamily: 'Helvetica',
+    lineHeight: 1.45,
+    color: '#333',
+    textAlign: 'justify',
+    marginBottom: 4,
   },
   coverBottomRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 20,
+    paddingTop: 6,
+    paddingBottom: 8,
   },
   coverPrice: {
-    fontSize: 26,
+    fontSize: 24,
     fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
   },
@@ -60,92 +123,140 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderWidth: 1.5,
     borderRadius: 3,
-    borderColor: '#4a7c59',
-    color: '#4a7c59',
-    marginLeft: 20,
+    marginLeft: 18,
   },
-  // ── Content Pages ──
+
+  /* ── Pages 2–3: Content ── */
   contentBody: {
     paddingHorizontal: 30,
-    paddingTop: 12,
+    paddingTop: 10,
     paddingBottom: 50,
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: 'Helvetica-Bold',
-    marginBottom: 8,
-    marginTop: 14,
+    marginBottom: 6,
+    marginTop: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   sectionTitleAccent: {
-    fontSize: 13,
-    fontFamily: 'Helvetica-Bold',
-    marginBottom: 8,
-    marginTop: 14,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    textDecoration: 'underline',
-  },
-  descriptionText: {
-    fontSize: 9,
-    fontFamily: 'Helvetica',
-    lineHeight: 1.6,
-    color: '#333',
-    marginBottom: 8,
-    textAlign: 'justify',
-  },
-  floorHeading: {
     fontSize: 11,
     fontFamily: 'Helvetica-Bold',
     marginBottom: 6,
-    marginTop: 10,
-    textDecoration: 'underline',
-    color: '#c53030',
+    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  // ── Features ──
+  floorHeading: {
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    marginBottom: 5,
+    marginTop: 8,
+    textDecoration: 'underline',
+  },
+  separator: {
+    borderBottomWidth: 0.5,
+    marginVertical: 8,
+  },
+
+  /* ── Features (compact 2-col) ── */
   featureColumns: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 6,
   },
   featureColumn: {
     flex: 1,
-    marginRight: 15,
+    marginRight: 12,
   },
   featureTitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: 'Helvetica-Bold',
-    marginBottom: 4,
+    marginBottom: 3,
     textTransform: 'uppercase',
   },
   bulletItem: {
-    fontSize: 8.5,
+    fontSize: 7.5,
     fontFamily: 'Helvetica',
     color: '#444',
-    marginBottom: 2.5,
-    paddingLeft: 8,
+    marginBottom: 2,
+    paddingLeft: 6,
   },
   keyFeatureItem: {
-    fontSize: 9,
+    fontSize: 8,
     fontFamily: 'Helvetica',
     color: '#333',
-    marginBottom: 3,
-    paddingLeft: 10,
+    marginBottom: 2,
+    paddingLeft: 8,
   },
-  // ── Location ──
+
+  /* ── Location ── */
   locationText: {
-    fontSize: 9,
+    fontSize: 8.5,
     fontFamily: 'Helvetica',
-    lineHeight: 1.5,
+    lineHeight: 1.35,
     color: '#333',
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'justify',
   },
-  // ── Floor Plans ──
+
+  /* ── Photo pair (2 side-by-side on Page 3) ── */
+  photoPair: {
+    flexDirection: 'row',
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  photoPairImage: {
+    width: '48%',
+    height: 95,
+    objectFit: 'cover',
+    borderRadius: 2,
+  },
+  photoPairSpacer: {
+    width: '4%',
+  },
+
+  /* ── Price banner ── */
+  priceBanner: {
+    marginTop: 'auto',
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  priceBannerText: {
+    fontSize: 26,
+    fontFamily: 'Helvetica-Bold',
+    textAlign: 'center',
+  },
+
+  /* ── Page 4: Back Cover ── */
+  accentBand: {
+    height: 6,
+    width: '100%',
+  },
+  backCoverBody: {
+    flex: 1,
+    paddingHorizontal: 30,
+    paddingTop: 12,
+    paddingBottom: 50,
+  },
+  backCoverPhoto: {
+    width: '100%',
+    height: 220,
+    objectFit: 'cover',
+    borderRadius: 3,
+    marginBottom: 10,
+  },
+  backCoverPhotoLarge: {
+    width: '100%',
+    height: 320,
+    objectFit: 'cover',
+    borderRadius: 3,
+    marginBottom: 10,
+  },
   floorPlanImage: {
     width: '100%',
-    maxHeight: 280,
+    maxHeight: 260,
     objectFit: 'contain',
     marginBottom: 4,
   },
@@ -153,7 +264,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
     textTransform: 'uppercase',
   },
   floorPlanNote: {
@@ -163,34 +274,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
-  separator: {
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#ccc',
-    marginVertical: 10,
-  },
-  // ── Room grid (2 columns for rooms with photos) ──
-  roomGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  roomGridItem: {
-    width: '48%',
-    marginBottom: 8,
-    marginRight: '2%',
-  },
-  // ── Price banner (last page) ──
-  priceBanner: {
-    marginTop: 'auto',
-    marginBottom: 20,
-    paddingVertical: 12,
+  backPriceBanner: {
+    paddingVertical: 8,
     alignItems: 'center',
+    marginTop: 'auto',
   },
-  priceBannerText: {
-    fontSize: 28,
+  backPriceText: {
+    fontSize: 22,
     fontFamily: 'Helvetica-Bold',
     textAlign: 'center',
   },
 });
+
+// ── Component ────────────────────────────────────────────────────────────
 
 interface ClassicBrochureTemplateProps {
   content: BrochureContent;
@@ -201,24 +297,46 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
   const visible = content.visibleSections || {};
   const accentColor = branding.secondaryColor || '#c53030';
   const primaryColor = branding.primaryColor || '#1a365d';
-  const pageSize = ['en-US', 'en-CA'].includes(branding.locale) ? 'LETTER' as const : 'A4' as const;
+  const pageSize = ['en-US', 'en-CA'].includes(branding.locale)
+    ? ('LETTER' as const)
+    : ('A4' as const);
 
-  // Group rooms by floor
-  const roomsByFloor: Record<string, typeof content.rooms> = {};
-  for (const room of content.rooms) {
-    const floor = room.floor || 'Other';
-    if (!roomsByFloor[floor]) roomsByFloor[floor] = [];
-    roomsByFloor[floor].push(room);
-  }
+  // Split description into paragraphs — cap at 2 for cover fit
+  const allParagraphs = content.description.marketingText
+    .split('\n')
+    .filter((p) => p.trim());
+  const coverParagraphs = allParagraphs.slice(0, 2);
 
-  // Split description into paragraphs
-  const descParagraphs = content.description.marketingText.split('\n').filter(p => p.trim());
+  // Key features — cap at 6
+  const keyFeatures = content.description.keyFeatures.slice(0, 6);
+
+  // Room splitting
+  const { page2Rooms, page3Rooms } = splitRoomsByFloor(content.rooms);
+  const page2Groups = groupByFloor(page2Rooms);
+  const page3Groups = groupByFloor(page3Rooms);
+
+  // Gallery photos for Page 3 accent pair (pick first 2 gallery items)
+  const accentPhotos = content.gallery.slice(0, 2);
+
+  // Back cover photo: explicit backCoverPhotoUrl, or 3rd gallery item, or hero
+  const backCoverPhoto =
+    content.cover.backCoverPhotoUrl ||
+    content.gallery[2]?.url ||
+    content.gallery[0]?.url ||
+    content.cover.heroPhotoUrl;
+
+  // Whether we have floor plans
+  const hasFloorPlans =
+    visible.floorPlans !== false && content.floorPlans.length > 0;
 
   return (
     <Document title={content.cover.headline} author={branding.businessName}>
-      {/* ═══ PAGE 1: COVER ═══ */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          PAGE 1 — FRONT COVER
+          ═══════════════════════════════════════════════════════════════════ */}
       <Page size={pageSize} style={styles.page}>
         <BrochureHeader branding={branding} />
+
         <View style={styles.coverContent}>
           {/* Hero Image */}
           {content.cover.heroPhotoUrl && (
@@ -233,6 +351,17 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
             </Text>
           </View>
 
+          {/* Marketing Description on cover */}
+          {visible.description !== false && coverParagraphs.length > 0 && (
+            <View style={styles.coverDescriptionBlock}>
+              {coverParagraphs.map((paragraph, i) => (
+                <Text key={i} style={styles.coverDescriptionText}>
+                  {paragraph}
+                </Text>
+              ))}
+            </View>
+          )}
+
           {/* Price + BER */}
           <View style={styles.coverBottomRow}>
             {content.cover.price && (
@@ -241,7 +370,12 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
               </Text>
             )}
             {content.cover.energyRating && (
-              <Text style={styles.berBadge}>
+              <Text
+                style={[
+                  styles.berBadge,
+                  { borderColor: accentColor, color: accentColor },
+                ]}
+              >
                 {getBerLabel(branding.locale)} {content.cover.energyRating}
               </Text>
             )}
@@ -249,154 +383,215 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
         </View>
       </Page>
 
-      {/* ═══ PAGE 2+: DESCRIPTION + ROOMS (auto-wrapping) ═══ */}
-      <Page size={pageSize} style={styles.page} wrap>
+      {/* ═══════════════════════════════════════════════════════════════════
+          PAGE 2 — ACCOMMODATION (Ground Floor)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <Page size={pageSize} style={styles.page}>
         <BrochureHeader branding={branding} compact />
+
         <View style={styles.contentBody}>
-          {/* Full Description */}
-          {visible.description !== false && (
-            <View>
-              {descParagraphs.map((paragraph, i) => (
-                <Text key={i} style={styles.descriptionText}>{paragraph}</Text>
+          {/* Key Features (moved here from old description page) */}
+          {visible.description !== false && keyFeatures.length > 0 && (
+            <View style={{ marginBottom: 6 }}>
+              <Text style={[styles.featureTitle, { color: primaryColor }]}>
+                Key Features
+              </Text>
+              {keyFeatures.map((feature, i) => (
+                <Text key={i} style={styles.keyFeatureItem}>
+                  • {feature}
+                </Text>
               ))}
-
-              {/* Key Features */}
-              {content.description.keyFeatures.length > 0 && (
-                <View style={{ marginTop: 6, marginBottom: 8 }}>
-                  <Text style={styles.featureTitle}>Key Features</Text>
-                  {content.description.keyFeatures.map((feature, i) => (
-                    <Text key={i} style={styles.keyFeatureItem}>• {feature}</Text>
-                  ))}
-                </View>
-              )}
             </View>
           )}
 
-          <View style={styles.separator} />
+          <View style={[styles.separator, { borderBottomColor: accentColor }]} />
 
-          {/* Accommodation (rooms by floor) */}
-          {visible.rooms !== false && content.rooms.length > 0 && (
+          {/* Accommodation heading */}
+          {visible.rooms !== false && page2Rooms.length > 0 && (
             <View>
-              <Text style={styles.sectionTitleAccent}>Accommodation Comprises Of The Following</Text>
-              {Object.entries(roomsByFloor).map(([floor, rooms]) => (
-                <View key={floor} wrap={false}>
-                  <Text style={[styles.floorHeading, { color: accentColor }]}>{floor}</Text>
+              <Text
+                style={[
+                  styles.sectionTitleAccent,
+                  { color: primaryColor, textDecoration: 'underline', textDecorationColor: accentColor },
+                ]}
+              >
+                Accommodation Comprises Of The Following
+              </Text>
+
+              {Object.entries(page2Groups).map(([floor, rooms]) => (
+                <View key={floor}>
+                  <Text style={[styles.floorHeading, { color: accentColor }]}>
+                    {floor}
+                  </Text>
                   {rooms.map((room) => (
-                    <BrochureRoomBlock key={room.id} room={room} />
+                    <BrochureRoomBlock
+                      key={room.id}
+                      room={room}
+                      compact
+                      accentColor={accentColor}
+                    />
                   ))}
                 </View>
               ))}
-            </View>
-          )}
-
-          <View style={styles.separator} />
-
-          {/* Features */}
-          {visible.features !== false && (
-            <View wrap={false}>
-              <View style={styles.featureColumns}>
-                {content.features.services.length > 0 && (
-                  <View style={styles.featureColumn}>
-                    <Text style={styles.featureTitle}>Services</Text>
-                    {content.features.services.map((service, i) => (
-                      <Text key={i} style={styles.bulletItem}>• {service}</Text>
-                    ))}
-                  </View>
-                )}
-                {content.features.external.length > 0 && (
-                  <View style={styles.featureColumn}>
-                    <Text style={styles.featureTitle}>Features</Text>
-                    {content.features.external.map((feature, i) => (
-                      <Text key={i} style={styles.bulletItem}>• {feature}</Text>
-                    ))}
-                  </View>
-                )}
-              </View>
-              {content.features.nearby.length > 0 && (
-                <View style={{ marginBottom: 10 }}>
-                  <Text style={styles.featureTitle}>Nearby</Text>
-                  {content.features.nearby.map((item, i) => (
-                    <Text key={i} style={styles.bulletItem}>• {item}</Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-
-          <View style={styles.separator} />
-
-          {/* Location */}
-          {visible.location !== false && (
-            <View wrap={false}>
-              <Text style={styles.sectionTitle}>Location</Text>
-              <Text style={styles.locationText}>{content.location.text}</Text>
-              {content.location.amenities.length > 0 && (
-                <View>
-                  {content.location.amenities.map((amenity, i) => (
-                    <Text key={i} style={styles.bulletItem}>• {amenity}</Text>
-                  ))}
-                </View>
-              )}
             </View>
           )}
         </View>
       </Page>
 
-      {/* ═══ GALLERY + FLOOR PLANS + PRICE + LEGAL ═══ */}
-      {(
-        (visible.gallery !== false && content.gallery.length > 0) ||
-        (visible.floorPlans !== false && content.floorPlans.length > 0) ||
-        content.cover.price
-      ) && (
-        <Page size={pageSize} style={styles.page}>
-          <BrochureHeader branding={branding} compact />
-          <View style={styles.contentBody}>
-            {/* Gallery */}
-            {visible.gallery !== false && content.gallery.length > 0 && (
-              <View style={{ marginBottom: 12 }}>
-                <BrochurePhotoGrid photos={content.gallery} columns={2} />
+      {/* ═══════════════════════════════════════════════════════════════════
+          PAGE 3 — UPPER FLOOR + FEATURES + LOCATION + PRICE
+          ═══════════════════════════════════════════════════════════════════ */}
+      <Page size={pageSize} style={styles.page}>
+        <BrochureHeader branding={branding} compact />
+
+        <View style={styles.contentBody}>
+          {/* Remaining rooms */}
+          {visible.rooms !== false && page3Rooms.length > 0 && (
+            <View>
+              {Object.entries(page3Groups).map(([floor, rooms]) => (
+                <View key={floor}>
+                  <Text style={[styles.floorHeading, { color: accentColor }]}>
+                    {floor}
+                  </Text>
+                  {rooms.map((room) => (
+                    <BrochureRoomBlock
+                      key={room.id}
+                      room={room}
+                      compact
+                      accentColor={accentColor}
+                    />
+                  ))}
+                </View>
+              ))}
+            </View>
+          )}
+
+          <View style={[styles.separator, { borderBottomColor: accentColor }]} />
+
+          {/* Features: Services | External (2-column) */}
+          {visible.features !== false && (
+            <View style={styles.featureColumns}>
+              {content.features.services.length > 0 && (
+                <View style={styles.featureColumn}>
+                  <Text style={[styles.featureTitle, { color: primaryColor }]}>
+                    Services
+                  </Text>
+                  {content.features.services.map((service, i) => (
+                    <Text key={i} style={styles.bulletItem}>
+                      • {service}
+                    </Text>
+                  ))}
+                </View>
+              )}
+              {content.features.external.length > 0 && (
+                <View style={styles.featureColumn}>
+                  <Text style={[styles.featureTitle, { color: primaryColor }]}>
+                    Features
+                  </Text>
+                  {content.features.external.map((feature, i) => (
+                    <Text key={i} style={styles.bulletItem}>
+                      • {feature}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Location */}
+          {visible.location !== false && (
+            <View>
+              <Text style={[styles.sectionTitle, { color: primaryColor }]}>
+                Location
+              </Text>
+              <Text style={styles.locationText}>{content.location.text}</Text>
+            </View>
+          )}
+
+          {/* Two accent photos side-by-side */}
+          {visible.gallery !== false && accentPhotos.length >= 2 && (
+            <View style={styles.photoPair}>
+              <Image
+                src={accentPhotos[0].url}
+                style={styles.photoPairImage}
+              />
+              <View style={styles.photoPairSpacer} />
+              <Image
+                src={accentPhotos[1].url}
+                style={styles.photoPairImage}
+              />
+            </View>
+          )}
+          {visible.gallery !== false &&
+            accentPhotos.length === 1 && (
+              <View style={styles.photoPair}>
+                <Image
+                  src={accentPhotos[0].url}
+                  style={[styles.photoPairImage, { width: '100%' }]}
+                />
               </View>
             )}
 
-            {/* Floor Plans */}
-            {visible.floorPlans !== false && content.floorPlans.length > 0 && (
-              <View>
-                {content.floorPlans.map((plan) => (
-                  <View key={plan.id} wrap={false}>
-                    <Image src={plan.imageUrl} style={styles.floorPlanImage} />
-                    <Text style={styles.floorPlanLabel}>{plan.label}</Text>
-                    <Text style={styles.floorPlanNote}>For illustration purposes only. Not to scale.</Text>
-                  </View>
-                ))}
-              </View>
-            )}
+          {/* Guide Price banner — pushed to bottom */}
+          {content.cover.price && (
+            <View style={styles.priceBanner}>
+              <Text style={[styles.priceBannerText, { color: accentColor }]}>
+                Guide Price: {content.cover.price}
+              </Text>
+            </View>
+          )}
+        </View>
+      </Page>
 
-            {/* Guide Price (prominent) */}
-            {content.cover.price && (
-              <View style={styles.priceBanner}>
-                <Text style={[styles.priceBannerText, { color: accentColor }]}>
-                  Guide Price: {content.cover.price}
+      {/* ═══════════════════════════════════════════════════════════════════
+          PAGE 4 — BACK COVER
+          ═══════════════════════════════════════════════════════════════════ */}
+      <Page size={pageSize} style={styles.page}>
+        {/* Accent colour band */}
+        <View style={[styles.accentBand, { backgroundColor: accentColor }]} />
+
+        <View style={styles.backCoverBody}>
+          {/* Large feature photo */}
+          {backCoverPhoto && (
+            <Image
+              src={backCoverPhoto}
+              style={hasFloorPlans ? styles.backCoverPhoto : styles.backCoverPhotoLarge}
+            />
+          )}
+
+          {/* Floor Plans */}
+          {hasFloorPlans &&
+            content.floorPlans.map((plan) => (
+              <View key={plan.id}>
+                <Image src={plan.imageUrl} style={styles.floorPlanImage} />
+                {plan.label && (
+                  <Text style={styles.floorPlanLabel}>{plan.label}</Text>
+                )}
+                <Text style={styles.floorPlanNote}>
+                  For illustration purposes only. Not to scale.
                 </Text>
               </View>
-            )}
-          </View>
+            ))}
 
-          {/* Legal footer */}
-          {visible.legal !== false && (
-            <BrochureFooter branding={branding} legal={content.legal} showContact />
+          {/* Price echo on back cover */}
+          {content.cover.price && (
+            <View style={styles.backPriceBanner}>
+              <Text style={[styles.backPriceText, { color: accentColor }]}>
+                Guide Price: {content.cover.price}
+              </Text>
+            </View>
           )}
-        </Page>
-      )}
+        </View>
+
+        {/* Legal footer */}
+        {visible.legal !== false && (
+          <BrochureFooter
+            branding={branding}
+            legal={content.legal}
+            showContact
+          />
+        )}
+      </Page>
     </Document>
   );
-}
-
-function getBerLabel(locale: string): string {
-  switch (locale) {
-    case 'en-GB': return 'EPC';
-    case 'en-US': return 'HERS';
-    case 'en-AU': return 'NatHERS';
-    case 'en-CA': return 'EnerGuide';
-    default: return 'BER';
-  }
 }

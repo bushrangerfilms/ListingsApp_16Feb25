@@ -180,25 +180,31 @@ HERO PHOTO: ${listing.hero_photo || (photos.length > 0 ? photos[0] : '')}
 AVAILABLE PHOTOS (${photos.length} total):
 ${photoList || '  No photos available'}
 
-INSTRUCTIONS:
-1. Generate a compelling marketing description (2-3 paragraphs) that enhances the original description. Keep it professional, factual, and enticing.
+IMPORTANT LAYOUT CONSTRAINT: This content must fit in a strict 4-page A4 brochure (A5 booklet format).
+Page 1 = cover with hero photo, address, description, and price.
+Pages 2-3 = room details, features, location.
+Page 4 = back cover photo, floor plans, legal.
+All text MUST be concise — do NOT be verbose.
 
-2. Extract key features as a bullet list (6-10 items). Focus on standout selling points.
+INSTRUCTIONS:
+1. Generate a compelling marketing description in EXACTLY 2 short paragraphs (3-4 sentences each). This goes on the cover page below the hero photo, so keep it concise. Enhance the original description professionally.
+
+2. Extract key features as a bullet list (4-6 items max). Keep each feature under 8 words. Focus on standout selling points.
 
 3. Parse the specs/description text into individual rooms. For each room, extract:
    - Room name (e.g., "Living Room", "Master Bedroom", "Kitchen/Dining")
    - Floor level ("${localeConfig.terminology.groundFloor}", "${localeConfig.terminology.firstFloor}", "Basement", etc.)
    - Dimensions if mentioned (format: imperial with metric in parentheses for Irish, or as appropriate for locale)
-   - A brief 1-sentence description of the room
+   - A very brief description (max 10 words, e.g., "Laminate flooring, recessed lighting, feature fireplace")
    If no specs are provided, generate reasonable room placeholders based on the bedroom/bathroom count and building type.
 
-4. Generate a services list (heating type, water, sewerage, broadband, etc.) based on any mentions in the description/specs.
+4. Generate a services list (heating type, water, sewerage, broadband, etc.) based on any mentions in the description/specs. Keep to 3-5 items.
 
-5. Generate an external features list (garden, parking, views, etc.) from the description.
+5. Generate an external features list (garden, parking, views, etc.) from the description. Keep to 3-5 items.
 
-6. Write a location description paragraph about ${listing.address_town || 'the area'}, ${listing.county || ''}, ${localeConfig.country}. Mention proximity to amenities, transport, schools, etc.
+6. Write a location description in EXACTLY 2 sentences about ${listing.address_town || 'the area'}, ${listing.county || ''}, ${localeConfig.country}. Mention the town and 2-3 key nearby amenities.
 
-7. For the gallery, select up to 8 of the best photos from the available photos list. Assign brief captions.
+7. For the gallery, select up to 4 of the best photos from the available photos list. These are used as accent photos throughout the brochure. Assign brief captions.
 
 8. Determine the sale method based on the Category field above. If "For Sale", use "For Sale by Private Treaty" unless the description mentions auction. If "To Let" or "Holiday Let", use "To Let". Do NOT use the listing's status (New/Published/Sold/Sale Agreed) as the sale method — always use the appropriate sale method phrase.
 ${customInstructions}
@@ -214,8 +220,8 @@ RESPOND WITH ONLY VALID JSON matching this exact structure (no markdown, no code
     "energyRating": "string or null - e.g. 'B3' or null if not provided"
   },
   "description": {
-    "marketingText": "string - 2-3 paragraph marketing description",
-    "keyFeatures": ["string array - 6-10 key selling points"]
+    "marketingText": "string - exactly 2 short paragraphs separated by newline",
+    "keyFeatures": ["string array - 4-6 concise selling points (under 8 words each)"]
   },
   "rooms": [
     {
@@ -223,7 +229,7 @@ RESPOND WITH ONLY VALID JSON matching this exact structure (no markdown, no code
       "name": "string - room name",
       "floor": "string - floor level",
       "dimensions": "string or null - e.g. \"15'5 x 9'4 (4.7m x 2.9m)\"",
-      "description": "string or null - brief description",
+      "description": "string or null - max 10 words",
       "photoUrl": "string or null - best matching photo URL from available photos"
     }
   ],
@@ -233,8 +239,8 @@ RESPOND WITH ONLY VALID JSON matching this exact structure (no markdown, no code
     "nearby": ["string array - nearby amenities/points of interest"]
   },
   "location": {
-    "text": "string - location description paragraph",
-    "amenities": ["string array - notable nearby amenities"]
+    "text": "string - exactly 2 sentences about the location",
+    "amenities": []
   },
   "floorPlans": [],
   "gallery": [
