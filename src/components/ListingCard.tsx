@@ -189,10 +189,10 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
             <Button
               variant="outline"
               size="sm"
-              className="w-full"
+              className="w-full border-orange-400 text-orange-600 hover:bg-orange-50"
               onClick={() => onBrochure?.(listing.id)}
             >
-              <FileText className="h-4 w-4 mr-1" />Brochure
+              <FileText className="h-4 w-4 mr-1" />Brochure - Under Construction
             </Button>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1" onClick={() => onArchive?.(listing.id, listing.archived || false)}>

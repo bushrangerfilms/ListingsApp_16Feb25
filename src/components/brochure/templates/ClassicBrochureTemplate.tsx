@@ -9,6 +9,7 @@ import {
   ACCENT_STRIP_HEIGHT,
   RULE_WEIGHT,
   RULE_WEIGHT_HEAVY,
+  CONTENT_CAPS,
   getPageMargins,
   getImageRadius,
   getImageBorderStyle,
@@ -52,6 +53,11 @@ export interface PageRenderContext {
   hasNearby: boolean;
   hasServices: boolean;
   hasExternal: boolean;
+  // Capped content for strict 4-page layout
+  cappedServices: string[];
+  cappedExternal: string[];
+  cappedNearby: string[];
+  cappedFloorPlans: BrochureContent['floorPlans'];
 }
 
 export function buildPageRenderContext(
@@ -72,30 +78,37 @@ export function buildPageRenderContext(
   const allParagraphs = content.description.marketingText
     .split('\n')
     .filter((p) => p.trim());
-  const coverParagraphs = allParagraphs.slice(0, 2);
-  const keyFeatures = content.description.keyFeatures.slice(0, 6);
+  const coverParagraphs = allParagraphs.slice(0, CONTENT_CAPS.DESCRIPTION_PARAGRAPHS);
+  const keyFeatures = content.description.keyFeatures.slice(0, CONTENT_CAPS.KEY_FEATURES);
 
-  const { page2Rooms, page3Rooms } = splitRoomsByFloor(content.rooms);
+  const { page2Rooms: rawPage2, page3Rooms: rawPage3 } = splitRoomsByFloor(content.rooms);
+  const page2Rooms = rawPage2.slice(0, CONTENT_CAPS.ROOMS_PER_PAGE);
+  const page3Rooms = rawPage3.slice(0, CONTENT_CAPS.ROOMS_PER_PAGE);
   const page2Groups = groupByFloor(page2Rooms);
   const page3Groups = groupByFloor(page3Rooms);
 
-  const accentPhotos = content.gallery.slice(0, 2);
+  const accentPhotos = content.gallery.slice(0, CONTENT_CAPS.ACCENT_PHOTOS);
   const dedupedGallery = content.gallery.slice(2);
   const backCoverGallery = dedupedGallery.length >= 2
-    ? dedupedGallery.slice(0, 4)
-    : content.gallery.slice(0, 4);
+    ? dedupedGallery.slice(0, CONTENT_CAPS.GALLERY_ITEMS)
+    : content.gallery.slice(0, CONTENT_CAPS.GALLERY_ITEMS);
   const backCoverPhoto =
     content.cover.backCoverPhotoUrl ||
     content.gallery[2]?.url ||
     content.gallery[0]?.url ||
     content.cover.heroPhotoUrl;
 
+  const cappedFloorPlans = content.floorPlans.slice(0, CONTENT_CAPS.FLOOR_PLANS);
   const hasFloorPlans =
-    visible.floorPlans !== false && content.floorPlans.length > 0;
+    visible.floorPlans !== false && cappedFloorPlans.length > 0;
   const certLogos = styleOptions?.certificationLogos?.filter(l => l.enabled) || [];
-  const hasNearby = content.features.nearby && content.features.nearby.length > 0;
-  const hasServices = content.features.services.length > 0;
-  const hasExternal = content.features.external.length > 0;
+
+  const cappedServices = content.features.services.slice(0, CONTENT_CAPS.FEATURE_BULLETS);
+  const cappedExternal = content.features.external.slice(0, CONTENT_CAPS.FEATURE_BULLETS);
+  const cappedNearby = (content.features.nearby || []).slice(0, CONTENT_CAPS.FEATURE_BULLETS);
+  const hasNearby = cappedNearby.length > 0;
+  const hasServices = cappedServices.length > 0;
+  const hasExternal = cappedExternal.length > 0;
 
   return {
     content, branding, dims, typeOverrides,
@@ -105,6 +118,7 @@ export function buildPageRenderContext(
     page2Rooms, page3Rooms, page2Groups, page3Groups,
     accentPhotos, backCoverGallery, backCoverPhoto,
     hasFloorPlans, certLogos, hasNearby, hasServices, hasExternal,
+    cappedServices, cappedExternal, cappedNearby, cappedFloorPlans,
   };
 }
 
@@ -506,7 +520,7 @@ export function FeaturesPageContent({ ctx, margins }: PageContentProps) {
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
                 Services
               </Text>
-              {content.features.services.map((service, i) => (
+              {ctx.cappedServices.map((service, i) => (
                 <BulletItem key={i} text={normalizeText(service)} />
               ))}
             </View>
@@ -516,7 +530,7 @@ export function FeaturesPageContent({ ctx, margins }: PageContentProps) {
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
                 Features
               </Text>
-              {content.features.external.map((feature, i) => (
+              {ctx.cappedExternal.map((feature, i) => (
                 <BulletItem key={i} text={normalizeText(feature)} />
               ))}
             </View>
@@ -526,7 +540,7 @@ export function FeaturesPageContent({ ctx, margins }: PageContentProps) {
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
                 Nearby
               </Text>
-              {content.features.nearby.map((item, i) => (
+              {ctx.cappedNearby.map((item, i) => (
                 <BulletItem key={i} text={normalizeText(item)} />
               ))}
             </View>
@@ -678,7 +692,7 @@ export function BackCoverPageContent({ ctx, margins }: PageContentProps) {
 
       {/* Floor Plans — framed container */}
       {hasFloorPlans &&
-        content.floorPlans.map((plan) => (
+        ctx.cappedFloorPlans.map((plan) => (
           <View
             key={plan.id}
             style={{
@@ -833,25 +847,25 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
   return (
     <Document title={content.cover.headline} author={branding.businessName}>
       {/* PAGE 1 — FRONT COVER */}
-      <Page size={pageSize} style={styles.page}>
+      <Page size={pageSize} style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} margins={p1m} dims={dims} />
         <CoverPageContent ctx={ctx} margins={p1m} />
       </Page>
 
       {/* PAGE 2 — ACCOMMODATION (Ground Floor) */}
-      <Page size={pageSize} style={styles.page}>
+      <Page size={pageSize} style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p2m} dims={dims} />
         <AccommodationPageContent ctx={ctx} margins={p2m} />
       </Page>
 
       {/* PAGE 3 — UPPER FLOOR + FEATURES + LOCATION */}
-      <Page size={pageSize} style={styles.page}>
+      <Page size={pageSize} style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p3m} dims={dims} />
         <FeaturesPageContent ctx={ctx} margins={p3m} />
       </Page>
 
       {/* PAGE 4 — BACK COVER */}
-      <Page size={pageSize} style={styles.page}>
+      <Page size={pageSize} style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p4m} dims={dims} />
         <BackCoverPageContent ctx={ctx} margins={p4m} />
       </Page>
