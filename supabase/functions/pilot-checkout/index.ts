@@ -95,6 +95,7 @@ serve(async (req) => {
       mode: 'subscription',
       line_items: [{ price: priceId, quantity }],
       automatic_tax: { enabled: true },
+      billing_address_collection: 'required',
       success_url: `${appBaseUrl}/admin/billing/manage?success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appBaseUrl}/admin/billing/manage?canceled=true`,
       metadata: {

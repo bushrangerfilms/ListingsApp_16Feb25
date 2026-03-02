@@ -80,22 +80,22 @@ export function ClassicBrochureA5Reader({ content, branding }: A5Props) {
 
   return (
     <Document title={content.cover.headline} author={branding.businessName}>
-      <Page size={pageSize} style={styles.page}>
+      <Page size={pageSize} style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} margins={p1m} dims={dims} />
         <CoverPageContent ctx={ctx} margins={p1m} />
       </Page>
 
-      <Page size={pageSize} style={styles.page}>
+      <Page size={pageSize} style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p2m} dims={dims} />
         <AccommodationPageContent ctx={ctx} margins={p2m} />
       </Page>
 
-      <Page size={pageSize} style={styles.page}>
+      <Page size={pageSize} style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p3m} dims={dims} />
         <FeaturesPageContent ctx={ctx} margins={p3m} />
       </Page>
 
-      <Page size={pageSize} style={styles.page}>
+      <Page size={pageSize} style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p4m} dims={dims} />
         <BackCoverPageContent ctx={ctx} margins={p4m} />
       </Page>
@@ -125,7 +125,7 @@ export function ClassicBrochureA5PrintReady({ content, branding }: A5Props) {
   return (
     <Document title={`${content.cover.headline} (Print)`} author={branding.businessName}>
       {/* Sheet 1: Page 4 (left) + Page 1 (right) */}
-      <Page size={landscapeSize} style={styles.landscapePage}>
+      <Page size={landscapeSize} style={styles.landscapePage} wrap={false}>
         <View style={styles.imposedRow}>
           <View style={styles.imposedHalf}>
             <BrochureHeader branding={branding} compact margins={p4m} dims={dims} />
@@ -139,7 +139,7 @@ export function ClassicBrochureA5PrintReady({ content, branding }: A5Props) {
       </Page>
 
       {/* Sheet 2: Page 2 (left) + Page 3 (right) */}
-      <Page size={landscapeSize} style={styles.landscapePage}>
+      <Page size={landscapeSize} style={styles.landscapePage} wrap={false}>
         <View style={styles.imposedRow}>
           <View style={styles.imposedHalf}>
             <BrochureHeader branding={branding} compact margins={p2m} dims={dims} />

@@ -87,7 +87,7 @@ export const DEFAULT_STYLE_OPTIONS: BrochureStyleOptions = {
   certificationLogos: [],
   showInnerPrice: false,
   showBackCoverPrice: false,
-  pageFormat: 'a4',
+  pageFormat: 'a5',
 };
 
 export type BrochureExportFormat = 'standard' | 'reader' | 'print-ready';

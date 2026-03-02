@@ -209,6 +209,24 @@ export function getImageBorderStyle(styleOptions?: BrochureStyleOptions) {
 
 // ── Layout Constants ───────────────────────────────────────────────────
 
+/** Maximum content items to prevent page overflow in the strict 4-page layout */
+export const CONTENT_CAPS = {
+  /** Max rooms shown per page (pages 2 and 3) */
+  ROOMS_PER_PAGE: 4,
+  /** Max key features on page 2 */
+  KEY_FEATURES: 6,
+  /** Max description paragraphs */
+  DESCRIPTION_PARAGRAPHS: 2,
+  /** Max bullet items per feature column (services/external/nearby) */
+  FEATURE_BULLETS: 5,
+  /** Max floor plans on back cover */
+  FLOOR_PLANS: 1,
+  /** Max gallery items on back cover */
+  GALLERY_ITEMS: 4,
+  /** Max accent photos on page 3 */
+  ACCENT_PHOTOS: 2,
+} as const;
+
 /** Height of the thin accent strip at top of framed headers */
 export const ACCENT_STRIP_HEIGHT = 4;
 
