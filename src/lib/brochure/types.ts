@@ -71,6 +71,7 @@ export interface CertificationLogo {
 }
 
 export interface BrochureStyleOptions {
+  templateId: string;
   frameStyle: 'classic' | 'minimal';
   imageCornerRadius: 'rounded' | 'square';
   imageBorder: boolean;
@@ -81,6 +82,7 @@ export interface BrochureStyleOptions {
 }
 
 export const DEFAULT_STYLE_OPTIONS: BrochureStyleOptions = {
+  templateId: 'classic-1',
   frameStyle: 'classic',
   imageCornerRadius: 'rounded',
   imageBorder: true,

@@ -171,7 +171,7 @@ export default function BrochureEditor() {
 
     setIsDownloading(true);
     try {
-      const template = getTemplate('classic-1');
+      const template = getTemplate(branding.styleOptions?.templateId || 'classic-1');
       const pageFormat = branding.styleOptions?.pageFormat || 'a4';
 
       let TemplateComponent;

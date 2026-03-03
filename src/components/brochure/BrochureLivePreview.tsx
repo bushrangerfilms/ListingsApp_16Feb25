@@ -10,8 +10,9 @@ interface BrochureLivePreviewProps {
   templateId?: string;
 }
 
-export function BrochureLivePreview({ content, branding, templateId = 'classic-1' }: BrochureLivePreviewProps) {
-  const template = getTemplate(templateId);
+export function BrochureLivePreview({ content, branding, templateId }: BrochureLivePreviewProps) {
+  const resolvedTemplateId = branding.styleOptions?.templateId || templateId || 'classic-1';
+  const template = getTemplate(resolvedTemplateId);
   const pageFormat = branding.styleOptions?.pageFormat || 'a4';
   const TemplateComponent = pageFormat === 'a5'
     ? (template.a5PrintReadyComponent || template.component)

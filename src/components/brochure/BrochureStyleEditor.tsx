@@ -2,14 +2,18 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import type { BrochureBranding, BrochureStyleOptions } from '@/lib/brochure/types';
 import { DEFAULT_STYLE_OPTIONS } from '@/lib/brochure/types';
+import { BROCHURE_TEMPLATES } from './templates/templateRegistry';
 
 interface BrochureStyleEditorProps {
   branding: BrochureBranding;
   onChange: (branding: BrochureBranding) => void;
 }
 
+const TEMPLATE_LIST = Object.values(BROCHURE_TEMPLATES);
+
 export function BrochureStyleEditor({ branding, onChange }: BrochureStyleEditorProps) {
   const opts = branding.styleOptions || DEFAULT_STYLE_OPTIONS;
+  const currentTemplateId = opts.templateId || 'classic-1';
 
   const update = (patch: Partial<BrochureStyleOptions>) => {
     onChange({
@@ -20,6 +24,34 @@ export function BrochureStyleEditor({ branding, onChange }: BrochureStyleEditorP
 
   return (
     <div className="space-y-3 px-3 py-2">
+      {/* Template Selection */}
+      <div>
+        <Label className="text-xs font-medium">Template</Label>
+        <p className="text-[10px] text-muted-foreground mb-1.5">
+          Choose a layout style for your brochure
+        </p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {TEMPLATE_LIST.map((tmpl) => (
+            <button
+              key={tmpl.id}
+              className={`text-left px-2.5 py-2 rounded border text-xs transition-colors ${
+                currentTemplateId === tmpl.id
+                  ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                  : 'border-border bg-background hover:bg-muted/50'
+              }`}
+              onClick={() => update({ templateId: tmpl.id })}
+            >
+              <span className="font-medium block">{tmpl.name}</span>
+              <span className="text-[10px] text-muted-foreground leading-tight block mt-0.5">
+                {tmpl.description}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-border/50 pt-2" />
+
       {/* Page Format */}
       <div className="flex items-center justify-between">
         <div>
