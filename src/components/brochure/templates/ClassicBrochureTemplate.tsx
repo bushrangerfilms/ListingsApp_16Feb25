@@ -847,25 +847,25 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
   return (
     <Document title={content.cover.headline} author={branding.businessName}>
       {/* PAGE 1 — FRONT COVER */}
-      <Page size={pageSize} style={styles.page} wrap={false}>
+      <Page size={pageSize} orientation="portrait" style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} margins={p1m} dims={dims} />
         <CoverPageContent ctx={ctx} margins={p1m} />
       </Page>
 
       {/* PAGE 2 — ACCOMMODATION (Ground Floor) */}
-      <Page size={pageSize} style={styles.page} wrap={false}>
+      <Page size={pageSize} orientation="portrait" style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p2m} dims={dims} />
         <AccommodationPageContent ctx={ctx} margins={p2m} />
       </Page>
 
       {/* PAGE 3 — UPPER FLOOR + FEATURES + LOCATION */}
-      <Page size={pageSize} style={styles.page} wrap={false}>
+      <Page size={pageSize} orientation="portrait" style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p3m} dims={dims} />
         <FeaturesPageContent ctx={ctx} margins={p3m} />
       </Page>
 
       {/* PAGE 4 — BACK COVER */}
-      <Page size={pageSize} style={styles.page} wrap={false}>
+      <Page size={pageSize} orientation="portrait" style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p4m} dims={dims} />
         <BackCoverPageContent ctx={ctx} margins={p4m} />
       </Page>

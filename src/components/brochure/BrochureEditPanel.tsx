@@ -9,8 +9,9 @@ import { BrochureLocationEditor } from './BrochureLocationEditor';
 import { BrochureLegalEditor } from './BrochureLegalEditor';
 import { BrochureGalleryEditor } from './BrochureGalleryEditor';
 import { BrochureStyleEditor } from './BrochureStyleEditor';
+import { BrochureHeaderEditor } from './BrochureHeaderEditor';
 import { BrochureCertificationEditor } from './BrochureCertificationEditor';
-import { ChevronDown, ChevronRight, Settings2, Award } from 'lucide-react';
+import { ChevronDown, ChevronRight, Settings2, Award, Building2 } from 'lucide-react';
 
 interface BrochureEditPanelProps {
   content: BrochureContent;
@@ -20,6 +21,9 @@ interface BrochureEditPanelProps {
   regeneratingSection?: string | null;
   branding?: BrochureBranding | null;
   onBrandingChange?: (branding: BrochureBranding) => void;
+  orgId?: string;
+  onSaveAsDefaults?: () => void;
+  isSavingDefaults?: boolean;
 }
 
 export function BrochureEditPanel({
@@ -30,9 +34,13 @@ export function BrochureEditPanel({
   regeneratingSection,
   branding,
   onBrandingChange,
+  orgId,
+  onSaveAsDefaults,
+  isSavingDefaults,
 }: BrochureEditPanelProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     style: false,
+    header: false,
     cover: true,
     description: true,
     rooms: true,
@@ -79,6 +87,33 @@ export function BrochureEditPanel({
           </div>
           {expanded.style && (
             <BrochureStyleEditor branding={branding} onChange={onBrandingChange} />
+          )}
+        </div>
+      )}
+
+      {/* Header / Branding — only shown when branding is available */}
+      {branding && onBrandingChange && orgId && onSaveAsDefaults && (
+        <div>
+          <div
+            className="flex items-center gap-2 py-2 px-3 bg-muted/50 rounded-lg cursor-pointer select-none"
+            onClick={() => toggleExpand('header')}
+          >
+            <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span className="font-semibold text-sm flex-1">Header</span>
+            {expanded.header ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+          {expanded.header && (
+            <BrochureHeaderEditor
+              branding={branding}
+              onChange={onBrandingChange}
+              onSaveAsDefaults={onSaveAsDefaults}
+              isSavingDefaults={isSavingDefaults}
+              orgId={orgId}
+            />
           )}
         </div>
       )}

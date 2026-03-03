@@ -132,15 +132,147 @@ function buildCustomInstructionsSection(instructions: AIInstructionSet[]): strin
   return `\n\nCUSTOM REQUIREMENTS:\n${sections.join('\n\n')}`;
 }
 
+// ── Photo Vision Analysis ─────────────────────────────────────────────
+
+const MAX_IMAGE_SIZE = 4 * 1024 * 1024; // 4MB limit
+const VISION_CONCURRENCY = 3;
+
+const PHOTO_ANALYSIS_PROMPT = `Identify this real estate photo in one line.
+Format: "[Room/Space type]: [Key features in 8-10 words]"
+Examples:
+- "Kitchen: Open-plan with marble island, gas range, skylight"
+- "Master Bedroom: Vaulted ceilings, en-suite, garden views"
+- "Exterior Front: Detached house, gravel driveway, mature hedging"
+- "Bathroom: Walk-in shower, heated towel rail, tiled floor"
+- "Living Room: Log burner, wooden floors, bay window"`;
+
+async function fetchImageAsBase64(url: string): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/')) return null;
+
+    const buffer = await response.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    if (bytes.byteLength > MAX_IMAGE_SIZE) return null;
+
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return { base64: btoa(binary), mimeType: contentType.split(';')[0] };
+  } catch {
+    return null;
+  }
+}
+
+async function analyzePhoto(
+  apiKey: string,
+  imageBase64: string,
+  mimeType: string,
+): Promise<string | null> {
+  const MAX_RETRIES = 2;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { text: PHOTO_ANALYSIS_PROMPT },
+                { inline_data: { mime_type: mimeType, data: imageBase64 } },
+              ],
+            }],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 60,
+              thinkingConfig: { thinkingBudget: 0 },
+            },
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        return text && text.length > 0 ? text : null;
+      }
+
+      if (response.status === 429 || response.status === 503) {
+        const backoff = 5000 * Math.pow(2, attempt);
+        await new Promise(r => setTimeout(r, backoff));
+        continue;
+      }
+      return null;
+    } catch {
+      if (attempt < MAX_RETRIES - 1) {
+        await new Promise(r => setTimeout(r, 5000));
+      }
+    }
+  }
+  return null;
+}
+
+async function analyzeAllPhotos(
+  apiKey: string,
+  photoUrls: string[],
+): Promise<Map<string, string>> {
+  const descriptions = new Map<string, string>();
+  if (photoUrls.length === 0) return descriptions;
+
+  console.log(`[Brochure] Analyzing ${photoUrls.length} photos with vision...`);
+
+  // Process in batches for rate limiting
+  for (let i = 0; i < photoUrls.length; i += VISION_CONCURRENCY) {
+    const batch = photoUrls.slice(i, i + VISION_CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(async (url) => {
+        const imageData = await fetchImageAsBase64(url);
+        if (!imageData) return { url, description: null };
+        const description = await analyzePhoto(apiKey, imageData.base64, imageData.mimeType);
+        return { url, description };
+      })
+    );
+
+    for (const { url, description } of results) {
+      if (description) {
+        descriptions.set(url, description);
+        console.log(`[Brochure] Photo analyzed: ${description}`);
+      }
+    }
+
+    // Small delay between batches to respect rate limits
+    if (i + VISION_CONCURRENCY < photoUrls.length) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+
+  console.log(`[Brochure] Vision analysis complete: ${descriptions.size}/${photoUrls.length} photos described`);
+  return descriptions;
+}
+
 // ── Prompt Building ────────────────────────────────────────────────────
 
 function buildFullBrochurePrompt(
   listing: Record<string, unknown>,
   localeConfig: ReturnType<typeof getLocaleConfig>,
-  customInstructions: string
+  customInstructions: string,
+  photoDescriptions?: Map<string, string>
 ): string {
   const photos = (listing.photos as string[]) || [];
-  const photoList = photos.map((url: string, i: number) => `  Photo ${i + 1}: ${url}`).join('\n');
+  const photoList = photos.map((url: string, i: number) => {
+    const desc = photoDescriptions?.get(url);
+    return desc
+      ? `  Photo ${i + 1} [${url}]: ${desc}`
+      : `  Photo ${i + 1} [${url}]: (no description)`;
+  }).join('\n');
+  const hasDescriptions = photoDescriptions && photoDescriptions.size > 0;
 
   return `You are an expert real estate copywriter creating a professional property brochure.
 Generate a complete brochure content in JSON format for the following property listing.
@@ -196,6 +328,7 @@ INSTRUCTIONS:
    - Floor level ("${localeConfig.terminology.groundFloor}", "${localeConfig.terminology.firstFloor}", "Basement", etc.)
    - Dimensions if mentioned (format: imperial with metric in parentheses for Irish, or as appropriate for locale)
    - A very brief description (max 10 words, e.g., "Laminate flooring, recessed lighting, feature fireplace")
+   - photoUrl: ${hasDescriptions ? 'Use the PHOTO DESCRIPTIONS above to assign the best matching photo URL. Match room type names (e.g., "Kitchen", "Master Bedroom") to the photo descriptions.' : 'Assign the best matching photo URL from the available photos.'}
    If no specs are provided, generate reasonable room placeholders based on the bedroom/bathroom count and building type.
 
 4. Generate a services list (heating type, water, sewerage, broadband, etc.) based on any mentions in the description/specs. Keep to 3-5 items.
@@ -204,7 +337,7 @@ INSTRUCTIONS:
 
 6. Write a location description in EXACTLY 2 sentences about ${listing.address_town || 'the area'}, ${listing.county || ''}, ${localeConfig.country}. Mention the town and 2-3 key nearby amenities.
 
-7. For the gallery, select up to 4 of the best photos from the available photos list. These are used as accent photos throughout the brochure. Assign brief captions.
+7. For the gallery, select up to 4 visually interesting photos from the available photos list. These are used as accent photos throughout the brochure. ${hasDescriptions ? 'Use the photo descriptions to write accurate captions that describe what is actually shown in each photo.' : 'Assign brief captions.'}
 
 8. Determine the sale method based on the Category field above. If "For Sale", use "For Sale by Private Treaty" unless the description mentions auction. If "To Let" or "Holiday Let", use "To Let". Do NOT use the listing's status (New/Published/Sold/Sale Agreed) as the sale method — always use the appropriate sale method phrase.
 ${customInstructions}
@@ -389,6 +522,16 @@ serve(async (req) => {
     // Merge upscaled photos into the listing for prompt
     const listingWithPhotos = { ...listing, photos, hero_photo: heroPhoto };
 
+    // Analyze photos with vision (only for full generation, not section regen)
+    let photoDescriptions: Map<string, string> | undefined;
+    if (!regenerateSection && photos.length > 0) {
+      try {
+        photoDescriptions = await analyzeAllPhotos(GOOGLE_AI_API_KEY, photos);
+      } catch (err) {
+        console.error('[Brochure] Vision analysis failed, continuing without descriptions:', err);
+      }
+    }
+
     // Fetch custom AI instructions
     const effectiveLocale = locale || org.locale || 'en-IE';
     const customInstructions = await fetchAIInstructions(supabase, 'brochure_generation', organizationId, effectiveLocale);
@@ -399,7 +542,7 @@ serve(async (req) => {
     // Build the prompt
     const prompt = regenerateSection
       ? buildSectionRegeneratePrompt(regenerateSection, listingWithPhotos, existingContent || {}, localeConfig, customInstructionsSection)
-      : buildFullBrochurePrompt(listingWithPhotos, localeConfig, customInstructionsSection);
+      : buildFullBrochurePrompt(listingWithPhotos, localeConfig, customInstructionsSection, photoDescriptions);
 
     // Call Gemini 2.5 Flash
     const response = await fetch(

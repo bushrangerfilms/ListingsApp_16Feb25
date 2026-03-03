@@ -25,7 +25,7 @@ export function BrochureStyleEditor({ branding, onChange }: BrochureStyleEditorP
         <div>
           <Label className="text-xs font-medium">Page Format</Label>
           <p className="text-[10px] text-muted-foreground">
-            {opts.pageFormat === 'a5' ? 'A5 booklet (half-page, folds from A4)' : 'A4 full page (standard)'}
+            {opts.pageFormat === 'a5' ? 'Booklet (folds from a single sheet)' : 'A4 full page (standard)'}
           </p>
         </div>
         <div className="flex gap-1">
@@ -39,7 +39,7 @@ export function BrochureStyleEditor({ branding, onChange }: BrochureStyleEditorP
             className={`text-xs px-2.5 py-1 rounded ${opts.pageFormat === 'a5' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
             onClick={() => update({ pageFormat: 'a5' })}
           >
-            A5 Booklet
+            Booklet
           </button>
         </div>
       </div>

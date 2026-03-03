@@ -80,22 +80,22 @@ export function ClassicBrochureA5Reader({ content, branding }: A5Props) {
 
   return (
     <Document title={content.cover.headline} author={branding.businessName}>
-      <Page size={pageSize} style={styles.page} wrap={false}>
+      <Page size={pageSize} orientation="portrait" style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} margins={p1m} dims={dims} />
         <CoverPageContent ctx={ctx} margins={p1m} />
       </Page>
 
-      <Page size={pageSize} style={styles.page} wrap={false}>
+      <Page size={pageSize} orientation="portrait" style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p2m} dims={dims} />
         <AccommodationPageContent ctx={ctx} margins={p2m} />
       </Page>
 
-      <Page size={pageSize} style={styles.page} wrap={false}>
+      <Page size={pageSize} orientation="portrait" style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p3m} dims={dims} />
         <FeaturesPageContent ctx={ctx} margins={p3m} />
       </Page>
 
-      <Page size={pageSize} style={styles.page} wrap={false}>
+      <Page size={pageSize} orientation="portrait" style={styles.page} wrap={false}>
         <BrochureHeader branding={branding} compact margins={p4m} dims={dims} />
         <BackCoverPageContent ctx={ctx} margins={p4m} />
       </Page>

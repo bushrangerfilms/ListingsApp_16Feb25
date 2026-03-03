@@ -14,7 +14,7 @@ export function BrochureLivePreview({ content, branding, templateId = 'classic-1
   const template = getTemplate(templateId);
   const pageFormat = branding.styleOptions?.pageFormat || 'a4';
   const TemplateComponent = pageFormat === 'a5'
-    ? (template.a5ReaderComponent || template.component)
+    ? (template.a5PrintReadyComponent || template.component)
     : template.component;
 
   // Debounce the content to avoid excessive re-renders of the PDF

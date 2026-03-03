@@ -38,6 +38,7 @@ import { BrochureGenerateSplash } from '@/components/brochure/BrochureGenerateSp
 import { BrochureEditPanel } from '@/components/brochure/BrochureEditPanel';
 import { BrochureLivePreview } from '@/components/brochure/BrochureLivePreview';
 import { getTemplate } from '@/components/brochure/templates/templateRegistry';
+import { updateOrganizationProfile } from '@/lib/organizationHelpers';
 
 export default function BrochureEditor() {
   const { listingId } = useParams<{ listingId: string }>();
@@ -49,6 +50,7 @@ export default function BrochureEditor() {
   const [branding, setBranding] = useState<BrochureBranding | null>(null);
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSavingDefaults, setIsSavingDefaults] = useState(false);
 
   // Fetch listing data
   const { data: listing, isLoading: listingLoading } = useQuery({
@@ -245,6 +247,27 @@ export default function BrochureEditor() {
     }
   }, [content, branding, listingId, organization, saveMutation, toast]);
 
+  // Save header branding as org defaults
+  const handleSaveDefaults = useCallback(async () => {
+    if (!branding || !organization?.id) return;
+    setIsSavingDefaults(true);
+    try {
+      await updateOrganizationProfile(organization.id, {
+        business_name: branding.businessName,
+        logo_url: branding.logoUrl,
+        contact_email: branding.contactEmail,
+        contact_phone: branding.contactPhone,
+        business_address: branding.businessAddress,
+        psr_licence_number: branding.psrLicenceNumber || undefined,
+      });
+      toast({ title: 'Org defaults saved', description: 'Future brochures will use these details.' });
+    } catch {
+      toast({ title: 'Save failed', variant: 'destructive' });
+    } finally {
+      setIsSavingDefaults(false);
+    }
+  }, [branding, organization, toast]);
+
   // Loading state
   if (listingLoading || brochureLoading) {
     return (
@@ -340,14 +363,14 @@ export default function BrochureEditor() {
                   <BookOpen className="h-3.5 w-3.5 mr-2" />
                   <div>
                     <div className="text-xs font-medium">Reader PDF</div>
-                    <div className="text-[10px] text-muted-foreground">4 A5 pages — digital viewing</div>
+                    <div className="text-[10px] text-muted-foreground">4 pages — digital viewing</div>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleDownload('print-ready')}>
                   <FileStack className="h-3.5 w-3.5 mr-2" />
                   <div>
                     <div className="text-xs font-medium">Print-Ready PDF</div>
-                    <div className="text-[10px] text-muted-foreground">2 A4 sheets — duplex print, fold to booklet</div>
+                    <div className="text-[10px] text-muted-foreground">2 sheets — duplex print & fold</div>
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -377,6 +400,9 @@ export default function BrochureEditor() {
             regeneratingSection={regeneratingSection}
             branding={branding}
             onBrandingChange={setBranding}
+            orgId={organization?.id}
+            onSaveAsDefaults={handleSaveDefaults}
+            isSavingDefaults={isSavingDefaults}
           />
         </div>
 
