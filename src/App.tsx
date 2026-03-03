@@ -55,6 +55,7 @@ const ReviewListing = lazy(() => import("./pages/ReviewListing"));
 const BrochureEditor = lazy(() => import("./pages/BrochureEditor"));
 const AdminBilling = lazy(() => import("./pages/AdminBilling"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+const ShopWindowDisplay = lazy(() => import("./pages/ShopWindowDisplay"));
 
 // Auth Pages
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
@@ -229,6 +230,7 @@ function AdminRoutes() {
         <Route path="/admin/billing/upgrade" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><UpgradeToPro /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/team" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminUsers /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminSettings /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
+        <Route path="/admin/shop-window" element={<ProtectedRoute><ShopWindowDisplay /></ProtectedRoute>} />
 
         {/* Super Admin Portal Routes */}
         <Route path="/internal" element={<SuperAdminRouteGuard><SuperAdminLayout><SuperAdminDashboard /></SuperAdminLayout></SuperAdminRouteGuard>} />

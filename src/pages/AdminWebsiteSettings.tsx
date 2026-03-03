@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Star, Image, Share2, Bot, Palette, FileText } from "lucide-react";
+import { Star, Image, Share2, Bot, Palette, FileText, Monitor } from "lucide-react";
 
 import AdminTestimonials from "./AdminTestimonials";
 import AdminMarketingContent from "./AdminMarketingContent";
@@ -8,6 +8,7 @@ import AdminSocialLinks from "./AdminSocialLinks";
 import AdminAIAssistant from "./AdminAIAssistant";
 import AdminBranding from "./AdminBranding";
 import AdminContent from "./AdminContent";
+import AdminShopWindowDisplay from "./AdminShopWindowDisplay";
 
 export default function AdminWebsiteSettings() {
   const [activeTab, setActiveTab] = useState("branding");
@@ -45,6 +46,10 @@ export default function AdminWebsiteSettings() {
             <Bot className="h-4 w-4" />
             <span>AI Assistant</span>
           </TabsTrigger>
+          <TabsTrigger value="shop-window" className="gap-2" data-testid="tab-website-shop-window">
+            <Monitor className="h-4 w-4" />
+            <span>Shop Window</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="branding" className="mt-0">
@@ -64,6 +69,9 @@ export default function AdminWebsiteSettings() {
         </TabsContent>
         <TabsContent value="ai" className="mt-0">
           <AdminAIAssistant />
+        </TabsContent>
+        <TabsContent value="shop-window" className="mt-0">
+          <AdminShopWindowDisplay />
         </TabsContent>
       </Tabs>
     </div>
