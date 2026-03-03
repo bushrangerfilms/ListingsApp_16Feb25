@@ -178,6 +178,10 @@ export function LeadMagnetQuiz() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.error === "location_required") {
+          setError(`location_required:${data.message || "We can't provide an estimate for this location yet."}`);
+          return;
+        }
         throw new Error(data.error || "Failed to submit quiz");
       }
 
@@ -387,13 +391,35 @@ export function LeadMagnetQuiz() {
   }
 
   if (error) {
+    const isLocationRefusal = error.startsWith("location_required:");
+    const errorMessage = isLocationRefusal ? error.replace("location_required:", "") : error;
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Quiz Not Available</h2>
-            <p className="text-muted-foreground">{error}</p>
+            {isLocationRefusal ? (
+              <>
+                <Home className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h2 className="text-xl font-semibold mb-2">Location Not Supported Yet</h2>
+                <p className="text-muted-foreground mb-4">{errorMessage}</p>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Contact {org?.business_name || "your local agent"} for a free, personalised property appraisal.
+                </p>
+                {org?.contact_email && (
+                  <Button onClick={() => window.location.href = `mailto:${org.contact_email}`}>
+                    <Phone className="h-4 w-4 mr-2" />
+                    Contact {org.business_name || "Agent"}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                <h2 className="text-xl font-semibold mb-2">Quiz Not Available</h2>
+                <p className="text-muted-foreground">{errorMessage}</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -567,6 +593,11 @@ function Header({ org }: { org: OrgConfig | null }) {
       <h1 className="text-2xl font-bold" data-testid="text-org-name">
         {org?.business_name || "Property Quiz"}
       </h1>
+      {org?.business_name && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Your information is only shared with {org.business_name}
+        </p>
+      )}
     </div>
   );
 }
@@ -781,24 +812,45 @@ function GatedResultPreview({ result, type }: { result: GatedResult | null; type
     <Card className="bg-muted/50">
       <CardContent className="pt-4">
         {type === "READY_TO_SELL" ? (
-          <div className="text-center">
+          <div className="text-center space-y-3">
             <Badge variant="secondary" className="text-lg px-4 py-1">
               {result.band}
             </Badge>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-muted-foreground">
               Score range: {result.score_range}
             </p>
             {result.headline_gaps && result.headline_gaps.length > 0 && (
-              <p className="text-sm mt-2">
-                Key area: <span className="font-medium">{result.headline_gaps[0]}</span>
-              </p>
+              <div className="text-left bg-background rounded-md p-3 space-y-1">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Areas needing attention:</p>
+                {result.headline_gaps.map((gap, i) => (
+                  <p key={i} className="text-sm flex items-start gap-2">
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <span>{gap}</span>
+                  </p>
+                ))}
+              </div>
             )}
+            <p className="text-sm font-medium text-primary">
+              <Lock className="h-3.5 w-3.5 inline mr-1" />
+              Personalised action plan ready to unlock
+            </p>
           </div>
         ) : (
-          <div className="text-center">
-            <p className="text-2xl font-bold">{result.estimate_range}</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Confidence: {result.confidence}
+          <div className="text-center space-y-3">
+            <p className="text-2xl font-bold filter blur-sm select-none" aria-hidden="true">
+              {result.estimate_range}
+            </p>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <Badge variant={
+                result.confidence === "High" ? "default" :
+                result.confidence === "Medium" ? "secondary" : "outline"
+              }>
+                {result.confidence} Confidence
+              </Badge>
+            </div>
+            <p className="text-sm font-medium text-primary">
+              <Lock className="h-3.5 w-3.5 inline mr-1" />
+              Full valuation with market insights ready to unlock
             </p>
           </div>
         )}
@@ -959,6 +1011,35 @@ function FullResultsView({ type, result, org, onDownloadPDF, onContactAgent }: F
                     driver.direction === "negative" ? "destructive" : "secondary"
                   }>
                     {driver.impact}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {result.comparable_sales && result.comparable_sales.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Home className="h-5 w-5" />
+              Recent Sales in Your Area
+            </CardTitle>
+            <CardDescription>Comparable properties that informed your estimate</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {result.comparable_sales.map((sale, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-md bg-muted/50">
+                  <div>
+                    <p className="font-medium text-sm">{sale.address}</p>
+                    <p className="text-xs text-muted-foreground">{sale.bedrooms} bed</p>
+                  </div>
+                  <Badge variant="outline" className="font-semibold">
+                    {typeof sale.price === "number"
+                      ? new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(sale.price)
+                      : sale.price}
                   </Badge>
                 </div>
               ))}

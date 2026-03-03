@@ -305,6 +305,17 @@ async function handleSubmit(supabase: any, body: any): Promise<Response> {
     result = await calculateWorthEstimate(supabase, answers);
   }
 
+  // Handle refusal case (Worth Estimate with no usable location data)
+  if (result.refused) {
+    return new Response(
+      JSON.stringify({ error: "location_required", message: result.refusal_message }),
+      { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Strip non-column fields before inserting into lead_submissions
+  const { refused, refusal_message, ...dbFields } = result;
+
   // Create submission record (without contact info yet)
   const { data: submission, error: insertError } = await supabase
     .from("lead_submissions")
@@ -317,7 +328,7 @@ async function handleSubmit(supabase: any, body: any): Promise<Response> {
       post_id,
       version,
       answers_json: answers,
-      ...result,
+      ...dbFields,
     })
     .select()
     .single();
@@ -1543,6 +1554,7 @@ async function upsertSellerProfile(supabase: any, data: any): Promise<string | n
       source: "lead_magnet",
       stage: determineLeadStage(submission),
       notes: `From ${submission.lead_magnets?.type} quiz`,
+      created_at: new Date().toISOString(),
     })
     .select("id")
     .single();
