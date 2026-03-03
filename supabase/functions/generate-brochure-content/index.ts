@@ -297,7 +297,7 @@ PROPERTY DATA:
 - Ensuites: ${listing.ensuite || 'Not specified'}
 - Floor Area: ${listing.floor_area_size ? `${listing.floor_area_size} ${localeConfig.areaUnit}` : 'Not specified'}
 - Land Size: ${listing.land_size ? `${listing.land_size} acres` : 'Not specified'}
-- Price: ${listing.price ? `${localeConfig.currency}${Number(listing.price).toLocaleString()}` : 'Price on Application'}
+- Price: ${listing.price ? `${localeConfig.currency} ${Number(listing.price).toLocaleString()}` : 'Price on Application'}
 - Energy Rating: ${listing.ber_rating || 'Not provided'}
 - Category: ${listing.category === 'Rental' ? 'To Let' : listing.category === 'Holiday Rental' ? 'Holiday Let' : 'For Sale'}
 
