@@ -47,6 +47,9 @@ export function BrochureHeaderEditor({
 
   return (
     <div className="space-y-3 p-3">
+      <p className="text-[11px] text-muted-foreground">
+        Changes here only apply to this brochure and won't affect your account settings.
+      </p>
       <div>
         <Label className="text-xs">Business Name</Label>
         <Input
