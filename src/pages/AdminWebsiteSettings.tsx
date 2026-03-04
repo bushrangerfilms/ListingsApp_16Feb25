@@ -1,16 +1,68 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, Component, type ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Star, Image, Share2, Bot, Palette, FileText, Monitor, Loader2 } from "lucide-react";
+import { Star, Image, Share2, Bot, Palette, FileText, Monitor, Loader2, AlertTriangle } from "lucide-react";
 
-import AdminTestimonials from "./AdminTestimonials";
-import AdminMarketingContent from "./AdminMarketingContent";
-import AdminSocialLinks from "./AdminSocialLinks";
-import AdminAIAssistant from "./AdminAIAssistant";
-import AdminBranding from "./AdminBranding";
-import AdminContent from "./AdminContent";
-
-// Lazy-load to isolate from qrcode.react and other heavy deps
+// Lazy-load ALL sub-components to isolate import-level failures
+const AdminBranding = lazy(() => import("./AdminBranding"));
+const AdminContent = lazy(() => import("./AdminContent"));
+const AdminTestimonials = lazy(() => import("./AdminTestimonials"));
+const AdminMarketingContent = lazy(() => import("./AdminMarketingContent"));
+const AdminSocialLinks = lazy(() => import("./AdminSocialLinks"));
+const AdminAIAssistant = lazy(() => import("./AdminAIAssistant"));
 const AdminShopWindowDisplay = lazy(() => import("./AdminShopWindowDisplay"));
+
+// Error boundary for individual sub-tabs
+class SubTabErrorBoundary extends Component<
+  { children: ReactNode; name: string },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode; name: string }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error(`[AdminWebsiteSettings] ${this.props.name} crashed:`, error, info.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 gap-4 text-center">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <h3 className="text-lg font-semibold">Failed to load {this.props.name}</h3>
+          <p className="text-sm text-muted-foreground max-w-md">
+            {this.state.error?.message || "An unexpected error occurred."}
+          </p>
+          <button
+            className="text-sm text-primary underline"
+            onClick={() => this.setState({ hasError: false, error: null })}
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const TabLoader = () => (
+  <div className="flex items-center justify-center p-12">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  </div>
+);
+
+function LazyTab({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <SubTabErrorBoundary name={name}>
+      <Suspense fallback={<TabLoader />}>
+        {children}
+      </Suspense>
+    </SubTabErrorBoundary>
+  );
+}
 
 export default function AdminWebsiteSettings() {
   const [activeTab, setActiveTab] = useState("branding");
@@ -55,27 +107,39 @@ export default function AdminWebsiteSettings() {
         </TabsList>
 
         <TabsContent value="branding" className="mt-0">
-          <AdminBranding />
+          <LazyTab name="Branding">
+            <AdminBranding />
+          </LazyTab>
         </TabsContent>
         <TabsContent value="content" className="mt-0">
-          <AdminContent />
+          <LazyTab name="Content">
+            <AdminContent />
+          </LazyTab>
         </TabsContent>
         <TabsContent value="testimonials" className="mt-0">
-          <AdminTestimonials />
+          <LazyTab name="Testimonials">
+            <AdminTestimonials />
+          </LazyTab>
         </TabsContent>
         <TabsContent value="marketing" className="mt-0">
-          <AdminMarketingContent />
+          <LazyTab name="Marketing">
+            <AdminMarketingContent />
+          </LazyTab>
         </TabsContent>
         <TabsContent value="social" className="mt-0">
-          <AdminSocialLinks />
+          <LazyTab name="Social Links">
+            <AdminSocialLinks />
+          </LazyTab>
         </TabsContent>
         <TabsContent value="ai" className="mt-0">
-          <AdminAIAssistant />
+          <LazyTab name="AI Assistant">
+            <AdminAIAssistant />
+          </LazyTab>
         </TabsContent>
         <TabsContent value="shop-window" className="mt-0">
-          <Suspense fallback={<div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+          <LazyTab name="Shop Window Display">
             <AdminShopWindowDisplay />
-          </Suspense>
+          </LazyTab>
         </TabsContent>
       </Tabs>
     </div>
