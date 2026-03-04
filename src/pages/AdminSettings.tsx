@@ -1,10 +1,14 @@
-import { useState, useEffect, Component, type ReactNode } from "react";
+import { Component, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Building2, Mail, Globe, AlertTriangle } from "lucide-react";
 
 import AdminOrganizationSettings from "./AdminOrganizationSettings";
 import AdminEmailSettings from "./AdminEmailSettings";
 import AdminWebsiteSettings from "./AdminWebsiteSettings";
+
+const VALID_TABS = ["organization", "email", "website"] as const;
+type SettingsTab = (typeof VALID_TABS)[number];
 
 // Error boundary to prevent tab crashes from resetting the entire page
 class TabErrorBoundary extends Component<
@@ -41,17 +45,14 @@ class TabErrorBoundary extends Component<
 }
 
 export default function AdminSettings() {
-  const [activeTab, setActiveTab] = useState("organization");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") as SettingsTab | null;
+  const activeTab: SettingsTab =
+    tabParam && VALID_TABS.includes(tabParam) ? tabParam : "organization";
 
-  // --- Diagnostic logging (remove once tab issue is resolved) ---
-  useEffect(() => {
-    console.log('[AdminSettings] MOUNTED (build: 8149e38+diag)');
-    return () => console.log('[AdminSettings] UNMOUNTED');
-  }, []);
-  useEffect(() => {
-    console.log('[AdminSettings] activeTab =', activeTab);
-  }, [activeTab]);
-  // --- End diagnostic ---
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value }, { replace: true });
+  };
 
   return (
     <div className="p-6">
@@ -60,7 +61,7 @@ export default function AdminSettings() {
         <p className="text-muted-foreground">Configure your platform settings and tools</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="w-full h-auto flex-wrap gap-1 justify-start p-1 mb-6">
           <TabsTrigger value="organization" className="gap-2" data-testid="tab-organization">
             <Building2 className="h-4 w-4" />
