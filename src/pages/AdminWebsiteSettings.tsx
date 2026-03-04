@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense, Component, type ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Star, Image, Share2, Bot, Palette, FileText, Monitor, Loader2, AlertTriangle } from "lucide-react";
+import { Star, Image, Share2, Bot, Palette, FileText, Loader2, AlertTriangle } from "lucide-react";
 
 // Lazy-load ALL sub-components to isolate import-level failures
 const AdminBranding = lazy(() => import("./AdminBranding"));
@@ -9,7 +9,6 @@ const AdminTestimonials = lazy(() => import("./AdminTestimonials"));
 const AdminMarketingContent = lazy(() => import("./AdminMarketingContent"));
 const AdminSocialLinks = lazy(() => import("./AdminSocialLinks"));
 const AdminAIAssistant = lazy(() => import("./AdminAIAssistant"));
-const AdminShopWindowDisplay = lazy(() => import("./AdminShopWindowDisplay"));
 
 // Error boundary for individual sub-tabs
 class SubTabErrorBoundary extends Component<
@@ -100,10 +99,6 @@ export default function AdminWebsiteSettings() {
             <Bot className="h-4 w-4" />
             <span>AI Assistant</span>
           </TabsTrigger>
-          <TabsTrigger value="shop-window" className="gap-2" data-testid="tab-website-shop-window">
-            <Monitor className="h-4 w-4" />
-            <span>Shop Window</span>
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="branding" className="mt-0">
@@ -134,11 +129,6 @@ export default function AdminWebsiteSettings() {
         <TabsContent value="ai" className="mt-0">
           <LazyTab name="AI Assistant">
             <AdminAIAssistant />
-          </LazyTab>
-        </TabsContent>
-        <TabsContent value="shop-window" className="mt-0">
-          <LazyTab name="Shop Window Display">
-            <AdminShopWindowDisplay />
           </LazyTab>
         </TabsContent>
       </Tabs>

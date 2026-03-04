@@ -23,7 +23,8 @@ export default function AdminShopWindowDisplay() {
   const { selectedOrganization, isOrganizationView } = useOrganizationView();
   const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
 
-  const { data: displays, isLoading } = useDisplaySettingsListQuery(targetOrg?.id);
+  const { data: displays, isLoading: displaysLoading } = useDisplaySettingsListQuery(targetOrg?.id);
+  const isLoading = orgLoading || displaysLoading;
   const createSettings = useCreateDisplaySettings();
   const updateSettings = useUpdateDisplaySettings();
   const deleteSettings = useDeleteDisplaySettings();
@@ -182,7 +183,7 @@ export default function AdminShopWindowDisplay() {
     window.open(getDisplayUrl(selectedDisplay), '_blank');
   };
 
-  if (orgLoading || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -193,7 +194,12 @@ export default function AdminShopWindowDisplay() {
   const hasDisplays = displays && displays.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Shop Window Display</h1>
+        <p className="text-muted-foreground">Configure your in-store digital signage display</p>
+      </div>
+
       {/* Header + enable toggle + launch */}
       <Card>
         <CardHeader>
