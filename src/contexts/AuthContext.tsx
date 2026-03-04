@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useReducer } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useMemo, useCallback, useReducer } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
@@ -28,6 +28,10 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       const user = action.session?.user ?? null;
       if (!user) {
         return { user: null, session: null, isAdmin: false, isSuperAdmin: false, isDeveloper: false, userRole: null, loading: false };
+      }
+      // Token refresh (same user, roles already loaded) — update session without loading
+      if (state.user?.id === user.id && state.userRole !== null) {
+        return { ...state, user, session: action.session };
       }
       return { ...state, user, session: action.session, loading: true };
     }
@@ -103,6 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading: true,
   });
   const [impersonationState, setImpersonationState] = useState<ImpersonationState | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
 
   // Shared role-fetching logic (eliminates duplication)
   const fetchRoles = useCallback((userId: string) => {
@@ -125,10 +130,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Skip redundant SIGNED_IN events from token refreshes
+        const isTokenRefresh = session?.user?.id === currentUserIdRef.current;
+        if (isTokenRefresh && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+          // Just update the session token silently, no loading state or role refetch
+          dispatch({ type: 'SET_SESSION', session });
+          return;
+        }
+
         console.log('AuthContext: Auth state changed', { event, hasSession: !!session, userId: session?.user?.id });
         dispatch({ type: 'SET_SESSION', session });
         if (session?.user) {
+          currentUserIdRef.current = session.user.id;
           fetchRoles(session.user.id);
+        } else {
+          currentUserIdRef.current = null;
         }
       }
     );
@@ -138,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('AuthContext: Initial session check', { hasSession: !!session, userId: session?.user?.id, error });
       dispatch({ type: 'SET_SESSION', session });
       if (session?.user) {
+        currentUserIdRef.current = session.user.id;
         fetchRoles(session.user.id);
       }
     });
