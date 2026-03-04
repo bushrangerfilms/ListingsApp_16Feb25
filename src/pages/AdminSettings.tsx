@@ -1,4 +1,4 @@
-import { useState, Component, type ReactNode } from "react";
+import { useState, useEffect, Component, type ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Building2, Mail, Globe, AlertTriangle } from "lucide-react";
 
@@ -42,6 +42,16 @@ class TabErrorBoundary extends Component<
 
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState("organization");
+
+  // --- Diagnostic logging (remove once tab issue is resolved) ---
+  useEffect(() => {
+    console.log('[AdminSettings] MOUNTED (build: 8149e38+diag)');
+    return () => console.log('[AdminSettings] UNMOUNTED');
+  }, []);
+  useEffect(() => {
+    console.log('[AdminSettings] activeTab =', activeTab);
+  }, [activeTab]);
+  // --- End diagnostic ---
 
   return (
     <div className="p-6">

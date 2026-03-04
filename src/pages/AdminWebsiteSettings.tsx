@@ -1,6 +1,8 @@
-import { useState, lazy, Suspense, Component, type ReactNode } from "react";
+import { useState, useEffect, lazy, Suspense, Component, type ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Star, Image, Share2, Bot, Palette, FileText, Monitor, Loader2, AlertTriangle } from "lucide-react";
+
+console.log('[AdminWebsiteSettings] Module loaded (build: 8149e38+diag)');
 
 // Lazy-load ALL sub-components to isolate import-level failures
 const AdminBranding = lazy(() => import("./AdminBranding"));
@@ -66,6 +68,13 @@ function LazyTab({ name, children }: { name: string; children: ReactNode }) {
 
 export default function AdminWebsiteSettings() {
   const [activeTab, setActiveTab] = useState("branding");
+
+  // --- Diagnostic logging ---
+  useEffect(() => {
+    console.log('[AdminWebsiteSettings] MOUNTED');
+    return () => console.log('[AdminWebsiteSettings] UNMOUNTED');
+  }, []);
+  // --- End diagnostic ---
 
   return (
     <div className="space-y-6">
