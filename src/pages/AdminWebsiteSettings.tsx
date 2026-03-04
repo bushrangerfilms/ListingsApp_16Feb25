@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Star, Image, Share2, Bot, Palette, FileText, Monitor } from "lucide-react";
+import { Star, Image, Share2, Bot, Palette, FileText, Monitor, Loader2 } from "lucide-react";
 
 import AdminTestimonials from "./AdminTestimonials";
 import AdminMarketingContent from "./AdminMarketingContent";
@@ -8,7 +8,9 @@ import AdminSocialLinks from "./AdminSocialLinks";
 import AdminAIAssistant from "./AdminAIAssistant";
 import AdminBranding from "./AdminBranding";
 import AdminContent from "./AdminContent";
-import AdminShopWindowDisplay from "./AdminShopWindowDisplay";
+
+// Lazy-load to isolate from qrcode.react and other heavy deps
+const AdminShopWindowDisplay = lazy(() => import("./AdminShopWindowDisplay"));
 
 export default function AdminWebsiteSettings() {
   const [activeTab, setActiveTab] = useState("branding");
@@ -71,7 +73,9 @@ export default function AdminWebsiteSettings() {
           <AdminAIAssistant />
         </TabsContent>
         <TabsContent value="shop-window" className="mt-0">
-          <AdminShopWindowDisplay />
+          <Suspense fallback={<div className="flex items-center justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <AdminShopWindowDisplay />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>

@@ -1,10 +1,44 @@
-import { useState } from "react";
+import { useState, Component, type ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Building2, Mail, Globe } from "lucide-react";
+import { Building2, Mail, Globe, AlertTriangle } from "lucide-react";
 
 import AdminOrganizationSettings from "./AdminOrganizationSettings";
 import AdminEmailSettings from "./AdminEmailSettings";
 import AdminWebsiteSettings from "./AdminWebsiteSettings";
+
+// Error boundary to prevent tab crashes from resetting the entire page
+class TabErrorBoundary extends Component<
+  { children: ReactNode; tabName: string },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: ReactNode; tabName: string }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 gap-4 text-center">
+          <AlertTriangle className="h-10 w-10 text-destructive" />
+          <h3 className="text-lg font-semibold">Failed to load {this.props.tabName}</h3>
+          <p className="text-sm text-muted-foreground max-w-md">
+            {this.state.error?.message || "An unexpected error occurred."}
+          </p>
+          <button
+            className="text-sm text-primary underline"
+            onClick={() => this.setState({ hasError: false, error: null })}
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState("organization");
@@ -39,7 +73,9 @@ export default function AdminSettings() {
           <AdminEmailSettings />
         </TabsContent>
         <TabsContent value="website" className="mt-0">
-          <AdminWebsiteSettings />
+          <TabErrorBoundary tabName="Website Settings">
+            <AdminWebsiteSettings />
+          </TabErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>
