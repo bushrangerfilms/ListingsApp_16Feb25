@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SEO } from '@/components/SEO';
@@ -69,10 +69,12 @@ export default function SignupWizard() {
   const [gdprConsent, setGdprConsent] = useState(false);
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isCompletingSignupRef = useRef(false);
 
   // Redirect if already logged in (don't depend on loading to avoid form reset on tab focus)
+  // Skip redirect during signup completion so the success page isn't bypassed
   useEffect(() => {
-    if (user) {
+    if (user && !isCompletingSignupRef.current) {
       navigate('/admin/listings');
     }
   }, [user, navigate]);
@@ -219,14 +221,24 @@ export default function SignupWizard() {
       }
 
       const data = await response.json();
-      
+
+      // Auto-sign-in so the user has an active session when redirected from the success page
+      isCompletingSignupRef.current = true;
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (signInError) {
+        console.warn('Auto sign-in after signup failed, user will need to login manually:', signInError.message);
+      }
+
       if (isInvited) {
         toast.success('Account created! Welcome to the pilot program.');
       } else {
         toast.success('Account created! Your 14-day free trial has started.');
         toast.success(`You've received ${TRIAL_CREDITS} free trial credits!`);
       }
-      
+
       navigate('/signup/success', { 
         state: { 
           trialEndsAt: data.trial?.endsAt,
