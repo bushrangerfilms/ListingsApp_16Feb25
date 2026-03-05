@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
@@ -143,6 +144,18 @@ function toast({ ...props }: Toast) {
       toast: { ...props, id },
     });
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
+
+  // Report destructive toasts to Sentry
+  if (props.variant === "destructive") {
+    const title = typeof props.title === 'string' ? props.title : '';
+    const description = typeof props.description === 'string' ? props.description : '';
+    const message = [title, description].filter(Boolean).join(': ');
+    Sentry.captureMessage(message || "Unknown error toast", {
+      level: "error",
+      tags: { source: "error-toast" },
+      extra: { title, description },
+    });
+  }
 
   dispatch({
     type: "ADD_TOAST",
