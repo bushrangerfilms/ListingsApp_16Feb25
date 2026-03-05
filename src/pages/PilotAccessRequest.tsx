@@ -113,18 +113,16 @@ export default function PilotAccessRequest() {
             </Button>
           </form>
 
-          <div className="pt-4 border-t text-center space-y-2">
+          <div className="pt-4 border-t text-center space-y-3">
             <p className="text-sm text-muted-foreground">
-              Don't have an invite code? Contact us to request access:
+              Don't have an invite code? Apply to join our pilot program and we'll be in touch.
             </p>
-            <a
-              href="mailto:peter@streamlinedai.tech"
-              className="inline-flex items-center gap-2 text-primary font-medium hover:underline text-sm"
-              data-testid="link-pilot-email"
-            >
-              <Mail className="h-4 w-4" />
-              peter@streamlinedai.tech
-            </a>
+            <Link to="/admin/login?waitingList=true">
+              <Button variant="secondary" className="w-full gap-2" data-testid="button-join-waiting-list">
+                <Mail className="h-4 w-4" />
+                Join Waiting List
+              </Button>
+            </Link>
           </div>
           
           <div className="pt-4 border-t">

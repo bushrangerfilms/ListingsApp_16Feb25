@@ -42,7 +42,7 @@ export default function AdminLogin() {
   const [emailSent, setEmailSent] = useState(false);
   const [mode, setMode] = useState<'password' | 'magic'>('password');
 
-  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(searchParams.get('waitingList') === 'true');
   const [requestFullName, setRequestFullName] = useState('');
   const [requestEmail, setRequestEmail] = useState('');
   const [requestPhone, setRequestPhone] = useState('');
