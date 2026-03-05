@@ -274,6 +274,40 @@ export function AppSidebar() {
       )}
 
       <SidebarContent>
+        {/* App Switcher */}
+        {open ? (
+          <div className="px-3 pt-2 pb-1">
+            <div className="flex flex-col gap-1 rounded-lg bg-slate-100 p-1">
+              <div
+                className="flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 shadow-sm"
+                data-testid="switcher-listings-active"
+              >
+                <List className="h-4 w-4 text-blue-600" />
+                <span>{t('nav.listingsHub')}</span>
+              </div>
+              <a
+                href={import.meta.env.VITE_SOCIALS_HUB_URL || 'https://socials.autolisting.io'}
+                className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-white/60 hover:text-slate-700 transition-colors"
+                data-testid="link-socials-hub"
+              >
+                <ArrowRight className="h-4 w-4" />
+                <span>Go to Socials Hub</span>
+              </a>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-center pt-1 pb-1">
+            <a
+              href={import.meta.env.VITE_SOCIALS_HUB_URL || 'https://socials.autolisting.io'}
+              className="flex items-center justify-center h-8 w-8 rounded-md text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
+              title="Go to Socials Hub"
+              data-testid="link-socials-hub-collapsed"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </div>
+        )}
+
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -330,19 +364,6 @@ export function AppSidebar() {
                 <ArrowRight className="h-4 w-4 text-violet-600" />
               </button>
             )}
-            <a
-              href={import.meta.env.VITE_SOCIALS_HUB_URL || 'https://socials.autolisting.io'}
-              className="flex items-center gap-2 w-fit hover:opacity-80 transition-opacity"
-              data-testid="link-socials-hub"
-            >
-              <Badge 
-                variant="secondary"
-                className="text-sm px-3 py-1 bg-blue-600/10 text-blue-600 border-0 font-semibold"
-              >
-                {t('nav.socialsHub')}
-              </Badge>
-              <ArrowRight className="h-4 w-4 text-blue-600" />
-            </a>
           </div>
         )}
         

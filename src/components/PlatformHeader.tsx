@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useOrganizationView } from "@/contexts/OrganizationViewContext";
 import { Button } from "@/components/ui/button";
-import { List, LogOut, BarChart3, MessageSquare, Eye, Menu, Share2, Bell, Mail, Users, Coins, Settings } from "lucide-react";
+import { List, LogOut, BarChart3, MessageSquare, Eye, Menu, ArrowRight, Bell, Mail, Users, Coins, Settings } from "lucide-react";
 import { OrganizationLogo } from "@/components/OrganizationLogo";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -398,13 +398,12 @@ export const PlatformHeader = () => {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      // Use SSO redirect to the socials app (configurable via env)
                       window.location.href = import.meta.env.VITE_SOCIALS_HUB_URL || 'https://socials.autolisting.io';
                     }}
                     className="justify-start bg-blue-600/10 text-blue-600 border-blue-600/20 hover:bg-blue-600/20"
                   >
-                    <Share2 className="mr-2 h-4 w-4" />
-                    Socials Hub
+                    <ArrowRight className="mr-2 h-4 w-4" />
+                    Go to Socials Hub
                   </Button>
                   <Button
                     variant="outline"
