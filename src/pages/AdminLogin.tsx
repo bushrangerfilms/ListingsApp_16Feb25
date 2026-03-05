@@ -392,12 +392,29 @@ export default function AdminLogin() {
                 </DialogContent>
               </Dialog>
 
-              <div className="flex gap-2">
-                <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
+              <div className="space-y-3">
+                <div className="bg-white/15 rounded-lg p-4 space-y-3">
+                  <div className="text-center">
+                    <p className="font-semibold text-lg">New here?</p>
+                    <p className="text-sm text-white/80">Enter your pilot invite code to create your account</p>
+                  </div>
+                  <Button
+                    className="w-full bg-white text-[#4338CA] hover:bg-white/90 font-semibold text-base py-5 gap-2"
+                    onClick={() => window.location.href = '/pilot-access'}
+                    data-testid="button-pilot-invite-code"
+                  >
+                    <Rocket className="h-5 w-5" />
+                    Enter Pilot Invite Code
+                  </Button>
+                </div>
+
+                <div className="text-center space-y-2">
+                  <p className="text-sm text-white/70">Don't have an invite code?</p>
+                  <Dialog open={requestDialogOpen} onOpenChange={setRequestDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button 
-                      variant="secondary" 
-                      className="flex-1 gap-2"
+                    <Button
+                      variant="secondary"
+                      className="w-full gap-2"
                       data-testid="button-request-access"
                     >
                       <Mail className="h-4 w-4" />
@@ -503,13 +520,7 @@ export default function AdminLogin() {
                   )}
                 </DialogContent>
                 </Dialog>
-                <Button 
-                  className="flex-1 bg-[#4338CA] hover:bg-[#4338CA]/90"
-                  onClick={() => window.location.href = '/pilot-access'}
-                  data-testid="button-pilot-invite-code"
-                >
-                  Enter Pilot Invite Code
-                </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -517,13 +528,13 @@ export default function AdminLogin() {
           <div className="flex-1 flex flex-col gap-4">
           <Card>
             <CardHeader>
-              <CardTitle>Admin Login</CardTitle>
+              <CardTitle>Already have an account?</CardTitle>
               <CardDescription>
                 {notAuthorized
                   ? "You're signed in but don't have admin access. Please contact an administrator."
                   : emailSent
                   ? "Check your email for a login link. It may take a few minutes to arrive."
-                  : "Enter your credentials to sign in"}
+                  : "Sign in with your existing credentials. If you're new, use the pilot invite code above to create your account first."}
               </CardDescription>
             </CardHeader>
             <CardContent>
