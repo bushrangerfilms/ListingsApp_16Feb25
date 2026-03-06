@@ -303,6 +303,7 @@ serve(async (req) => {
             topK: 40,
             topP: 0.95,
             maxOutputTokens: 2048,
+            thinkingConfig: { thinkingBudget: 0 },
           },
           safetySettings: [
             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
