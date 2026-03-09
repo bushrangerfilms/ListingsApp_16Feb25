@@ -1,8 +1,85 @@
+import { useRef, useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Pipette } from 'lucide-react';
 import type { BrochureBranding, BrochureStyleOptions } from '@/lib/brochure/types';
 import { DEFAULT_STYLE_OPTIONS } from '@/lib/brochure/types';
 import { BROCHURE_TEMPLATES } from './templates/templateRegistry';
+
+const HAS_EYEDROPPER = typeof window !== 'undefined' && 'EyeDropper' in window;
+
+function ColorPickerRow({
+  value,
+  onChangeColor,
+}: {
+  value: string;
+  onChangeColor: (color: string) => void;
+}) {
+  const nativeRef = useRef<HTMLInputElement>(null);
+  const [hex, setHex] = useState(value);
+
+  useEffect(() => { setHex(value); }, [value]);
+
+  const pickEyeDropper = async () => {
+    try {
+      // @ts-expect-error EyeDropper API not in all TS libs
+      const dropper = new window.EyeDropper();
+      const result = await dropper.open();
+      onChangeColor(result.sRGBHex);
+    } catch {
+      // user cancelled
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1.5 mt-1">
+      <button
+        type="button"
+        className="w-8 h-8 rounded border border-border shrink-0 cursor-pointer"
+        style={{ backgroundColor: value }}
+        onClick={() => nativeRef.current?.click()}
+      />
+      <input
+        ref={nativeRef}
+        type="color"
+        value={value}
+        onChange={(e) => onChangeColor(e.target.value)}
+        className="sr-only"
+      />
+      <Input
+        value={hex}
+        onChange={(e) => {
+          const v = e.target.value;
+          setHex(v);
+          if (/^#[0-9a-fA-F]{6}$/.test(v)) onChangeColor(v);
+        }}
+        onBlur={() => {
+          let v = hex.trim();
+          if (!v.startsWith('#')) v = '#' + v;
+          if (/^#[0-9a-fA-F]{6}$/.test(v)) onChangeColor(v);
+          else setHex(value);
+        }}
+        placeholder="#1a365d"
+        className="h-8 text-xs font-mono w-[90px]"
+        maxLength={7}
+      />
+      {HAS_EYEDROPPER && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 w-8 p-0 shrink-0"
+          onClick={pickEyeDropper}
+          title="Pick color from screen"
+        >
+          <Pipette className="h-3.5 w-3.5" />
+        </Button>
+      )}
+    </div>
+  );
+}
 
 interface BrochureStyleEditorProps {
   branding: BrochureBranding;
@@ -133,6 +210,32 @@ export function BrochureStyleEditor({ branding, onChange }: BrochureStyleEditorP
         <Switch
           checked={opts.imageBorder}
           onCheckedChange={(checked) => update({ imageBorder: checked })}
+        />
+      </div>
+
+      {/* Colors */}
+      <div className="pt-2 border-t border-border/50">
+        <Label className="text-xs font-medium text-muted-foreground">Colors</Label>
+        <p className="text-[10px] text-muted-foreground mb-2">
+          Use the eyedropper to pick a colour from your logo.
+        </p>
+      </div>
+
+      <div>
+        <Label className="text-xs font-medium">Accent Color</Label>
+        <p className="text-[10px] text-muted-foreground">Headlines, price text, certification banner</p>
+        <ColorPickerRow
+          value={branding.primaryColor || '#1a365d'}
+          onChangeColor={(color) => onChange({ ...branding, primaryColor: color })}
+        />
+      </div>
+
+      <div>
+        <Label className="text-xs font-medium">Highlight Color</Label>
+        <p className="text-[10px] text-muted-foreground">Accent strips, underlines, sale method text</p>
+        <ColorPickerRow
+          value={branding.secondaryColor || '#c53030'}
+          onChangeColor={(color) => onChange({ ...branding, secondaryColor: color })}
         />
       </div>
 

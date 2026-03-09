@@ -24,8 +24,9 @@ export function SEO({
   
   // Generate dynamic defaults based on organization
   const businessName = organization?.business_name || 'Property Services';
-  const defaultTitle = `${businessName} - Premium Property Sales & Valuations in Ireland`;
-  const defaultDescription = `Find your perfect property with ${businessName}. Expert property sales, valuations, and auctioneering services across Ireland. Browse our curated selection of residential and commercial properties.`;
+  const regionName = (organization as any)?.country || 'your area';
+  const defaultTitle = `${businessName} - Premium Property Sales & Valuations`;
+  const defaultDescription = `Find your perfect property with ${businessName}. Expert property sales, valuations, and property services across ${regionName}. Browse our curated selection of residential and commercial properties.`;
   
   const finalTitle = title || defaultTitle;
   const finalDescription = description || defaultDescription;

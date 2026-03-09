@@ -13,7 +13,7 @@ interface BrochureLivePreviewProps {
 export function BrochureLivePreview({ content, branding, templateId }: BrochureLivePreviewProps) {
   const resolvedTemplateId = branding.styleOptions?.templateId || templateId || 'classic-1';
   const template = getTemplate(resolvedTemplateId);
-  const pageFormat = branding.styleOptions?.pageFormat || 'a4';
+  const pageFormat = branding.styleOptions?.pageFormat || 'a5';
   const TemplateComponent = pageFormat === 'a5'
     ? (template.a5PrintReadyComponent || template.component)
     : template.component;

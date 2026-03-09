@@ -154,10 +154,10 @@ export function ElegantAccommodationPageContent({ ctx, margins }: PageContentPro
   const leftFeatures = keyFeatures.slice(0, mid);
   const rightFeatures = keyFeatures.slice(mid);
 
-  // Feature photo for bottom of page
+  // Feature photo for bottom of page (don't fall back to hero — it's on the cover)
   const featurePhoto = content.gallery[0]?.url
     || content.cover.backCoverPhotoUrl
-    || content.cover.heroPhotoUrl;
+    || null;
 
   return (
     <View style={{
@@ -298,8 +298,10 @@ export function ElegantFeaturesPageContent({ ctx, margins }: PageContentProps) {
   } = ctx;
 
   // Photo mosaic: 1 large photo top + row of 2-4 smaller below
-  // Use a combination of accent photos and back cover gallery
-  const allPhotos = [...accentPhotos, ...backCoverGallery];
+  // Deduplicate back cover gallery against accent photos to avoid repeats
+  const seenUrls = new Set(accentPhotos.map(p => p.url));
+  const uniqueBackCover = backCoverGallery.filter(p => !seenUrls.has(p.url));
+  const allPhotos = [...accentPhotos, ...uniqueBackCover];
   const largePhoto = allPhotos[0];
   const smallPhotos = allPhotos.slice(1, 5);
 

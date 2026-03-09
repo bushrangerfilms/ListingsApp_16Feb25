@@ -24,6 +24,8 @@ interface BrochureEditPanelProps {
   orgId?: string;
   onSaveAsDefaults?: () => void;
   isSavingDefaults?: boolean;
+  onSaveCertDefaults?: () => void;
+  isSavingCertDefaults?: boolean;
 }
 
 export function BrochureEditPanel({
@@ -37,6 +39,8 @@ export function BrochureEditPanel({
   orgId,
   onSaveAsDefaults,
   isSavingDefaults,
+  onSaveCertDefaults,
+  isSavingCertDefaults,
 }: BrochureEditPanelProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     style: false,
@@ -266,7 +270,12 @@ export function BrochureEditPanel({
             )}
           </div>
           {expanded.certifications && (
-            <BrochureCertificationEditor branding={branding} onChange={onBrandingChange} />
+            <BrochureCertificationEditor
+              branding={branding}
+              onChange={onBrandingChange}
+              onSaveAsDefaults={onSaveCertDefaults}
+              isSavingDefaults={isSavingCertDefaults}
+            />
           )}
         </div>
       )}

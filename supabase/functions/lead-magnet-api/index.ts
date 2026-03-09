@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { publicCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { getEdgeLocaleConfig, formatEdgePrice } from '../_shared/locale-config.ts';
 
 const corsHeaders = {
   ...publicCorsHeaders,
@@ -1053,6 +1054,7 @@ async function performAIMarketResearch(
   const propertyAge = answers.property_age || "unknown";
   const landSize = answers.land_size_acres ? `${answers.land_size_acres} acres` : "standard plot";
 
+  // TODO: Make country/market context dynamic when quiz expands beyond Ireland
   const prompt = `You are a property valuation expert in Ireland. Research and provide current market data for properties in ${townland}, County ${county}.
 
 Property Details:
@@ -1183,6 +1185,7 @@ function getGatedResult(type: string, result: any): any {
     const widerHigh = result.estimate_high + range * 0.2;
 
     return {
+      // TODO: Use org currency when quiz expands beyond Ireland
       estimate_range: `€${formatNumber(widerLow)} - €${formatNumber(widerHigh)}`,
       confidence: "Preliminary",
       message: "Get your full valuation report for a refined estimate and market insights.",
@@ -1203,6 +1206,7 @@ function getFullResult(type: string, submission: any): any {
     return {
       estimate_low: submission.estimate_low,
       estimate_high: submission.estimate_high,
+      // TODO: Use org currency when quiz expands beyond Ireland
       estimate_display: `€${formatNumber(submission.estimate_low)} - €${formatNumber(submission.estimate_high)}`,
       confidence: submission.confidence,
       drivers: submission.drivers_json,
@@ -1269,8 +1273,8 @@ function getValuationNextSteps(confidence: string): string[] {
   return steps[confidence] || steps["Medium"];
 }
 
-function formatNumber(num: number): string {
-  return Math.round(num).toLocaleString("en-IE");
+function formatNumber(num: number, locale = 'en-IE'): string {
+  return Math.round(num).toLocaleString(locale);
 }
 
 // ============================================

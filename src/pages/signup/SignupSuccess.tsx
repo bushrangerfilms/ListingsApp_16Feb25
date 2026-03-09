@@ -150,7 +150,7 @@ export default function SignupSuccess() {
                   <p className="text-muted-foreground">
                     {isPilot 
                       ? 'As a pilot member, you have full access to all features. Your feedback helps us improve the platform.'
-                      : `Use your ${trialCredits} trial credits to try AI features and automation. When you're ready, choose a plan starting at €29/month.`}
+                      : `Use your ${trialCredits} trial credits to try AI features and automation. When you're ready, choose a plan starting at 29/month.`}
                   </p>
                 </div>
               </div>

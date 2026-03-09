@@ -2,6 +2,9 @@ import { SupportedLocale } from '@/lib/i18n';
 import { ieConfig } from './ie';
 import { gbConfig } from './gb';
 import { usConfig } from './us';
+import { caConfig } from './ca';
+import { auConfig } from './au';
+import { nzConfig } from './nz';
 
 export interface EnergyRating {
   code: string;
@@ -109,10 +112,13 @@ export interface RegionConfig {
   legal: LegalConfig;
 }
 
-const REGION_CONFIGS: Record<SupportedLocale, RegionConfig> = {
+const REGION_CONFIGS: Partial<Record<SupportedLocale, RegionConfig>> = {
   'en-IE': ieConfig,
   'en-GB': gbConfig,
   'en-US': usConfig,
+  'en-CA': caConfig,
+  'en-AU': auConfig,
+  'en-NZ': nzConfig,
 };
 
 export function getRegionConfig(locale: SupportedLocale): RegionConfig {

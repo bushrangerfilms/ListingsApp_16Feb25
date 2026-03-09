@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { getEdgeLocaleConfig, type EdgeLocaleConfig } from '../_shared/locale-config.ts';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -27,59 +28,6 @@ interface AIInstructionSet {
   is_active: boolean;
   priority: number;
 }
-
-// ── Locale Config ──────────────────────────────────────────────────────
-
-const getLocaleConfig = (locale: string) => {
-  switch (locale) {
-    case 'en-GB':
-      return {
-        currency: '£', currencyName: 'GBP', areaUnit: 'm²',
-        spelling: 'British English', energyRating: 'EPC',
-        postalCode: 'postcode', country: 'United Kingdom',
-        measurementNote: 'Use metric (metres). Also include imperial in parentheses.',
-        terminology: { apartment: 'flat', terrace: 'terraced house', groundFloor: 'ground floor', firstFloor: 'first floor' },
-        legalDisclaimer: 'These particulars are set out as a general outline only for guidance and do not constitute any part of an offer or contract. Intending purchasers should not rely on them as statements of representation of fact, but must satisfy themselves by inspection or otherwise as to their accuracy.',
-      };
-    case 'en-US':
-      return {
-        currency: '$', currencyName: 'USD', areaUnit: 'sq ft',
-        spelling: 'American English', energyRating: 'HERS',
-        postalCode: 'ZIP code', country: 'United States',
-        measurementNote: 'Use imperial (feet and inches). Also include metric in parentheses.',
-        terminology: { apartment: 'condo', terrace: 'townhouse', groundFloor: 'first floor', firstFloor: 'second floor' },
-        legalDisclaimer: 'The information provided is deemed reliable but is not guaranteed and should be independently verified. All properties are subject to prior sale, change or withdrawal.',
-      };
-    case 'en-AU':
-      return {
-        currency: '$', currencyName: 'AUD', areaUnit: 'm²',
-        spelling: 'Australian English', energyRating: 'NatHERS',
-        postalCode: 'postcode', country: 'Australia',
-        measurementNote: 'Use metric (metres). Also include imperial in parentheses.',
-        terminology: { apartment: 'unit', terrace: 'terrace', groundFloor: 'ground floor', firstFloor: 'first floor' },
-        legalDisclaimer: 'All information contained herein is gathered from sources we believe to be reliable. However, we cannot guarantee its accuracy and interested persons should rely on their own enquiries.',
-      };
-    case 'en-CA':
-      return {
-        currency: '$', currencyName: 'CAD', areaUnit: 'sq ft',
-        spelling: 'Canadian English', energyRating: 'EnerGuide',
-        postalCode: 'postal code', country: 'Canada',
-        measurementNote: 'Use imperial (feet and inches). Also include metric in parentheses.',
-        terminology: { apartment: 'condo', terrace: 'townhouse', groundFloor: 'main floor', firstFloor: 'second floor' },
-        legalDisclaimer: 'The information provided is from sources deemed reliable but is not guaranteed. Buyers should verify all information independently.',
-      };
-    case 'en-IE':
-    default:
-      return {
-        currency: '€', currencyName: 'EUR', areaUnit: 'm²',
-        spelling: 'British English (Irish)', energyRating: 'BER',
-        postalCode: 'Eircode', country: 'Ireland',
-        measurementNote: 'Use both imperial (feet/inches) as primary and metric in parentheses — this is standard Irish practice.',
-        terminology: { apartment: 'apartment', terrace: 'terrace', groundFloor: 'ground floor', firstFloor: 'first floor' },
-        legalDisclaimer: 'Kindly note that any negotiations respecting the above property are conducted through us. We do not hold ourselves responsible in any way for inaccuracy, but will take every care in preparing particulars. All offers are subject to the property being unsold, let or withdrawn. The above may be seen by appointment only. Any reasonable offer will be submitted to the owner for consideration.',
-      };
-  }
-};
 
 // ── AI Instructions ────────────────────────────────────────────────────
 
@@ -261,7 +209,7 @@ async function analyzeAllPhotos(
 
 function buildFullBrochurePrompt(
   listing: Record<string, unknown>,
-  localeConfig: ReturnType<typeof getLocaleConfig>,
+  localeConfig: EdgeLocaleConfig,
   customInstructions: string,
   photoDescriptions?: Map<string, string>
 ): string {
@@ -274,30 +222,35 @@ function buildFullBrochurePrompt(
   }).join('\n');
   const hasDescriptions = photoDescriptions && photoDescriptions.size > 0;
 
+  const spellingLabel = localeConfig.spelling === 'british' ? 'British English' : 'American English';
+  const measurementNote = localeConfig.measurements.area === 'sqm'
+    ? 'Use both imperial (feet/inches) as primary and metric in parentheses.'
+    : 'Use imperial (feet and inches). Also include metric in parentheses.';
+
   return `You are an expert real estate copywriter creating a professional property brochure.
 Generate a complete brochure content in JSON format for the following property listing.
 
 LOCALE REQUIREMENTS:
-- Write in ${localeConfig.spelling}
-- Currency: ${localeConfig.currency} (${localeConfig.currencyName})
-- Area unit: ${localeConfig.areaUnit}
-- Energy rating system: ${localeConfig.energyRating}
-- Postal code term: ${localeConfig.postalCode}
-- Measurements: ${localeConfig.measurementNote}
+- Write in ${spellingLabel}
+- Currency: ${localeConfig.currency.symbol} (${localeConfig.currency.code})
+- Area unit: ${localeConfig.measurements.areaSymbol}
+- Energy rating system: ${localeConfig.energyRating.system}
+- Postal code term: ${localeConfig.postalCode.label}
+- Measurements: ${measurementNote}
 - Country: ${localeConfig.country}
 
 PROPERTY DATA:
 - Title: ${listing.title || 'Untitled'}
 - Address: ${listing.address || ''}, ${listing.address_town || ''}, ${listing.county || ''}
-- ${localeConfig.postalCode}: ${listing.eircode || 'Not provided'}
+- ${localeConfig.postalCode.label}: ${listing.eircode || 'Not provided'}
 - Category: ${listing.category || 'Listing'}
 - Building Type: ${listing.building_type || 'Not specified'}
 - Bedrooms: ${listing.bedrooms || 'Not specified'}
 - Bathrooms: ${listing.bathrooms || 'Not specified'}
 - Ensuites: ${listing.ensuite || 'Not specified'}
-- Floor Area: ${listing.floor_area_size ? `${listing.floor_area_size} ${localeConfig.areaUnit}` : 'Not specified'}
+- Floor Area: ${listing.floor_area_size ? `${listing.floor_area_size} ${localeConfig.measurements.areaSymbol}` : 'Not specified'}
 - Land Size: ${listing.land_size ? `${listing.land_size} acres` : 'Not specified'}
-- Price: ${listing.price ? `${localeConfig.currency} ${Number(listing.price).toLocaleString()}` : 'Price on Application'}
+- Price: ${listing.price ? `${localeConfig.currency.symbol} ${Number(listing.price).toLocaleString()}` : 'Price on Application'}
 - Energy Rating: ${listing.ber_rating || 'Not provided'}
 - Category: ${listing.category === 'Rental' ? 'To Let' : listing.category === 'Holiday Rental' ? 'Holiday Let' : 'For Sale'}
 
@@ -346,7 +299,7 @@ RESPOND WITH ONLY VALID JSON matching this exact structure (no markdown, no code
 {
   "cover": {
     "headline": "string - e.g. '3 Bed Detached House' or descriptive headline",
-    "address": "string - full address with ${localeConfig.postalCode}",
+    "address": "string - full address with ${localeConfig.postalCode.label}",
     "price": "string - formatted price with currency symbol, or 'Price on Application'",
     "saleMethod": "string - e.g. 'For Sale by Private Treaty'",
     "heroPhotoUrl": "string - URL of hero photo",
@@ -405,13 +358,18 @@ function buildSectionRegeneratePrompt(
   section: string,
   listing: Record<string, unknown>,
   existingContent: Record<string, unknown>,
-  localeConfig: ReturnType<typeof getLocaleConfig>,
+  localeConfig: EdgeLocaleConfig,
   customInstructions: string
 ): string {
+  const spellingLabel = localeConfig.spelling === 'british' ? 'British English' : 'American English';
+  const measurementNote = localeConfig.measurements.area === 'sqm'
+    ? 'Use both imperial (feet/inches) as primary and metric in parentheses.'
+    : 'Use imperial (feet and inches). Also include metric in parentheses.';
+
   return `You are an expert real estate copywriter. Regenerate ONLY the "${section}" section of a property brochure.
 
-LOCALE: ${localeConfig.spelling}, ${localeConfig.currency}, ${localeConfig.country}
-Measurements: ${localeConfig.measurementNote}
+LOCALE: ${spellingLabel}, ${localeConfig.currency.symbol}, ${localeConfig.country}
+Measurements: ${measurementNote}
 
 PROPERTY: ${listing.title || ''} at ${listing.address || ''}, ${listing.address_town || ''}, ${listing.county || ''}
 DESCRIPTION: ${listing.description || ''}
@@ -485,7 +443,7 @@ serve(async (req) => {
     // Fetch organization branding
     const { data: org, error: orgError } = await supabase
       .from('organizations')
-      .select('business_name, logo_url, primary_color, secondary_color, contact_name, contact_email, contact_phone, business_address, psr_licence_number, locale, currency, country_code')
+      .select('business_name, logo_url, primary_color, secondary_color, contact_name, contact_email, contact_phone, business_address, psr_licence_number, locale, currency, country_code, default_brochure_certifications')
       .eq('id', organizationId)
       .single();
 
@@ -537,7 +495,7 @@ serve(async (req) => {
     const customInstructions = await fetchAIInstructions(supabase, 'brochure_generation', organizationId, effectiveLocale);
     const customInstructionsSection = buildCustomInstructionsSection(customInstructions);
 
-    const localeConfig = getLocaleConfig(effectiveLocale);
+    const localeConfig = getEdgeLocaleConfig(effectiveLocale);
 
     // Build the prompt
     const prompt = regenerateSection
@@ -634,8 +592,11 @@ serve(async (req) => {
       businessAddress: org.business_address || '',
       psrLicenceNumber: org.psr_licence_number || null,
       locale: effectiveLocale,
-      currency: org.currency || localeConfig.currencyName,
+      currency: org.currency || localeConfig.currency.code,
       countryCode: org.country_code || 'IE',
+      ...(org.default_brochure_certifications ? {
+        styleOptions: { certificationLogos: org.default_brochure_certifications },
+      } : {}),
     };
 
     const tokenUsage = {

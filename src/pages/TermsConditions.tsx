@@ -4,11 +4,17 @@ import { SEO } from '@/components/SEO';
 import { Card, CardContent } from '@/components/ui/card';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { COMPANY_INFO, getFormattedAddress } from '@/config/company';
+import { getLegalConfig } from '@/lib/locale/legalConfig';
+import { LOCALE_TO_COUNTRY } from '@/lib/locale/markets';
+import type { MarketLocale, MarketCountry } from '@/lib/locale/markets';
 
 export default function TermsConditions() {
   const { organization } = useOrganization();
   const businessName = organization?.business_name || COMPANY_INFO.name;
   const isMarketingSite = !organization;
+  const orgLocale = (organization as any)?.locale as MarketLocale | undefined;
+  const countryCode = orgLocale ? LOCALE_TO_COUNTRY[orgLocale] : 'IE';
+  const legalConfig = getLegalConfig(countryCode as MarketCountry);
   
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -72,8 +78,7 @@ export default function TermsConditions() {
             <h3>4.2 Paid Plans</h3>
             <p>
               Subscription fees are charged in advance on a monthly basis. 
-              All prices are displayed in Euros (EUR) and are inclusive of Irish VAT at the applicable rate 
-              for consumers within Ireland and the EU. Business customers with a valid VAT number may be 
+              All prices are displayed in {isMarketingSite ? 'Euros (EUR)' : `${legalConfig.currency} (${legalConfig.currencySymbol})`} and are inclusive of {legalConfig.vatLabel} at the applicable rate{isMarketingSite ? ' for consumers within Ireland and the EU' : ''}. Business customers with a valid {legalConfig.vatLabel} number may be
               eligible for reverse-charge treatment.
             </p>
 
@@ -135,7 +140,7 @@ export default function TermsConditions() {
               <li>All listing information is accurate and not misleading</li>
               <li>You have the right to market the properties listed</li>
               <li>All images and materials are owned by you or properly licensed</li>
-              <li>Listings comply with applicable Irish property and advertising laws</li>
+              <li>Listings comply with applicable property and advertising laws</li>
             </ul>
 
             <h2>8. Data Processing</h2>
@@ -153,7 +158,7 @@ export default function TermsConditions() {
 
             <h2>10. Limitation of Liability</h2>
             <p>
-              To the maximum extent permitted by Irish and EU law:
+              To the maximum extent permitted by {isMarketingSite ? 'Irish and EU law' : 'applicable law'}:
             </p>
             <ul>
               <li>We are not liable for indirect, incidental, or consequential damages</li>
@@ -180,15 +185,17 @@ export default function TermsConditions() {
 
             <h2>13. Governing Law and Disputes</h2>
             <p>
-              These Terms are governed by {COMPANY_INFO.legal.governingLaw}. 
-              Any disputes shall be subject to the exclusive jurisdiction of {COMPANY_INFO.legal.disputeResolution}.
+              These Terms are governed by {isMarketingSite ? COMPANY_INFO.legal.governingLaw : legalConfig.governingLaw}.
+              Any disputes shall be subject to the exclusive jurisdiction of {isMarketingSite ? COMPANY_INFO.legal.disputeResolution : legalConfig.disputeResolution}.
             </p>
-            <p>
-              For EU consumers: You may also have recourse to the EU Online Dispute Resolution platform 
-              at <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                https://ec.europa.eu/consumers/odr
-              </a>.
-            </p>
+            {(isMarketingSite || countryCode === 'IE' || countryCode === 'GB') && (
+              <p>
+                For EU/UK consumers: You may also have recourse to the EU Online Dispute Resolution platform
+                at <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  https://ec.europa.eu/consumers/odr
+                </a>.
+              </p>
+            )}
 
             <h2>14. Severability</h2>
             <p>

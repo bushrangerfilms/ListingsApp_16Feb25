@@ -17,9 +17,11 @@ import { useNavigate } from "react-router-dom";
 import { useAdminPermissions } from "@/hooks/admin/useAdminPermissions";
 import { useQuery } from "@tanstack/react-query";
 import { adminApi, isCreditsRedacted, AnalyticsOverview } from "@/lib/admin/adminApi";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
+  const { locale, currency } = useLocale();
   const { isSuperAdmin, isDeveloper, hasPermission, hasSuperAdminAccess, loading: authLoading } = useAdminPermissions();
 
   const { data: analytics, isLoading, refetch, isRefetching, isError, error } = useQuery<AnalyticsOverview>({
@@ -45,9 +47,9 @@ export default function SuperAdminDashboard() {
 
   const formatCurrency = (num: number | undefined) => {
     if (num === undefined) return "--";
-    return new Intl.NumberFormat('en-IE', { 
-      style: 'currency', 
-      currency: 'EUR',
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(num);

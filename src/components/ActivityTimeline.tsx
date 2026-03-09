@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar, Mail, Phone, FileText, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { useLocale } from "@/hooks/useLocale";
 
 interface Activity {
   id: string;
@@ -30,6 +31,7 @@ const ACTIVITY_ICONS: Record<string, any> = {
 };
 
 export function ActivityTimeline({ profileId, profileType }: ActivityTimelineProps) {
+  const { locale } = useLocale();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [newNote, setNewNote] = useState("");
@@ -105,7 +107,7 @@ export function ActivityTimeline({ profileId, profileType }: ActivityTimelinePro
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IE', {
+    return new Date(dateString).toLocaleDateString(locale, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',

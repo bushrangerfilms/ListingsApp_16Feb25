@@ -131,8 +131,11 @@ export function ModernCoverPageContent({ ctx, margins }: PageContentProps) {
         </View>
       )}
 
-      {/* Sale method */}
-      <View style={{ ...margins, alignItems: 'center', marginTop: SPACING.S1 }}>
+      {/* Flex spacer above */}
+      <View style={{ flex: 1 }} />
+
+      {/* Sale method + logo centered as a group */}
+      <View style={{ alignItems: 'center' }}>
         <Text style={{
           ...TYPE.coverSaleMethod,
           color: accentColor,
@@ -140,24 +143,22 @@ export function ModernCoverPageContent({ ctx, margins }: PageContentProps) {
         }}>
           {content.cover.saleMethod}
         </Text>
+        {branding.logoUrl && (
+          <View style={{ alignItems: 'center', marginTop: SPACING.S2 }}>
+            <Image
+              src={branding.logoUrl}
+              style={{
+                maxWidth: dims.logoMaxWidth * 1.2,
+                maxHeight: dims.logoMaxHeight * 1.2,
+                objectFit: 'contain',
+              }}
+            />
+          </View>
+        )}
       </View>
 
-      {/* Flex spacer */}
+      {/* Flex spacer below */}
       <View style={{ flex: 1 }} />
-
-      {/* Logo centered */}
-      {branding.logoUrl && (
-        <View style={{ alignItems: 'center', marginBottom: SPACING.S1 }}>
-          <Image
-            src={branding.logoUrl}
-            style={{
-              maxWidth: dims.logoMaxWidth * 1.2,
-              maxHeight: dims.logoMaxHeight * 1.2,
-              objectFit: 'contain',
-            }}
-          />
-        </View>
-      )}
 
       {/* Price + BER at bottom */}
       <View style={{
@@ -199,10 +200,10 @@ export function ModernAccommodationPageContent({ ctx, margins }: PageContentProp
     imgRadius, imgBorder, coverParagraphs, keyFeatures, visible,
   } = ctx;
 
-  // Use first gallery item or back cover photo as the feature photo
+  // Use first gallery item or back cover photo (don't fall back to hero — it's on the cover)
   const featurePhoto = content.cover.backCoverPhotoUrl
     || content.gallery[0]?.url
-    || content.cover.heroPhotoUrl;
+    || null;
 
   return (
     <View style={{

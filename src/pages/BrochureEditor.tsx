@@ -51,6 +51,7 @@ export default function BrochureEditor() {
   const [regeneratingSection, setRegeneratingSection] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSavingDefaults, setIsSavingDefaults] = useState(false);
+  const [isSavingCertDefaults, setIsSavingCertDefaults] = useState(false);
 
   // Fetch listing data
   const { data: listing, isLoading: listingLoading } = useQuery({
@@ -172,7 +173,7 @@ export default function BrochureEditor() {
     setIsDownloading(true);
     try {
       const template = getTemplate(branding.styleOptions?.templateId || 'classic-1');
-      const pageFormat = branding.styleOptions?.pageFormat || 'a4';
+      const pageFormat = branding.styleOptions?.pageFormat || 'a5';
 
       let TemplateComponent;
       let filenameSuffix = 'Brochure';
@@ -265,6 +266,23 @@ export default function BrochureEditor() {
       toast({ title: 'Save failed', variant: 'destructive' });
     } finally {
       setIsSavingDefaults(false);
+    }
+  }, [branding, organization, toast]);
+
+  // Save certification logos as org defaults
+  const handleSaveCertDefaults = useCallback(async () => {
+    if (!branding || !organization?.id) return;
+    setIsSavingCertDefaults(true);
+    try {
+      const certLogos = branding.styleOptions?.certificationLogos || [];
+      await updateOrganizationProfile(organization.id, {
+        default_brochure_certifications: certLogos,
+      });
+      toast({ title: 'Certification defaults saved', description: 'Future brochures will use these certifications.' });
+    } catch {
+      toast({ title: 'Save failed', variant: 'destructive' });
+    } finally {
+      setIsSavingCertDefaults(false);
     }
   }, [branding, organization, toast]);
 
@@ -403,6 +421,8 @@ export default function BrochureEditor() {
             orgId={organization?.id}
             onSaveAsDefaults={handleSaveDefaults}
             isSavingDefaults={isSavingDefaults}
+            onSaveCertDefaults={handleSaveCertDefaults}
+            isSavingCertDefaults={isSavingCertDefaults}
           />
         </div>
 

@@ -47,7 +47,7 @@ export interface PageRenderContext {
   page3Groups: Record<string, BrochureContent['rooms']>;
   accentPhotos: BrochureContent['gallery'];
   backCoverGallery: BrochureContent['gallery'];
-  backCoverPhoto: string | undefined;
+  backCoverPhoto: string | null;
   hasFloorPlans: boolean;
   certLogos: CertificationLogo[];
   hasNearby: boolean;
@@ -89,14 +89,11 @@ export function buildPageRenderContext(
 
   const accentPhotos = content.gallery.slice(0, CONTENT_CAPS.ACCENT_PHOTOS);
   const dedupedGallery = content.gallery.slice(2);
-  const backCoverGallery = dedupedGallery.length >= 2
-    ? dedupedGallery.slice(0, CONTENT_CAPS.GALLERY_ITEMS)
-    : content.gallery.slice(0, CONTENT_CAPS.GALLERY_ITEMS);
+  const backCoverGallery = dedupedGallery.slice(0, CONTENT_CAPS.GALLERY_ITEMS);
   const backCoverPhoto =
     content.cover.backCoverPhotoUrl ||
     content.gallery[2]?.url ||
-    content.gallery[0]?.url ||
-    content.cover.heroPhotoUrl;
+    null;
 
   const cappedFloorPlans = content.floorPlans.slice(0, CONTENT_CAPS.FLOOR_PLANS);
   const hasFloorPlans =

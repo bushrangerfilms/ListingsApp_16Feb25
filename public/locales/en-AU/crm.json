@@ -1,0 +1,15 @@
+{
+  "_note": "en-AU overrides for CRM namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "contact": {
+    "postcode": "Postcode",
+    "county": "State"
+  },
+
+  "property": {
+    "preferences": {
+      "energyRating": "NatHERS Star Rating"
+    }
+  }
+}

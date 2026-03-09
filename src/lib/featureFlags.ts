@@ -3,6 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export const FEATURE_FLAGS = {
   UK_LAUNCH: 'uk_launch',
   US_LAUNCH: 'us_launch',
+  CA_LAUNCH: 'ca_launch',
+  AU_LAUNCH: 'au_launch',
+  NZ_LAUNCH: 'nz_launch',
   I18N_ENABLED: 'i18n_enabled',
   PILOT_MODE: 'pilot_mode',
   PUBLIC_SIGNUP_ENABLED: 'public_signup_enabled',

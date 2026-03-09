@@ -16,6 +16,9 @@ const LOCALE_LABELS: Record<SupportedLocale, { name: string; flag: string }> = {
   'en-IE': { name: 'Ireland', flag: 'IE' },
   'en-GB': { name: 'United Kingdom', flag: 'GB' },
   'en-US': { name: 'United States', flag: 'US' },
+  'en-CA': { name: 'Canada', flag: 'CA' },
+  'en-AU': { name: 'Australia', flag: 'AU' },
+  'en-NZ': { name: 'New Zealand', flag: 'NZ' },
 };
 
 export function LocalePreviewToggle() {

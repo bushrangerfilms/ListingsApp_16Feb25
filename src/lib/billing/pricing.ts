@@ -1,12 +1,12 @@
 /**
  * Multi-Currency Pricing Configuration
  * Maps currencies to their corresponding Stripe price IDs
- * 
- * Note: GBP prices will be created in Stripe when UK launch is enabled.
- * For now, we define the structure and use EUR as fallback.
  */
 
-export type SupportedCurrency = 'EUR' | 'GBP' | 'USD';
+import type { MarketCurrency, MarketLocale } from '@/lib/locale/markets';
+import { LOCALE_TO_CURRENCY } from '@/lib/locale/markets';
+
+export type SupportedCurrency = MarketCurrency;
 
 export interface CurrencyConfig {
   code: SupportedCurrency;
@@ -33,6 +33,24 @@ export const CURRENCY_CONFIGS: Record<SupportedCurrency, CurrencyConfig> = {
     symbol: '$',
     locale: 'en-US',
     stripeCode: 'usd',
+  },
+  CAD: {
+    code: 'CAD',
+    symbol: 'C$',
+    locale: 'en-CA',
+    stripeCode: 'cad',
+  },
+  AUD: {
+    code: 'AUD',
+    symbol: 'A$',
+    locale: 'en-AU',
+    stripeCode: 'aud',
+  },
+  NZD: {
+    code: 'NZD',
+    symbol: 'NZ$',
+    locale: 'en-NZ',
+    stripeCode: 'nzd',
   },
 };
 
@@ -65,11 +83,17 @@ export const DEFAULT_PRICING = {
       EUR: 2900,
       GBP: 2500,
       USD: 2900,
+      CAD: 3900,
+      AUD: 4500,
+      NZD: 4900,
     },
     pro: {
       EUR: 7900,
       GBP: 6900,
       USD: 7900,
+      CAD: 10900,
+      AUD: 12500,
+      NZD: 13500,
     },
   },
   creditPacks: {
@@ -77,21 +101,33 @@ export const DEFAULT_PRICING = {
       EUR: 2500,
       GBP: 2200,
       USD: 2500,
+      CAD: 3500,
+      AUD: 3900,
+      NZD: 4200,
     },
     credits_500: {
       EUR: 11000,
       GBP: 9500,
       USD: 11000,
+      CAD: 15000,
+      AUD: 17000,
+      NZD: 18500,
     },
     credits_2000: {
       EUR: 40000,
       GBP: 35000,
       USD: 40000,
+      CAD: 55000,
+      AUD: 62000,
+      NZD: 67000,
     },
     credits_5000: {
       EUR: 90000,
       GBP: 79000,
       USD: 90000,
+      CAD: 122000,
+      AUD: 140000,
+      NZD: 150000,
     },
   },
 } as const;
@@ -100,13 +136,7 @@ export const DEFAULT_PRICING = {
  * Get currency config for a locale
  */
 export function getCurrencyForLocale(locale: string): SupportedCurrency {
-  const localeMap: Record<string, SupportedCurrency> = {
-    'en-IE': 'EUR',
-    'en-GB': 'GBP',
-    'en-US': 'USD',
-  };
-  
-  return localeMap[locale] || 'EUR';
+  return (LOCALE_TO_CURRENCY as Record<string, SupportedCurrency>)[locale] || 'EUR';
 }
 
 /**
@@ -136,10 +166,30 @@ export function getOrganizationCurrency(locale?: string | null): SupportedCurren
 }
 
 /**
+ * Approximate exchange rates from EUR for display estimates only.
+ * Used when target currency prices aren't set in Stripe yet.
+ */
+const EUR_EXCHANGE_RATES: Record<SupportedCurrency, number> = {
+  EUR: 1,
+  GBP: 0.86,
+  USD: 1.08,
+  CAD: 1.47,
+  AUD: 1.65,
+  NZD: 1.78,
+};
+
+/**
  * Convert EUR price to GBP (approximate conversion)
  * Used only for display estimates when GBP prices aren't set
  */
 export function estimateGBPPrice(eurCents: number): number {
-  const exchangeRate = 0.86;
-  return Math.round(eurCents * exchangeRate);
+  return estimatePrice(eurCents, 'GBP');
+}
+
+/**
+ * Convert EUR price to target currency (approximate conversion)
+ * Used only for display estimates when target currency prices aren't set
+ */
+export function estimatePrice(eurCents: number, toCurrency: SupportedCurrency): number {
+  return Math.round(eurCents * EUR_EXCHANGE_RATES[toCurrency]);
 }

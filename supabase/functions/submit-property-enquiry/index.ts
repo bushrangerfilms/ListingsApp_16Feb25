@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
 
     const { data: orgData, error: orgError } = await supabase
       .from('organizations')
-      .select('id, business_name, notification_emails')
+      .select('id, business_name, notification_emails, locale')
       .eq('slug', clientSlug)
       .single();
 
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
         // Append enquiry note to existing notes
         const existingNotes = existingProfile.notes || '';
         const updatedNotes = existingNotes 
-          ? `${existingNotes}\n\n---\n${new Date().toLocaleDateString('en-IE')}: ${enquiryNote}`
+          ? `${existingNotes}\n\n---\n${new Date().toLocaleDateString(orgData.locale || 'en-IE')}: ${enquiryNote}`
           : enquiryNote;
         
         const { error: updateError } = await supabaseCrm

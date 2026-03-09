@@ -5,12 +5,18 @@ import { SEO } from '@/components/SEO';
 import { Card, CardContent } from '@/components/ui/card';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { COMPANY_INFO, getFormattedAddress } from '@/config/company';
+import { getLegalConfig } from '@/lib/locale/legalConfig';
+import { LOCALE_TO_COUNTRY } from '@/lib/locale/markets';
+import type { MarketLocale, MarketCountry } from '@/lib/locale/markets';
 
 export default function PrivacyPolicy() {
   const { organization } = useOrganization();
   const businessName = organization?.business_name || COMPANY_INFO.name;
   const contactEmail = organization?.contact_email || COMPANY_INFO.contact.email;
   const isMarketingSite = !organization;
+  const orgLocale = (organization as any)?.locale as MarketLocale | undefined;
+  const countryCode = orgLocale ? LOCALE_TO_COUNTRY[orgLocale] : 'IE';
+  const legalConfig = getLegalConfig(countryCode as MarketCountry);
   
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -29,8 +35,9 @@ export default function PrivacyPolicy() {
             <h2>1. Introduction</h2>
             <p>
               {isMarketingSite ? COMPANY_INFO.legalName : businessName} ("we", "us", "our") is committed to 
-              protecting your personal data and respecting your privacy in accordance with the General Data 
-              Protection Regulation (GDPR) and the Irish Data Protection Act 2018.
+              protecting your personal data and respecting your privacy in accordance with {isMarketingSite
+                ? 'the General Data Protection Regulation (GDPR) and the Irish Data Protection Act 2018'
+                : `applicable data protection legislation including ${legalConfig.dataProtectionAuthority.law}`}.
             </p>
             <p>
               This Privacy Policy explains how we collect, use, store, and protect your personal data when 
@@ -176,13 +183,13 @@ export default function PrivacyPolicy() {
             <h2>13. Complaints</h2>
             <p>
               If you are not satisfied with our response to a privacy concern, you have the right 
-              to lodge a complaint with the Irish Data Protection Commission:
+              to lodge a complaint with {isMarketingSite ? 'the Irish Data Protection Commission' : 'your local data protection authority'}:
             </p>
             <p>
-              <strong>{COMPANY_INFO.legal.dataProtectionAuthority.name}</strong><br />
-              {COMPANY_INFO.legal.dataProtectionAuthority.address}<br />
-              Website: <a href={COMPANY_INFO.legal.dataProtectionAuthority.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                {COMPANY_INFO.legal.dataProtectionAuthority.website}
+              <strong>{isMarketingSite ? COMPANY_INFO.legal.dataProtectionAuthority.name : legalConfig.dataProtectionAuthority.name}</strong><br />
+              {isMarketingSite && <>{COMPANY_INFO.legal.dataProtectionAuthority.address}<br /></>}
+              Website: <a href={isMarketingSite ? COMPANY_INFO.legal.dataProtectionAuthority.website : legalConfig.dataProtectionAuthority.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                {isMarketingSite ? COMPANY_INFO.legal.dataProtectionAuthority.website : legalConfig.dataProtectionAuthority.website}
               </a>
             </p>
 

@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Check, X } from 'lucide-react';
 import type { BrochureGalleryItem } from '@/lib/brochure/types';
@@ -61,21 +60,21 @@ export function BrochureGalleryEditor({ gallery, onChange, availablePhotos }: Br
       {gallery.length > 0 && (
         <div>
           <Label className="text-xs mb-1 block">Selected ({gallery.length})</Label>
+          <p className="text-[10px] text-muted-foreground mb-1.5">
+            AI-generated descriptions — not shown in the brochure.
+          </p>
           <div className="space-y-1.5">
             {gallery.map((item, i) => (
               <div key={item.id} className="flex items-center gap-2">
-                <img src={item.url} alt="" className="w-10 h-8 rounded object-cover" />
-                <Input
-                  value={item.caption || ''}
-                  onChange={(e) => updateCaption(i, e.target.value)}
-                  placeholder="Caption..."
-                  className="h-7 text-sm flex-1"
-                />
+                <img src={item.url} alt="" className="w-10 h-8 rounded object-cover shrink-0" />
+                <span className="text-xs text-muted-foreground flex-1 leading-tight">
+                  {item.caption || 'No description'}
+                </span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-1.5 text-destructive"
+                  className="h-7 px-1.5 text-destructive shrink-0"
                   onClick={() => removePhoto(i)}
                 >
                   <X className="h-3 w-3" />

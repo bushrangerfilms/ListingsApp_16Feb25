@@ -9,6 +9,7 @@ import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { SequenceControls } from "@/components/SequenceControls";
 import { EmailAnalytics } from "@/components/EmailAnalytics";
 import { useState, useEffect } from "react";
+import { useLocale } from "@/hooks/useLocale";
 
 interface SellerProfile {
   id: string;
@@ -39,6 +40,7 @@ const SELLER_STAGES = [
 ];
 
 export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) {
+  const { locale } = useLocale();
   const [showTimeline, setShowTimeline] = useState(false);
   const [automationStatus, setAutomationStatus] = useState<{ active: boolean; sequence_name: string } | null>(null);
 
@@ -87,7 +89,7 @@ export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) 
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IE', {
+    return new Date(dateString).toLocaleDateString(locale, {
       day: 'numeric',
       month: 'short',
       year: 'numeric'

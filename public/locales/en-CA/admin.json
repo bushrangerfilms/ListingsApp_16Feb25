@@ -1,0 +1,14 @@
+{
+  "_note": "en-CA overrides for admin namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "organization": {
+    "vatNumber": "GST/HST Number",
+    "postcode": "Postal Code"
+  },
+
+  "region": {
+    "ca": "Canada",
+    "currency": "CAD - Canadian Dollar"
+  }
+}

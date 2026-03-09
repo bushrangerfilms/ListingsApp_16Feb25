@@ -166,3 +166,30 @@ RLS policies enforce org isolation. All queries scoped by `organization_id`.
 - Use `VITE_SUPABASE_PUBLISHABLE_KEY` (anon key) on client — never service role key
 - RLS handles data isolation — don't add manual org filtering as a substitute
 - Respect domain routing — don't add admin UI components to marketing/public routes
+
+## Internationalisation (i18n) Rules
+
+**6 markets supported:** IE, GB, US, CA, AU, NZ. Locale type: `MarketLocale` from `src/lib/locale/markets.ts`.
+
+### Never hardcode:
+- Currency symbols (`€`, `£`, `$`) — use `formatCurrency()` from `useLocale()` or `formatPrice()` from billing
+- Locale strings in `Intl.NumberFormat` / `toLocaleDateString` — use org locale with `|| 'en-IE'` fallback
+- Country names as display text — use `regionConfig` or org data
+- Property terminology (flat vs apartment, solicitor vs attorney) — use `regionConfig.legal` or edge locale config
+
+### Key files:
+- `src/lib/locale/markets.ts` — `MarketLocale`, `MarketCountry`, `MarketCurrency` types + mappings
+- `src/lib/regionConfig/` — per-market config (measurements, energy ratings, legal terms, tax)
+- `src/lib/locale/legalConfig.ts` — `getLegalConfig(countryCode)` for DPA, governing law, VAT
+- `src/config/company.ts` — `getDataProtectionAuthority(countryCode)` for privacy compliance
+- `src/hooks/useLocale.ts` — `useLocale()` hook for frontend locale/currency/formatting
+- `supabase/functions/_shared/locale-config.ts` — edge function locale config for all 6 markets
+
+### Market gating:
+- New markets gated by feature flags (`ca_launch`, `au_launch`, `nz_launch`)
+- Use `useMarketRollout()` from `src/hooks/useUKRollout.ts` for any market
+- `OrganizationLocaleSelector.tsx` shows markets based on flag status
+
+### Quality checks:
+- Run `npm run i18n:lint` to scan for hardcoded locale references
+- Run `npm run i18n:check` to verify translation completeness
