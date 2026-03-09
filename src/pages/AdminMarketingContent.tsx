@@ -292,7 +292,11 @@ export default function AdminMarketingContent() {
 
   const getLeadMagnetUrl = (type: "READY_TO_SELL" | "WORTH_ESTIMATE") => {
     const slug = targetOrg?.slug || "";
+    const customDomain = targetOrg?.domain;
     const quizPath = type === "READY_TO_SELL" ? "ready-to-sell" : "worth-estimate";
+    if (customDomain) {
+      return `https://${customDomain}/quiz/${quizPath}`;
+    }
     return `https://app.autolisting.io/lead-magnet/${slug}/${quizPath}`;
   };
 
