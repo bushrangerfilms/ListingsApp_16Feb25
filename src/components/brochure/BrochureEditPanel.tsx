@@ -26,6 +26,8 @@ interface BrochureEditPanelProps {
   isSavingDefaults?: boolean;
   onSaveCertDefaults?: () => void;
   isSavingCertDefaults?: boolean;
+  onSaveStyleDefaults?: () => void;
+  isSavingStyleDefaults?: boolean;
 }
 
 export function BrochureEditPanel({
@@ -41,6 +43,8 @@ export function BrochureEditPanel({
   isSavingDefaults,
   onSaveCertDefaults,
   isSavingCertDefaults,
+  onSaveStyleDefaults,
+  isSavingStyleDefaults,
 }: BrochureEditPanelProps) {
   const templateId = branding?.styleOptions?.templateId || 'classic-1';
 
@@ -92,7 +96,12 @@ export function BrochureEditPanel({
             )}
           </div>
           {expanded.style && (
-            <BrochureStyleEditor branding={branding} onChange={onBrandingChange} />
+            <BrochureStyleEditor
+              branding={branding}
+              onChange={onBrandingChange}
+              onSaveAsDefaults={onSaveStyleDefaults}
+              isSavingDefaults={isSavingStyleDefaults}
+            />
           )}
         </div>
       )}
