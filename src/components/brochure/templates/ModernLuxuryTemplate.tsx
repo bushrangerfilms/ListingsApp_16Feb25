@@ -131,10 +131,10 @@ export function ModernCoverPageContent({ ctx, margins }: PageContentProps) {
         </View>
       )}
 
-      {/* Flex spacer above */}
+      {/* Flex spacer — pushes content group to lower-center */}
       <View style={{ flex: 1 }} />
 
-      {/* Sale method + logo centered as a group */}
+      {/* Sale method + logo + price as one cohesive centered group */}
       <View style={{ alignItems: 'center' }}>
         <Text style={{
           ...TYPE.coverSaleMethod,
@@ -144,7 +144,7 @@ export function ModernCoverPageContent({ ctx, margins }: PageContentProps) {
           {content.cover.saleMethod}
         </Text>
         {branding.logoUrl && (
-          <View style={{ alignItems: 'center', marginTop: SPACING.S2 }}>
+          <View style={{ alignItems: 'center', marginTop: SPACING.S1 }}>
             <Image
               src={branding.logoUrl}
               style={{
@@ -155,40 +155,38 @@ export function ModernCoverPageContent({ ctx, margins }: PageContentProps) {
             />
           </View>
         )}
+        {/* Price + BER inline below logo */}
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginTop: SPACING.S2,
+        }}>
+          {content.cover.price && (
+            <Text style={{ ...priceStyle, color: primaryColor, textAlign: 'center' }}>
+              Guide Price: {content.cover.price}
+            </Text>
+          )}
+          {content.cover.energyRating && (
+            <Text style={{
+              fontSize: 10,
+              fontFamily: 'Helvetica-Bold',
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderWidth: 1.5,
+              borderColor: primaryColor,
+              color: primaryColor,
+              borderRadius: 3,
+              marginLeft: 18,
+            }}>
+              {getBerLabel(branding.locale)} {content.cover.energyRating}
+            </Text>
+          )}
+        </View>
       </View>
 
-      {/* Flex spacer below */}
-      <View style={{ flex: 1 }} />
-
-      {/* Price + BER at bottom */}
-      <View style={{
-        ...margins,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingBottom: PRICE_ZONE.minFromTrim,
-      }}>
-        {content.cover.price && (
-          <Text style={{ ...priceStyle, color: primaryColor, textAlign: 'center' }}>
-            Guide Price: {content.cover.price}
-          </Text>
-        )}
-        {content.cover.energyRating && (
-          <Text style={{
-            fontSize: 10,
-            fontFamily: 'Helvetica-Bold',
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            borderWidth: 1.5,
-            borderColor: primaryColor,
-            color: primaryColor,
-            borderRadius: 3,
-            marginLeft: 18,
-          }}>
-            {getBerLabel(branding.locale)} {content.cover.energyRating}
-          </Text>
-        )}
-      </View>
+      {/* Smaller bottom spacer — keeps group in lower-center, not dead-center */}
+      <View style={{ flex: 0.5, minHeight: 20 }} />
     </View>
   );
 }
