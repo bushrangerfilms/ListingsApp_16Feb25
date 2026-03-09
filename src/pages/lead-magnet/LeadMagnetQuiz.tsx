@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { isPublicSite, detectOrganizationFromDomain } from "@/lib/domainDetection";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle, AlertCircle, Home, ArrowRight, ArrowLeft, Lock, Unlock, TrendingUp, FileText, Scale, Calendar, Wrench, DollarSign, Download, Phone, MessageSquare } from "lucide-react";
 import jsPDF from "jspdf";
+import { useLocale } from "@/hooks/useLocale";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -65,9 +67,11 @@ interface FullResult {
 type QuizType = "READY_TO_SELL" | "WORTH_ESTIMATE";
 
 export function LeadMagnetQuiz() {
-  const { orgSlug, quizType } = useParams<{ orgSlug: string; quizType: string }>();
+  const { orgSlug: orgSlugParam, quizType } = useParams<{ orgSlug: string; quizType: string }>();
   const [searchParams] = useSearchParams();
+  const { locale, currency } = useLocale();
 
+  const [resolvedOrgSlug, setResolvedOrgSlug] = useState<string | null>(orgSlugParam || null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [org, setOrg] = useState<OrgConfig | null>(null);
@@ -97,12 +101,36 @@ export function LeadMagnetQuiz() {
 
   const normalizedType: QuizType = quizType?.toUpperCase().replace(/-/g, "_") as QuizType || "READY_TO_SELL";
 
+  // Resolve org slug from custom domain if not in URL params
   useEffect(() => {
-    loadConfig();
-  }, [orgSlug, quizType]);
+    if (orgSlugParam) {
+      setResolvedOrgSlug(orgSlugParam);
+      return;
+    }
+    // On a custom domain, detect org from hostname
+    if (isPublicSite()) {
+      detectOrganizationFromDomain().then((domainOrg) => {
+        if (domainOrg?.slug) {
+          setResolvedOrgSlug(domainOrg.slug);
+        } else {
+          setError("Could not detect organization from this domain");
+          setLoading(false);
+        }
+      });
+    } else {
+      setError("Invalid quiz URL");
+      setLoading(false);
+    }
+  }, [orgSlugParam]);
+
+  useEffect(() => {
+    if (resolvedOrgSlug && quizType) {
+      loadConfig();
+    }
+  }, [resolvedOrgSlug, quizType]);
 
   const loadConfig = async () => {
-    if (!orgSlug || !quizType) {
+    if (!resolvedOrgSlug || !quizType) {
       setError("Invalid quiz URL");
       setLoading(false);
       return;
@@ -110,7 +138,7 @@ export function LeadMagnetQuiz() {
 
     try {
       const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/lead-magnet-api/config/${orgSlug}/${quizType}`
+        `${SUPABASE_URL}/functions/v1/lead-magnet-api/config/${resolvedOrgSlug}/${quizType}`
       );
       const data = await response.json();
 
@@ -284,7 +312,7 @@ export function LeadMagnetQuiz() {
     // Date
     doc.setFontSize(10);
     doc.setTextColor(120, 120, 120);
-    doc.text(`Generated: ${new Date().toLocaleDateString("en-IE")}`, pageWidth / 2, y, { align: "center" });
+    doc.text(`Generated: ${new Date().toLocaleDateString(locale)}`, pageWidth / 2, y, { align: "center" });
     y += 15;
 
     // Results
@@ -869,6 +897,7 @@ interface FullResultsViewProps {
 }
 
 function FullResultsView({ type, result, org, onDownloadPDF, onContactAgent }: FullResultsViewProps) {
+  const { locale, currency } = useLocale();
   if (type === "READY_TO_SELL") {
     return (
       <div className="space-y-6 mt-6">
@@ -1038,7 +1067,7 @@ function FullResultsView({ type, result, org, onDownloadPDF, onContactAgent }: F
                   </div>
                   <Badge variant="outline" className="font-semibold">
                     {typeof sale.price === "number"
-                      ? new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(sale.price)
+                      ? new Intl.NumberFormat(locale, { style: "currency", currency: currency, maximumFractionDigits: 0 }).format(sale.price)
                       : sale.price}
                   </Badge>
                 </div>

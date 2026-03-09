@@ -286,6 +286,8 @@ function OrgPublicRoutes() {
   return (
     <Suspense fallback={<GlobalLoadingFallback />}>
       <Routes>
+        {/* Quiz route on custom domains — org detected from hostname */}
+        <Route path="/quiz/:quizType" element={<LeadMagnetQuiz />} />
         <Route path="/" element={<OrganizationRoute><PublicListings /></OrganizationRoute>} />
         <Route path="/property/:id" element={<OrganizationRoute><PropertyDetails /></OrganizationRoute>} />
         <Route path="/request-valuation" element={<OrganizationRoute><ValuationRequest /></OrganizationRoute>} />
