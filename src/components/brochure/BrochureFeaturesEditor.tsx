@@ -3,10 +3,12 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 import type { BrochureFeatures } from '@/lib/brochure/types';
+import { getHeadingDefaults } from '@/lib/brochure/types';
 
 interface BrochureFeaturesEditorProps {
   features: BrochureFeatures;
   onChange: (features: BrochureFeatures) => void;
+  templateId?: string;
 }
 
 function EditableList({
@@ -63,23 +65,53 @@ function EditableList({
   );
 }
 
-export function BrochureFeaturesEditor({ features, onChange }: BrochureFeaturesEditorProps) {
+export function BrochureFeaturesEditor({ features, onChange, templateId }: BrochureFeaturesEditorProps) {
+  const defaults = getHeadingDefaults(templateId);
   return (
     <div className="space-y-3 p-3">
+      <div className="grid grid-cols-3 gap-1.5">
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Services heading</Label>
+          <Input
+            value={features.servicesTitle || ''}
+            onChange={(e) => onChange({ ...features, servicesTitle: e.target.value || undefined })}
+            placeholder={defaults.servicesTitle}
+            className="h-7 text-xs"
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Features heading</Label>
+          <Input
+            value={features.externalTitle || ''}
+            onChange={(e) => onChange({ ...features, externalTitle: e.target.value || undefined })}
+            placeholder={defaults.externalTitle}
+            className="h-7 text-xs"
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Nearby heading</Label>
+          <Input
+            value={features.nearbyTitle || ''}
+            onChange={(e) => onChange({ ...features, nearbyTitle: e.target.value || undefined })}
+            placeholder={defaults.nearbyTitle}
+            className="h-7 text-xs"
+          />
+        </div>
+      </div>
       <EditableList
-        label="Services"
+        label={features.servicesTitle || defaults.servicesTitle}
         items={features.services}
         onChange={(services) => onChange({ ...features, services })}
         placeholder="e.g. Gas Central Heating"
       />
       <EditableList
-        label="Features"
+        label={features.externalTitle || defaults.externalTitle}
         items={features.external}
         onChange={(external) => onChange({ ...features, external })}
         placeholder="e.g. Private Rear Garden"
       />
       <EditableList
-        label="Nearby"
+        label={features.nearbyTitle || defaults.nearbyTitle}
         items={features.nearby}
         onChange={(nearby) => onChange({ ...features, nearby })}
         placeholder="e.g. Schools within 500m"

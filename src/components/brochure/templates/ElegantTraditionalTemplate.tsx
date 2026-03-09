@@ -201,7 +201,7 @@ export function ElegantAccommodationPageContent({ ctx, margins }: PageContentPro
             color: primaryColor,
             marginBottom: 4,
           }}>
-            Home Features
+            {content.description.keyFeaturesTitle || 'Home Features'}
           </Text>
           <View style={{ flexDirection: 'row' }}>
             <View style={{ flex: 1, marginRight: 8 }}>
@@ -373,7 +373,7 @@ export function ElegantFeaturesPageContent({ ctx, margins }: PageContentProps) {
           {hasServices && (
             <View style={{ flex: 1, marginRight: 10 }}>
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-                Services
+                {content.features.servicesTitle || 'Services'}
               </Text>
               {cappedServices.map((service, i) => (
                 <BulletItem key={i} text={normalizeText(service)} />
@@ -383,7 +383,7 @@ export function ElegantFeaturesPageContent({ ctx, margins }: PageContentProps) {
           {hasExternal && (
             <View style={{ flex: 1, marginRight: 10 }}>
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-                Features
+                {content.features.externalTitle || 'Features'}
               </Text>
               {cappedExternal.map((feature, i) => (
                 <BulletItem key={i} text={normalizeText(feature)} />
@@ -393,7 +393,7 @@ export function ElegantFeaturesPageContent({ ctx, margins }: PageContentProps) {
           {hasNearby && (
             <View style={{ flex: 1 }}>
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-                Nearby
+                {content.features.nearbyTitle || 'Nearby'}
               </Text>
               {cappedNearby.map((item, i) => (
                 <BulletItem key={i} text={normalizeText(item)} />
@@ -408,7 +408,7 @@ export function ElegantFeaturesPageContent({ ctx, margins }: PageContentProps) {
         <View style={{ marginBottom: SPACING.HALF }}>
           <View style={{ marginBottom: SPACING.HALF }}>
             <Text style={{ ...TYPE.sectionTitle, color: primaryColor, marginBottom: 3 }}>
-              Location
+              {content.location.sectionTitle || 'Location'}
             </Text>
             <View style={{
               borderBottomWidth: RULE_WEIGHT_HEAVY,

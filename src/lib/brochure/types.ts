@@ -11,6 +11,8 @@ export interface BrochureCover {
 export interface BrochureDescription {
   marketingText: string;
   keyFeatures: string[];
+  sectionTitle?: string;
+  keyFeaturesTitle?: string;
 }
 
 export interface BrochureRoom {
@@ -26,11 +28,15 @@ export interface BrochureFeatures {
   services: string[];
   external: string[];
   nearby: string[];
+  servicesTitle?: string;
+  externalTitle?: string;
+  nearbyTitle?: string;
 }
 
 export interface BrochureLocation {
   text: string;
   amenities: string[];
+  sectionTitle?: string;
 }
 
 export interface BrochureFloorPlan {
@@ -124,6 +130,53 @@ export interface ListingBrochure {
   created_at: string;
   updated_at: string;
   is_archived: boolean;
+}
+
+/** Default section headings per template (used as placeholders in editors) */
+export const TEMPLATE_HEADING_DEFAULTS: Record<string, {
+  descriptionTitle: string;
+  keyFeaturesTitle: string;
+  servicesTitle: string;
+  externalTitle: string;
+  nearbyTitle: string;
+  locationTitle: string;
+}> = {
+  'classic-1': {
+    descriptionTitle: 'Accommodation',
+    keyFeaturesTitle: 'Key Features',
+    servicesTitle: 'Services',
+    externalTitle: 'Features',
+    nearbyTitle: 'Nearby',
+    locationTitle: 'Location',
+  },
+  'modern-luxury': {
+    descriptionTitle: 'About This Property',
+    keyFeaturesTitle: 'Key Features',
+    servicesTitle: 'Services',
+    externalTitle: 'Features',
+    nearbyTitle: 'Nearby',
+    locationTitle: 'Location',
+  },
+  'elegant-traditional': {
+    descriptionTitle: '',
+    keyFeaturesTitle: 'Home Features',
+    servicesTitle: 'Services',
+    externalTitle: 'Features',
+    nearbyTitle: 'Nearby',
+    locationTitle: 'Location',
+  },
+  'architectural': {
+    descriptionTitle: "What\u2019s Special",
+    keyFeaturesTitle: '',
+    servicesTitle: 'Property Details',
+    externalTitle: 'Features',
+    nearbyTitle: 'Nearby',
+    locationTitle: 'Location',
+  },
+};
+
+export function getHeadingDefaults(templateId?: string) {
+  return TEMPLATE_HEADING_DEFAULTS[templateId || 'classic-1'] || TEMPLATE_HEADING_DEFAULTS['classic-1'];
 }
 
 export const DEFAULT_SECTION_ORDER = [
