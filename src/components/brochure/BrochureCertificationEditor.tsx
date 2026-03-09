@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Save, Loader2 } from 'lucide-react';
 import type { BrochureBranding, CertificationLogo, BrochureStyleOptions } from '@/lib/brochure/types';
 import { DEFAULT_STYLE_OPTIONS } from '@/lib/brochure/types';
 import { getLogosForLocale } from '@/lib/brochure/certificationLogos';
@@ -8,9 +10,11 @@ import { getLogosForLocale } from '@/lib/brochure/certificationLogos';
 interface BrochureCertificationEditorProps {
   branding: BrochureBranding;
   onChange: (branding: BrochureBranding) => void;
+  onSaveAsDefaults?: () => void;
+  isSavingDefaults?: boolean;
 }
 
-export function BrochureCertificationEditor({ branding, onChange }: BrochureCertificationEditorProps) {
+export function BrochureCertificationEditor({ branding, onChange, onSaveAsDefaults, isSavingDefaults }: BrochureCertificationEditorProps) {
   const opts = branding.styleOptions || DEFAULT_STYLE_OPTIONS;
   const selectedLogos = opts.certificationLogos || [];
   const builtInLogos = getLogosForLocale(branding.locale || 'en-IE');
@@ -103,6 +107,29 @@ export function BrochureCertificationEditor({ branding, onChange }: BrochureCert
               )
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Save as org defaults */}
+      {onSaveAsDefaults && (
+        <div className="mt-3 pt-2 border-t">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={onSaveAsDefaults}
+            disabled={isSavingDefaults}
+          >
+            {isSavingDefaults ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            Save as org defaults
+          </Button>
+          <p className="text-[10px] text-muted-foreground mt-1 text-center">
+            Updates your organisation defaults for future brochures
+          </p>
         </div>
       )}
     </div>

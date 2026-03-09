@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { getEdgeLocaleConfig, type EdgeLocaleConfig } from '../_shared/locale-config.ts';
 
 // CORS headers set per-request below
 
@@ -94,65 +95,18 @@ function buildCustomInstructionsSection(instructions: AIInstructionSet[]): strin
   return `\n\nCUSTOM REQUIREMENTS:\n${sections.join('\n\n')}`;
 }
 
-const getLocaleConfig = (locale: string) => {
-  switch (locale) {
-    case 'en-GB':
-      return {
-        currency: '£',
-        currencyName: 'GBP',
-        areaUnit: 'm²',
-        spelling: 'British English',
-        energyRating: 'EPC',
-        postalCode: 'postcode',
-        terminology: {
-          apartment: 'flat',
-          terrace: 'terraced house',
-          ground_floor: 'ground floor',
-          first_floor: 'first floor',
-        }
-      };
-    case 'en-US':
-      return {
-        currency: '$',
-        currencyName: 'USD',
-        areaUnit: 'sq ft',
-        spelling: 'American English',
-        energyRating: 'HERS',
-        postalCode: 'ZIP code',
-        terminology: {
-          apartment: 'condo',
-          terrace: 'townhouse',
-          ground_floor: 'first floor',
-          first_floor: 'second floor',
-        }
-      };
-    case 'en-IE':
-    default:
-      return {
-        currency: '€',
-        currencyName: 'EUR',
-        areaUnit: 'm²',
-        spelling: 'British English (Irish)',
-        energyRating: 'BER',
-        postalCode: 'Eircode',
-        terminology: {
-          apartment: 'apartment',
-          terrace: 'terrace',
-          ground_floor: 'ground floor',
-          first_floor: 'first floor',
-        }
-      };
-  }
-};
+const getSpellingLabel = (config: EdgeLocaleConfig): string =>
+  config.spelling === 'british' ? 'British English' : 'American English';
 
-const getDescriptionPrompt = (content: string, localeConfig: any, metadata: any) => {
+const getDescriptionPrompt = (content: string, localeConfig: EdgeLocaleConfig, metadata: any) => {
+  const spellingLabel = getSpellingLabel(localeConfig);
   return `You are an expert real estate copywriter. Enhance this property description to be more engaging and sales-focused while maintaining complete accuracy.
 
-LOCALE REQUIREMENTS (${localeConfig.spelling}):
-- Use ${localeConfig.spelling} spelling (e.g., "colour" not "color" for British, "center" not "centre" for American)
-- Use ${localeConfig.currency} for any currency references
-- Use ${localeConfig.areaUnit} for measurements
-- Reference ${localeConfig.energyRating} for energy ratings
+LOCALE REQUIREMENTS (${spellingLabel}):
+- Use ${spellingLabel} spelling (e.g., "colour" not "color" for British, "center" not "centre" for American)
+- Use ${localeConfig.currency.symbol} for any currency references
+- Use ${localeConfig.measurements.areaSymbol} for measurements
+- Reference ${localeConfig.energyRating.system} for energy ratings
 
 PROPERTY CONTEXT:
 ${metadata?.category ? `- Category: ${metadata.category}` : ''}
@@ -178,26 +132,28 @@ ${content}
 Return ONLY the enhanced description text, no explanations or markers. Preserve paragraph breaks using double newlines.`;
 };
 
-const getSpecsPrompt = (content: string, localeConfig: any) => {
-  const dimensionExample = localeConfig.areaUnit === 'sq ft' 
-    ? '"Living Room: 17ft x 14ft"' 
+const getSpecsPrompt = (content: string, localeConfig: EdgeLocaleConfig) => {
+  const dimensionExample = localeConfig.measurements.area === 'sqft'
+    ? '"Living Room: 17ft x 14ft"'
     : '"Living Room: 5.2m x 4.1m"';
-  
-  const abbreviationRule = localeConfig.areaUnit === 'sq ft'
+
+  const abbreviationRule = localeConfig.measurements.area === 'sqft'
     ? 'Standardize to sq ft (not sf, not sqft)'
     : 'Standardize to m² (not sqm, not sq m)';
+
+  const spellingLabel = getSpellingLabel(localeConfig);
 
   return `You are a property specifications formatter. Clean up and format these property specifications for clarity and consistency.
 
 LOCALE REQUIREMENTS:
-- Use ${localeConfig.areaUnit} for all area measurements
-- Use ${localeConfig.spelling} spelling
-- Use ${localeConfig.terminology.ground_floor} for ground level, ${localeConfig.terminology.first_floor} for the next level up
+- Use ${localeConfig.measurements.areaSymbol} for all area measurements
+- Use ${spellingLabel} spelling
+- Use ${localeConfig.terminology.groundFloor} for ground level, ${localeConfig.terminology.firstFloor} for the next level up
 
 FORMATTING RULES:
 1. Put each room/item on its own line
 2. Use consistent format: "Room Name: dimensions" (e.g., ${dimensionExample})
-3. Convert any inconsistent measurements to ${localeConfig.areaUnit}
+3. Convert any inconsistent measurements to ${localeConfig.measurements.areaSymbol}
 4. Group related items (bedrooms together, reception rooms together, etc.)
 5. Use bullet points (•) for features that don't have dimensions
 6. ${abbreviationRule}
@@ -276,7 +232,7 @@ serve(async (req) => {
       console.log(`Loaded ${customInstructions.length} custom instruction set(s) for ${featureType}`);
     }
 
-    const localeConfig = getLocaleConfig(locale || 'en-IE');
+    const localeConfig = getEdgeLocaleConfig(locale || 'en-IE');
     
     // Build prompt with custom instructions appended
     const basePrompt = type === 'description' 

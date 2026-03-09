@@ -37,10 +37,12 @@ import {
 } from 'lucide-react';
 import { useSuperAdminPermissions } from '@/hooks/useSuperAdminPermissions';
 import { useToast } from '@/hooks/use-toast';
+import { useLocale } from '@/hooks/useLocale';
 
 export default function BillingDashboardPage() {
   const { hasPermission, userRole, hasSuperAdminAccess, loading: authLoading } = useSuperAdminPermissions();
   const isSuperAdmin = userRole === 'super_admin';
+  const { locale, currency } = useLocale();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -85,9 +87,9 @@ export default function BillingDashboardPage() {
 
   const formatCurrency = (num: number | undefined) => {
     if (num === undefined) return '--';
-    return new Intl.NumberFormat('en-IE', { 
-      style: 'currency', 
-      currency: 'EUR',
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(num);

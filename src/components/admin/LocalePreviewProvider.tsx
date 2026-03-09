@@ -47,7 +47,7 @@ export function LocalePreviewProvider({ children }: LocalePreviewProviderProps) 
 
   return (
     <LocalePreviewContext.Provider value={value}>
-      <LocaleProvider enabled={false} previewLocale={previewLocale || undefined}>
+      <LocaleProvider enabled={true} previewLocale={previewLocale || undefined}>
         {children}
       </LocaleProvider>
     </LocalePreviewContext.Provider>

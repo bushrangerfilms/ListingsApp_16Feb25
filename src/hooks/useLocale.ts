@@ -35,6 +35,27 @@ const LOCALE_CONFIGS: Record<SupportedLocale, LocaleConfig> = {
     dateLocale: 'en-US',
     phoneCountry: 'US',
   },
+  'en-CA': {
+    locale: 'en-CA',
+    currency: 'CAD',
+    currencyLocale: 'en-CA',
+    dateLocale: 'en-CA',
+    phoneCountry: 'CA',
+  },
+  'en-AU': {
+    locale: 'en-AU',
+    currency: 'AUD',
+    currencyLocale: 'en-AU',
+    dateLocale: 'en-AU',
+    phoneCountry: 'AU',
+  },
+  'en-NZ': {
+    locale: 'en-NZ',
+    currency: 'NZD',
+    currencyLocale: 'en-NZ',
+    dateLocale: 'en-NZ',
+    phoneCountry: 'NZ',
+  },
 };
 
 const ACRONYMS = ['crm', 'api', 'url', 'id', 'ui', 'ux', 'poa', 'ber', 'epc', 'ai'];

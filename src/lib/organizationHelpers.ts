@@ -19,6 +19,7 @@ interface OrganizationUpdate {
   secondary_color?: string | null;
   property_services?: PropertyService[];
   hide_public_site?: boolean;
+  default_brochure_certifications?: any;
 }
 
 export async function uploadOrganizationLogo(file: File, orgId: string): Promise<string> {

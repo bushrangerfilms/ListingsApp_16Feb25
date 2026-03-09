@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { usePublicListings } from '@/contexts/PublicListingsContext';
+import { useLocale } from '@/hooks/useLocale';
 
 interface PropertyDetails {
   id: string;
@@ -49,6 +50,7 @@ export default function PropertyDetails() {
   const { isAdmin } = useAuth();
   const { organization, setOrganizationBySlug } = useOrganization();
   const { organization: domainOrg, isPublicSite: isDomainBased, loading: domainLoading } = usePublicListings();
+  const { formatCurrency } = useLocale();
   const [property, setProperty] = useState<PropertyDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -461,7 +463,7 @@ export default function PropertyDetails() {
               <CardContent className="p-6">
                 <p className="text-sm text-muted-foreground mb-2">Price</p>
                 <p className="text-3xl font-bold text-primary">
-                  {property.priceOnApplication ? 'POA' : `€${property.price.toLocaleString()}`}
+                  {property.priceOnApplication ? 'POA' : formatCurrency(property.price, { showDecimals: false })}
                 </p>
               </CardContent>
             </Card>

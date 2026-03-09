@@ -74,7 +74,7 @@ export function Footer() {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">{businessName}</h3>
               <p className="text-sm text-muted-foreground">
-                Your trusted partner in property sales and valuations across Ireland.
+                Your trusted partner in property sales and valuations.
               </p>
             </div>
           )}

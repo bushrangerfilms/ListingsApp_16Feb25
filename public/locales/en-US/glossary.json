@@ -1,0 +1,30 @@
+{
+  "_note": "en-US overrides for glossary namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "legal": {
+    "stampDuty": "Transfer Tax",
+    "landRegistry": "County Recorder",
+    "localAuthority": "Local Government"
+  },
+
+  "property": {
+    "ber": "Energy Rating",
+    "berCertificate": "Energy Certificate",
+    "energyRating": "Energy Rating",
+    "councilTax": "Property Tax",
+    "councilTaxBand": "Property Tax Rate"
+  },
+
+  "professionals": {
+    "estateAgent": "Real Estate Agent",
+    "surveyorRICS": "Licensed Appraiser"
+  },
+
+  "tenure": {
+    "freehold": "Fee Simple",
+    "leasehold": "Leasehold",
+    "shareOfFreehold": "Cooperative",
+    "commonhold": "Condominium"
+  }
+}

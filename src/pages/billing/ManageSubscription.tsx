@@ -73,7 +73,7 @@ export default function ManageSubscription() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organization: currentOrganization } = useOrganization();
-  const { t, formatCurrency, formatDate: formatLocaleDate } = useLocale();
+  const { t, formatCurrency, formatDate: formatLocaleDate, locale } = useLocale();
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
   const [isLoadingCheckout, setIsLoadingCheckout] = useState<string | null>(null);
 
@@ -189,7 +189,7 @@ export default function ManageSubscription() {
 
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-IE', {
+    return new Date(dateString).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

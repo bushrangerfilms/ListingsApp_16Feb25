@@ -22,7 +22,7 @@ import { Loader2, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { adminApi } from '@/lib/admin/adminApi';
 import { SUPPORTED_LOCALES, SupportedLocale } from '@/lib/i18n';
-import { useUKLaunchFlag, useUSLaunchFlag } from '@/hooks/useFeatureFlag';
+import { useUKLaunchFlag, useUSLaunchFlag, useCALaunchFlag, useAULaunchFlag, useNZLaunchFlag } from '@/hooks/useFeatureFlag';
 
 interface OrganizationLocaleSelectorProps {
   open: boolean;
@@ -38,6 +38,9 @@ const LOCALE_OPTIONS: { value: SupportedLocale; label: string; currency: string;
   { value: 'en-IE', label: 'Ireland', currency: 'EUR', timezone: 'Europe/Dublin', flagCode: 'IE' },
   { value: 'en-GB', label: 'United Kingdom', currency: 'GBP', timezone: 'Europe/London', flagCode: 'GB' },
   { value: 'en-US', label: 'United States', currency: 'USD', timezone: 'America/New_York', flagCode: 'US' },
+  { value: 'en-CA', label: 'Canada', currency: 'CAD', timezone: 'America/Toronto', flagCode: 'CA' },
+  { value: 'en-AU', label: 'Australia', currency: 'AUD', timezone: 'Australia/Sydney', flagCode: 'AU' },
+  { value: 'en-NZ', label: 'New Zealand', currency: 'NZD', timezone: 'Pacific/Auckland', flagCode: 'NZ' },
 ];
 
 export function OrganizationLocaleSelector({
@@ -54,6 +57,9 @@ export function OrganizationLocaleSelector({
   
   const { isEnabled: ukLaunchEnabled } = useUKLaunchFlag();
   const { isEnabled: usLaunchEnabled } = useUSLaunchFlag();
+  const { isEnabled: caLaunchEnabled } = useCALaunchFlag();
+  const { isEnabled: auLaunchEnabled } = useAULaunchFlag();
+  const { isEnabled: nzLaunchEnabled } = useNZLaunchFlag();
 
   const [selectedLocale, setSelectedLocale] = useState<SupportedLocale>(currentLocale as SupportedLocale);
   const [selectedCurrency, setSelectedCurrency] = useState(currentCurrency);
@@ -101,10 +107,15 @@ export function OrganizationLocaleSelector({
   };
 
   const isLocaleAvailable = (locale: SupportedLocale) => {
-    if (locale === 'en-IE') return true;
-    if (locale === 'en-GB') return ukLaunchEnabled;
-    if (locale === 'en-US') return usLaunchEnabled;
-    return false;
+    switch (locale) {
+      case 'en-IE': return true;
+      case 'en-GB': return ukLaunchEnabled;
+      case 'en-US': return usLaunchEnabled;
+      case 'en-CA': return caLaunchEnabled;
+      case 'en-AU': return auLaunchEnabled;
+      case 'en-NZ': return nzLaunchEnabled;
+      default: return false;
+    }
   };
 
   return (
@@ -159,6 +170,9 @@ export function OrganizationLocaleSelector({
                 <SelectItem value="EUR">EUR - Euro</SelectItem>
                 <SelectItem value="GBP">GBP - British Pound</SelectItem>
                 <SelectItem value="USD">USD - US Dollar</SelectItem>
+                <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                <SelectItem value="NZD">NZD - New Zealand Dollar</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
@@ -179,6 +193,12 @@ export function OrganizationLocaleSelector({
                 <SelectItem value="America/Chicago">America/Chicago (CST/CDT)</SelectItem>
                 <SelectItem value="America/Denver">America/Denver (MST/MDT)</SelectItem>
                 <SelectItem value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</SelectItem>
+                <SelectItem value="America/Toronto">America/Toronto (EST/EDT)</SelectItem>
+                <SelectItem value="America/Vancouver">America/Vancouver (PST/PDT)</SelectItem>
+                <SelectItem value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</SelectItem>
+                <SelectItem value="Australia/Perth">Australia/Perth (AWST)</SelectItem>
+                <SelectItem value="Australia/Adelaide">Australia/Adelaide (ACST/ACDT)</SelectItem>
+                <SelectItem value="Pacific/Auckland">Pacific/Auckland (NZST/NZDT)</SelectItem>
               </SelectContent>
             </Select>
           </div>

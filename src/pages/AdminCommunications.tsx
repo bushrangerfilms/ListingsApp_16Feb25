@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useLocale } from "@/hooks/useLocale";
 
 interface Enquiry {
   id: string;
@@ -72,6 +73,7 @@ interface EmailTemplate {
 export default function AdminCommunications() {
   const { organization } = useOrganization();
   const { selectedOrganization, isOrganizationView } = useOrganizationView();
+  const { locale } = useLocale();
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [valuations, setValuations] = useState<ValuationRequest[]>([]);
   const [propertyAlerts, setPropertyAlerts] = useState<PropertyAlert[]>([]);
@@ -300,7 +302,7 @@ export default function AdminCommunications() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IE', {
+    return new Date(dateString).toLocaleDateString(locale, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',

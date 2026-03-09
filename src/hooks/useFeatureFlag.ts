@@ -100,4 +100,16 @@ export function useBillingEnforcementFlag(): UseFeatureFlagResult {
   return useFeatureFlag(FEATURE_FLAGS.BILLING_ENFORCEMENT);
 }
 
+export function useCALaunchFlag(): UseFeatureFlagResult {
+  return useFeatureFlag(FEATURE_FLAGS.CA_LAUNCH);
+}
+
+export function useAULaunchFlag(): UseFeatureFlagResult {
+  return useFeatureFlag(FEATURE_FLAGS.AU_LAUNCH);
+}
+
+export function useNZLaunchFlag(): UseFeatureFlagResult {
+  return useFeatureFlag(FEATURE_FLAGS.NZ_LAUNCH);
+}
+
 export { FEATURE_FLAGS };

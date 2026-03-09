@@ -1,0 +1,56 @@
+{
+  "_note": "en-US overrides for listings namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "fields": {
+    "energyRating": "Energy Rating",
+    "berNumber": "Energy Certificate Number",
+    "eircode": "Zip Code",
+    "berRating": "Energy Rating"
+  },
+
+  "address": {
+    "eircode": "Zip Code",
+    "county": "County/State"
+  },
+
+  "filters": {
+    "price0to200k": "$0 - $200,000",
+    "price200kto400k": "$200,000 - $400,000",
+    "price400kto600k": "$400,000 - $600,000",
+    "price600kPlus": "$600,000+"
+  },
+
+  "create": {
+    "price": {
+      "label": "Price ($)",
+      "monthlyRent": "Monthly Rent ($)"
+    },
+    "address": {
+      "eircode": "Zip Code",
+      "eircodePlaceholder": "90210"
+    },
+    "details": {
+      "berRating": "Energy Rating",
+      "selectBerRating": "Select energy rating"
+    }
+  },
+
+  "manage": {
+    "organizationNotFound": "Organization Not Found",
+    "organizationNotFoundDescription": "Your account is not linked to an organization. Please contact support to set up your organization access."
+  },
+
+  "status": {
+    "forRent": "For Rent"
+  },
+
+  "public": {
+    "filters": {
+      "priceRange0": "$0 - $200,000",
+      "priceRange200": "$200,000 - $400,000",
+      "priceRange400": "$400,000 - $600,000",
+      "priceRange600": "$600,000+"
+    }
+  }
+}

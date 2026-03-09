@@ -12,12 +12,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useLocale } from "@/hooks/useLocale";
 import type { ListingFormData } from "@/lib/listingSchema";
 
 const ReviewListing = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { organization } = useOrganization();
+  const { config } = useLocale();
+  const currencySymbol = new Intl.NumberFormat(config.currencyLocale, { style: 'currency', currency: config.currency }).formatToParts(0).find(p => p.type === 'currency')?.value || config.currency;
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState<ListingFormData | null>(null);
@@ -463,7 +466,7 @@ const ReviewListing = () => {
               {(formData.category === 'Listing' || formData.category === 'Rental') && (
                 <div className={!formData.price && formData.category === 'Listing' && !formData.isPOA ? "border-2 border-amber-500 rounded-md p-2" : ""}>
                   <Label htmlFor="price">
-                    {formData.category === 'Rental' ? 'Monthly Rent (€)' : 'Price (€)'}
+                    {formData.category === 'Rental' ? `Monthly Rent (${currencySymbol})` : `Price (${currencySymbol})`}
                   </Label>
                   {formData.isPOA && formData.category === 'Listing' ? (
                     <div className="text-2xl font-bold py-2">POA</div>

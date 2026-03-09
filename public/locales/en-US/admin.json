@@ -1,0 +1,14 @@
+{
+  "_note": "en-US overrides for admin namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "organization": {
+    "vatNumber": "Tax ID (EIN)",
+    "postcode": "Zip Code"
+  },
+
+  "region": {
+    "us": "United States",
+    "currency": "USD - US Dollar"
+  }
+}

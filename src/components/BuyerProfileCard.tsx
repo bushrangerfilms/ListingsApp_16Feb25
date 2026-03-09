@@ -9,6 +9,7 @@ import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { SequenceControls } from "@/components/SequenceControls";
 import { EmailAnalytics } from "@/components/EmailAnalytics";
 import { useState, useEffect } from "react";
+import { useLocale } from "@/hooks/useLocale";
 
 interface BuyerProfile {
   id: string;
@@ -43,6 +44,7 @@ const BUYER_STAGES = [
 ];
 
 export function BuyerProfileCard({ buyer, onUpdate }: BuyerProfileCardProps) {
+  const { locale, formatCurrency } = useLocale();
   const [showTimeline, setShowTimeline] = useState(false);
   const [automationStatus, setAutomationStatus] = useState<{ active: boolean; sequence_name: string } | null>(null);
 
@@ -91,7 +93,7 @@ export function BuyerProfileCard({ buyer, onUpdate }: BuyerProfileCardProps) {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IE', {
+    return new Date(dateString).toLocaleDateString(locale, {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -106,10 +108,10 @@ export function BuyerProfileCard({ buyer, onUpdate }: BuyerProfileCardProps) {
   const formatBudget = () => {
     if (!buyer.budget_min && !buyer.budget_max) return null;
     if (buyer.budget_min && buyer.budget_max) {
-      return `€${buyer.budget_min.toLocaleString()} - €${buyer.budget_max.toLocaleString()}`;
+      return `${formatCurrency(buyer.budget_min, { showDecimals: false })} - ${formatCurrency(buyer.budget_max, { showDecimals: false })}`;
     }
-    if (buyer.budget_min) return `From €${buyer.budget_min.toLocaleString()}`;
-    if (buyer.budget_max) return `Up to €${buyer.budget_max.toLocaleString()}`;
+    if (buyer.budget_min) return `From ${formatCurrency(buyer.budget_min, { showDecimals: false })}`;
+    if (buyer.budget_max) return `Up to ${formatCurrency(buyer.budget_max, { showDecimals: false })}`;
   };
 
   const getSourceBadge = (source: string) => {

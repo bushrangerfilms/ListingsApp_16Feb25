@@ -198,10 +198,10 @@ export function ArchDescriptionPageContent({ ctx, margins }: PageContentProps) {
   } = ctx;
   const specs = deriveSpecs(ctx);
 
-  // Feature photo — large, top of page
+  // Feature photo — large, top of page (don't fall back to hero — it's on the cover)
   const featurePhoto = content.cover.backCoverPhotoUrl
     || content.gallery[0]?.url
-    || content.cover.heroPhotoUrl;
+    || null;
 
   // 3-photo strip at bottom
   const stripPhotos = content.gallery.slice(0, 3);

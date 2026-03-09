@@ -1,3 +1,5 @@
+import type { MarketCountry } from '@/lib/locale/markets';
+
 export const COMPANY_INFO = {
   name: "AutoListing.io",
   legalName: "[YOUR COMPANY NAME LTD]",
@@ -40,6 +42,23 @@ export const COMPANY_INFO = {
     vatApplicable: true,
   },
 } as const;
+
+export const DATA_PROTECTION_AUTHORITIES: Record<MarketCountry, {
+  name: string;
+  website: string;
+  law: string;
+}> = {
+  IE: { name: 'Data Protection Commission (DPC)', website: 'https://www.dataprotection.ie', law: 'Irish Data Protection Act 2018' },
+  GB: { name: "Information Commissioner's Office (ICO)", website: 'https://ico.org.uk', law: 'UK Data Protection Act 2018' },
+  US: { name: 'Federal Trade Commission (FTC)', website: 'https://www.ftc.gov', law: 'State privacy laws (CCPA/CPRA where applicable)' },
+  CA: { name: 'Office of the Privacy Commissioner (OPC)', website: 'https://www.priv.gc.ca', law: 'Personal Information Protection and Electronic Documents Act (PIPEDA)' },
+  AU: { name: 'Office of the Australian Information Commissioner (OAIC)', website: 'https://www.oaic.gov.au', law: 'Privacy Act 1988' },
+  NZ: { name: 'Office of the Privacy Commissioner (OPC)', website: 'https://privacy.org.nz', law: 'Privacy Act 2020' },
+};
+
+export function getDataProtectionAuthority(countryCode: MarketCountry) {
+  return DATA_PROTECTION_AUTHORITIES[countryCode] || DATA_PROTECTION_AUTHORITIES.IE;
+}
 
 export function getFormattedAddress(includeEircode = true): string {
   const { street, city, county, country, eircode } = COMPANY_INFO.registeredAddress;

@@ -683,7 +683,7 @@ function PreviewSlide({
       if (listing.category === 'Rental') priceText += ' /month';
       if (listing.category === 'Holiday Rental') priceText += ' /night';
     } catch {
-      priceText = `€${listing.price.toLocaleString()}`;
+      priceText = `${organization.currency || '€'}${listing.price.toLocaleString()}`;
     }
   }
 

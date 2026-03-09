@@ -2,6 +2,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { BrochureCover } from '@/lib/brochure/types';
+import { useLocale } from '@/hooks/useLocale';
 
 interface BrochureCoverEditorProps {
   cover: BrochureCover;
@@ -18,6 +19,7 @@ const SALE_METHODS = [
 ];
 
 export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEditorProps) {
+  const { formatCurrency } = useLocale();
   const update = (field: keyof BrochureCover, value: string) => {
     onChange({ ...cover, [field]: value });
   };
@@ -48,7 +50,7 @@ export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEd
           <Input
             value={cover.price}
             onChange={(e) => update('price', e.target.value)}
-            placeholder="€275,000"
+            placeholder={formatCurrency(275000, { showDecimals: false })}
             className="h-8 text-sm"
           />
         </div>

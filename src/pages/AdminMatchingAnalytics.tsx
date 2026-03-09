@@ -29,6 +29,7 @@ import {
   Cell,
 } from "recharts";
 import { Target, TrendingUp, Users, CheckCircle2, AlertCircle } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 
 interface MatchMetrics {
   totalMatches: number;
@@ -64,6 +65,8 @@ interface TimeSeriesMatch {
 }
 
 export default function AdminMatchingAnalytics() {
+  const { config } = useLocale();
+  const currencySymbol = new Intl.NumberFormat(config.currencyLocale, { style: 'currency', currency: config.currency }).formatToParts(0).find(p => p.type === 'currency')?.value || config.currency;
   const [matchMetrics, setMatchMetrics] = useState<MatchMetrics | null>(null);
   const [criteriaData, setCriteriaData] = useState<CriteriaEffectiveness[]>([]);
   const [buyerHistory, setBuyerHistory] = useState<BuyerMatchHistory[]>([]);
@@ -147,11 +150,11 @@ export default function AdminMatchingAnalytics() {
 
       // Budget ranges
       const budgetRanges = [
-        { min: 0, max: 200000, label: "Under €200k" },
-        { min: 200000, max: 300000, label: "€200k-€300k" },
-        { min: 300000, max: 500000, label: "€300k-€500k" },
-        { min: 500000, max: 1000000, label: "€500k-€1M" },
-        { min: 1000000, max: Infinity, label: "Over €1M" },
+        { min: 0, max: 200000, label: `Under ${currencySymbol}200k` },
+        { min: 200000, max: 300000, label: `${currencySymbol}200k-${currencySymbol}300k` },
+        { min: 300000, max: 500000, label: `${currencySymbol}300k-${currencySymbol}500k` },
+        { min: 500000, max: 1000000, label: `${currencySymbol}500k-${currencySymbol}1M` },
+        { min: 1000000, max: Infinity, label: `Over ${currencySymbol}1M` },
       ];
 
       budgetRanges.forEach((range) => {

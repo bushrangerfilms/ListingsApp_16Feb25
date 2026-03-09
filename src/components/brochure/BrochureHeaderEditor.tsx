@@ -105,6 +105,7 @@ export function BrochureHeaderEditor({
       {/* Logo */}
       <div>
         <Label className="text-xs">Logo</Label>
+        <p className="text-[10px] text-muted-foreground mt-0.5">Only applies to this brochure — won't change your organisation logo.</p>
         <div className="flex items-center gap-2 mt-1">
           {branding.logoUrl ? (
             <div className="relative w-24 h-12 bg-muted rounded border overflow-hidden flex items-center justify-center">

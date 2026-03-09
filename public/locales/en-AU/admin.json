@@ -1,0 +1,14 @@
+{
+  "_note": "en-AU overrides for admin namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "organization": {
+    "vatNumber": "ABN",
+    "postcode": "Postcode"
+  },
+
+  "region": {
+    "au": "Australia",
+    "currency": "AUD - Australian Dollar"
+  }
+}

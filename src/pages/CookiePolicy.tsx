@@ -4,11 +4,17 @@ import { SEO } from '@/components/SEO';
 import { Card, CardContent } from '@/components/ui/card';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { COMPANY_INFO, getFormattedAddress } from '@/config/company';
+import { getLegalConfig } from '@/lib/locale/legalConfig';
+import { LOCALE_TO_COUNTRY } from '@/lib/locale/markets';
+import type { MarketLocale, MarketCountry } from '@/lib/locale/markets';
 
 export default function CookiePolicy() {
   const { organization } = useOrganization();
   const businessName = organization?.business_name || COMPANY_INFO.name;
   const isMarketingSite = !organization;
+  const orgLocale = (organization as any)?.locale as MarketLocale | undefined;
+  const countryCode = orgLocale ? LOCALE_TO_COUNTRY[orgLocale] : 'IE';
+  const legalConfig = getLegalConfig(countryCode as MarketCountry);
   
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -28,8 +34,9 @@ export default function CookiePolicy() {
             <p>
               Cookies are small text files stored on your device when you visit a website. 
               They help websites remember your preferences and improve your browsing experience. 
-              This policy explains how {businessName} uses cookies in compliance with the 
-              EU ePrivacy Directive and Irish law.
+              This policy explains how {businessName} uses cookies in compliance with {isMarketingSite
+                ? 'the EU ePrivacy Directive and Irish law'
+                : legalConfig.cookieLawRef}.
             </p>
 
             <h2>2. Cookie Categories</h2>

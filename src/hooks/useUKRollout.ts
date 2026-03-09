@@ -9,9 +9,20 @@
  */
 
 import { useMemo, useState, useEffect } from 'react';
-import { UK_LAUNCH_FLAG, isFeatureEnabled } from '@/lib/featureFlags';
+import { FEATURE_FLAGS, UK_LAUNCH_FLAG, isFeatureEnabled } from '@/lib/featureFlags';
 import { useLocale } from '@/hooks/useLocale';
 import { supabase } from '@/integrations/supabase/client';
+import type { MarketLocale, MarketCountry } from '@/lib/locale/markets';
+import { LOCALE_TO_COUNTRY } from '@/lib/locale/markets';
+
+const LOCALE_TO_FLAG: Record<MarketLocale, string> = {
+  'en-IE': '', // always available
+  'en-GB': FEATURE_FLAGS.UK_LAUNCH,
+  'en-US': FEATURE_FLAGS.US_LAUNCH,
+  'en-CA': FEATURE_FLAGS.CA_LAUNCH,
+  'en-AU': FEATURE_FLAGS.AU_LAUNCH,
+  'en-NZ': FEATURE_FLAGS.NZ_LAUNCH,
+};
 
 export interface UKRolloutStatus {
   isUKLaunchEnabled: boolean;
@@ -102,6 +113,56 @@ export function useRegionForRollout(organizationId?: string): {
     region,
     isUKEnabled: canAccessUKFeatures,
   };
+}
+
+/**
+ * Generalized market rollout hook — works for any market locale.
+ * Returns whether the current org's locale is enabled via feature flags.
+ */
+export interface MarketRolloutStatus {
+  isMarketEnabled: boolean;
+  isPreviewMode: boolean;
+  currentLocale: string;
+  currentCountry: MarketCountry;
+  currentCurrency: string;
+  isLoading: boolean;
+}
+
+export function useMarketRollout(organizationId?: string): MarketRolloutStatus {
+  const [isMarketEnabled, setIsMarketEnabled] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { locale, currency, isPreviewMode } = useLocale();
+
+  const marketLocale = locale as MarketLocale;
+  const flagKey = LOCALE_TO_FLAG[marketLocale] || '';
+
+  useEffect(() => {
+    async function checkFlag() {
+      try {
+        if (!flagKey) {
+          // en-IE — always enabled
+          setIsMarketEnabled(true);
+        } else {
+          const enabled = await isFeatureEnabled(supabase, flagKey, organizationId);
+          setIsMarketEnabled(enabled);
+        }
+      } catch {
+        setIsMarketEnabled(!flagKey); // default: IE enabled, others disabled
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    checkFlag();
+  }, [organizationId, flagKey]);
+
+  return useMemo(() => ({
+    isMarketEnabled: isMarketEnabled || isPreviewMode,
+    isPreviewMode,
+    currentLocale: locale,
+    currentCountry: LOCALE_TO_COUNTRY[marketLocale] || 'IE',
+    currentCurrency: currency,
+    isLoading,
+  }), [isMarketEnabled, isPreviewMode, locale, marketLocale, currency, isLoading]);
 }
 
 export default useUKRollout;

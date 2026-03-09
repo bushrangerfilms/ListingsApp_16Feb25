@@ -1,0 +1,19 @@
+{
+  "_note": "en-US overrides for marketing namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "hero": {
+    "subtitle": "The all-in-one platform for US real estate agents"
+  },
+
+  "features": {
+    "propertyManagement": {
+      "description": "List and manage properties with energy ratings, MLS integration, and US address lookup"
+    }
+  },
+
+  "pricing": {
+    "currency": "USD",
+    "vatNote": "Prices exclude applicable taxes"
+  }
+}

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useLocale } from "@/hooks/useLocale";
 
 interface CreateProfileDialogProps {
   open: boolean;
@@ -42,6 +43,8 @@ const BEDROOM_OPTIONS = [1, 2, 3, 4, 5];
 
 export function CreateProfileDialog({ open, onOpenChange, profileType, onSuccess }: CreateProfileDialogProps) {
   const { organization } = useOrganization();
+  const { config } = useLocale();
+  const currencySymbol = new Intl.NumberFormat(config.currencyLocale, { style: 'currency', currency: config.currency }).formatToParts(0).find(p => p.type === 'currency')?.value || config.currency;
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -223,7 +226,7 @@ export function CreateProfileDialog({ open, onOpenChange, profileType, onSuccess
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="budget_min">Budget Min (€)</Label>
+                  <Label htmlFor="budget_min">Budget Min ({currencySymbol})</Label>
                   <Input
                     id="budget_min"
                     type="number"
@@ -232,7 +235,7 @@ export function CreateProfileDialog({ open, onOpenChange, profileType, onSuccess
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="budget_max">Budget Max (€)</Label>
+                  <Label htmlFor="budget_max">Budget Max ({currencySymbol})</Label>
                   <Input
                     id="budget_max"
                     type="number"

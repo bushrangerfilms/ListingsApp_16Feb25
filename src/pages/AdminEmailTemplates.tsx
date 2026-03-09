@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useLocale } from "@/hooks/useLocale";
 
 interface EmailTemplate {
   id: string;
@@ -37,6 +38,7 @@ const inferCategory = (templateKey: string): string => {
 export default function AdminEmailTemplates() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { locale } = useLocale();
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("customer");
@@ -102,7 +104,7 @@ export default function AdminEmailTemplates() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IE', {
+    return new Date(dateString).toLocaleDateString(locale, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',

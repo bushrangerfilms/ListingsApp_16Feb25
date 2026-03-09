@@ -45,7 +45,9 @@ function formatDisplayPrice(
       maximumFractionDigits: 0,
     }).format(price);
   } catch {
-    formatted = `${currency || '€'}${price.toLocaleString()}`;
+    const currencySymbols: Record<string, string> = { EUR: '\u20AC', GBP: '\u00A3', USD: '$', CAD: 'C$', AUD: 'A$', NZD: 'NZ$' };
+    const sym = currencySymbols[currency || 'EUR'] || currency || '\u20AC';
+    formatted = `${sym}${price.toLocaleString()}`;
   }
   if (category === 'Rental') return `${formatted} /month`;
   if (category === 'Holiday Rental') return `${formatted} /night`;

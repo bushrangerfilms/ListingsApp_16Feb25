@@ -1,0 +1,14 @@
+{
+  "_note": "en-NZ overrides for admin namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "organization": {
+    "vatNumber": "GST Number",
+    "postcode": "Postcode"
+  },
+
+  "region": {
+    "nz": "New Zealand",
+    "currency": "NZD - New Zealand Dollar"
+  }
+}

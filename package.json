@@ -10,7 +10,9 @@
     "start": "vite preview --host 0.0.0.0 --port 5000",
     "lint": "eslint .",
     "preview": "vite preview",
-    "setup-db": "node setup-database.js"
+    "setup-db": "node setup-database.js",
+    "i18n:lint": "npx tsx scripts/i18n-lint.ts",
+    "i18n:check": "npx tsx scripts/i18n-check.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

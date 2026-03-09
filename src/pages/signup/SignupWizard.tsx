@@ -687,7 +687,7 @@ export default function SignupWizard() {
                     <div className="bg-background rounded-lg p-4 border">
                       <div className="text-sm text-muted-foreground mb-2">After your trial, plans start at:</div>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-bold">€29</span>
+                        <span className="text-2xl font-bold">29</span>
                         <span className="text-muted-foreground">/month</span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
