@@ -14,6 +14,7 @@ import {
   getImageBorderStyle,
   PAGE_VERTICAL,
   normalizeText,
+  spaceCurrency,
   getLayoutDimensions,
   getTypeOverrides,
   type LayoutDimensions,
@@ -132,7 +133,7 @@ export function ModernCoverPageContent({ ctx, margins }: PageContentProps) {
       )}
 
       {/* Flex spacer — pushes content group to lower-center */}
-      <View style={{ flex: 1 }} />
+      <View style={{ flex: 1.6 }} />
 
       {/* Sale method + logo + price as one cohesive centered group */}
       <View style={{ alignItems: 'center' }}>
@@ -144,7 +145,7 @@ export function ModernCoverPageContent({ ctx, margins }: PageContentProps) {
           {content.cover.saleMethod}
         </Text>
         {branding.logoUrl && (
-          <View style={{ alignItems: 'center', marginTop: SPACING.S1 }}>
+          <View style={{ alignItems: 'center', marginTop: SPACING.S2 }}>
             <Image
               src={branding.logoUrl}
               style={{
@@ -164,7 +165,7 @@ export function ModernCoverPageContent({ ctx, margins }: PageContentProps) {
         }}>
           {content.cover.price && (
             <Text style={{ ...priceStyle, color: primaryColor, textAlign: 'center' }}>
-              Guide Price: {content.cover.price}
+              Guide Price: {spaceCurrency(content.cover.price)}
             </Text>
           )}
           {content.cover.energyRating && (
@@ -186,7 +187,7 @@ export function ModernCoverPageContent({ ctx, margins }: PageContentProps) {
       </View>
 
       {/* Smaller bottom spacer — keeps group in lower-center, not dead-center */}
-      <View style={{ flex: 0.5, minHeight: 20 }} />
+      <View style={{ flex: 0.3, minHeight: 20 }} />
     </View>
   );
 }
@@ -270,7 +271,7 @@ export function ModernAccommodationPageContent({ ctx, margins }: PageContentProp
             ...TYPE.priceBanner,
             color: primaryColor,
           }}>
-            {content.cover.price}
+            {spaceCurrency(content.cover.price)}
           </Text>
           <View style={{
             borderBottomWidth: RULE_WEIGHT_HEAVY,
@@ -521,7 +522,7 @@ export function ModernBackCoverPageContent({ ctx, margins }: PageContentProps) {
       {showBackCoverPrice && content.cover.price && (
         <View style={{ ...margins, alignItems: 'center', paddingVertical: 4 }}>
           <Text style={{ ...TYPE.backPrice, color: accentColor, textAlign: 'center' }}>
-            Guide Price: {content.cover.price}
+            Guide Price: {spaceCurrency(content.cover.price)}
           </Text>
         </View>
       )}

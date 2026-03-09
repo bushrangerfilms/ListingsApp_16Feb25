@@ -14,6 +14,7 @@ import {
   getImageBorderStyle,
   PAGE_VERTICAL,
   normalizeText,
+  spaceCurrency,
   getLayoutDimensions,
   getTypeOverrides,
   type LayoutDimensions,
@@ -238,7 +239,7 @@ export function ElegantAccommodationPageContent({ ctx, margins }: PageContentPro
             ...TYPE.priceBanner,
             color: primaryColor,
           }}>
-            {content.cover.price}
+            {spaceCurrency(content.cover.price)}
           </Text>
           <View style={{
             borderBottomWidth: RULE_WEIGHT_HEAVY,
@@ -581,7 +582,7 @@ export function ElegantBackCoverPageContent({ ctx, margins }: PageContentProps) 
       {showBackCoverPrice && content.cover.price && (
         <View style={{ alignItems: 'center', paddingVertical: 4 }}>
           <Text style={{ ...TYPE.backPrice, color: accentColor, textAlign: 'center' }}>
-            Guide Price: {content.cover.price}
+            Guide Price: {spaceCurrency(content.cover.price)}
           </Text>
         </View>
       )}
