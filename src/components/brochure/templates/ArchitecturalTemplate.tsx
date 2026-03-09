@@ -14,6 +14,7 @@ import {
   getImageBorderStyle,
   PAGE_VERTICAL,
   normalizeText,
+  spaceCurrency,
   getLayoutDimensions,
   getTypeOverrides,
   type LayoutDimensions,
@@ -275,7 +276,7 @@ export function ArchDescriptionPageContent({ ctx, margins }: PageContentProps) {
               ...TYPE.priceBanner,
               color: primaryColor,
             }}>
-              {content.cover.price}
+              {spaceCurrency(content.cover.price)}
             </Text>
             <View style={{
               borderBottomWidth: RULE_WEIGHT_HEAVY,
@@ -391,7 +392,7 @@ export function ArchFeaturesPageContent({ ctx, margins }: PageContentProps) {
           textAlign: 'right',
           marginBottom: SPACING.HALF,
         }}>
-          Guide Price {content.cover.price}
+          Guide Price {spaceCurrency(content.cover.price)}
         </Text>
       )}
 
