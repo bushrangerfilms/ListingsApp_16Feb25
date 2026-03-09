@@ -260,6 +260,8 @@ export default function BrochureEditor() {
         contact_phone: branding.contactPhone,
         business_address: branding.businessAddress,
         psr_licence_number: branding.psrLicenceNumber || undefined,
+        primary_color: branding.primaryColor,
+        secondary_color: branding.secondaryColor,
       });
       toast({ title: 'Org defaults saved', description: 'Future brochures will use these details.' });
     } catch {
