@@ -52,6 +52,7 @@ export default function BrochureEditor() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSavingDefaults, setIsSavingDefaults] = useState(false);
   const [isSavingCertDefaults, setIsSavingCertDefaults] = useState(false);
+  const [isSavingStyleDefaults, setIsSavingStyleDefaults] = useState(false);
 
   // Fetch listing data
   const { data: listing, isLoading: listingLoading } = useQuery({
@@ -288,6 +289,33 @@ export default function BrochureEditor() {
     }
   }, [branding, organization, toast]);
 
+  // Save style options + colors as org defaults
+  const handleSaveStyleDefaults = useCallback(async () => {
+    if (!branding || !organization?.id) return;
+    setIsSavingStyleDefaults(true);
+    try {
+      const opts = branding.styleOptions || {};
+      await updateOrganizationProfile(organization.id, {
+        primary_color: branding.primaryColor,
+        secondary_color: branding.secondaryColor,
+        default_brochure_style_options: {
+          templateId: opts.templateId,
+          frameStyle: opts.frameStyle,
+          imageCornerRadius: opts.imageCornerRadius,
+          imageBorder: opts.imageBorder,
+          showInnerPrice: opts.showInnerPrice,
+          showBackCoverPrice: opts.showBackCoverPrice,
+          pageFormat: opts.pageFormat,
+        },
+      });
+      toast({ title: 'Style defaults saved', description: 'Future brochures will use these style preferences.' });
+    } catch {
+      toast({ title: 'Save failed', variant: 'destructive' });
+    } finally {
+      setIsSavingStyleDefaults(false);
+    }
+  }, [branding, organization, toast]);
+
   // Loading state
   if (listingLoading || brochureLoading) {
     return (
@@ -425,6 +453,8 @@ export default function BrochureEditor() {
             isSavingDefaults={isSavingDefaults}
             onSaveCertDefaults={handleSaveCertDefaults}
             isSavingCertDefaults={isSavingCertDefaults}
+            onSaveStyleDefaults={handleSaveStyleDefaults}
+            isSavingStyleDefaults={isSavingStyleDefaults}
           />
         </div>
 

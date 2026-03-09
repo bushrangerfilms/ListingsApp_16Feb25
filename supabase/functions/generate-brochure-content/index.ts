@@ -443,7 +443,7 @@ serve(async (req) => {
     // Fetch organization branding
     const { data: org, error: orgError } = await supabase
       .from('organizations')
-      .select('business_name, logo_url, primary_color, secondary_color, contact_name, contact_email, contact_phone, business_address, psr_licence_number, locale, currency, country_code, default_brochure_certifications')
+      .select('business_name, logo_url, primary_color, secondary_color, contact_name, contact_email, contact_phone, business_address, psr_licence_number, locale, currency, country_code, default_brochure_certifications, default_brochure_style_options')
       .eq('id', organizationId)
       .single();
 
@@ -594,8 +594,11 @@ serve(async (req) => {
       locale: effectiveLocale,
       currency: org.currency || localeConfig.currency.code,
       countryCode: org.country_code || 'IE',
-      ...(org.default_brochure_certifications ? {
-        styleOptions: { certificationLogos: org.default_brochure_certifications },
+      ...((org.default_brochure_style_options || org.default_brochure_certifications) ? {
+        styleOptions: {
+          ...(org.default_brochure_style_options || {}),
+          ...(org.default_brochure_certifications ? { certificationLogos: org.default_brochure_certifications } : {}),
+        },
       } : {}),
     };
 

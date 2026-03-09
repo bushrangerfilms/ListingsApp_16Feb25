@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Pipette } from 'lucide-react';
+import { Pipette, Loader2, Save } from 'lucide-react';
 import type { BrochureBranding, BrochureStyleOptions } from '@/lib/brochure/types';
 import { DEFAULT_STYLE_OPTIONS } from '@/lib/brochure/types';
 import { BROCHURE_TEMPLATES } from './templates/templateRegistry';
@@ -84,11 +84,13 @@ function ColorPickerRow({
 interface BrochureStyleEditorProps {
   branding: BrochureBranding;
   onChange: (branding: BrochureBranding) => void;
+  onSaveAsDefaults?: () => void;
+  isSavingDefaults?: boolean;
 }
 
 const TEMPLATE_LIST = Object.values(BROCHURE_TEMPLATES);
 
-export function BrochureStyleEditor({ branding, onChange }: BrochureStyleEditorProps) {
+export function BrochureStyleEditor({ branding, onChange, onSaveAsDefaults, isSavingDefaults = false }: BrochureStyleEditorProps) {
   const opts = branding.styleOptions || DEFAULT_STYLE_OPTIONS;
   const currentTemplateId = opts.templateId || 'classic-1';
 
@@ -268,6 +270,30 @@ export function BrochureStyleEditor({ branding, onChange }: BrochureStyleEditorP
           onCheckedChange={(checked) => update({ showBackCoverPrice: checked })}
         />
       </div>
+
+      {/* Save as org defaults */}
+      {onSaveAsDefaults && (
+        <div className="pt-2 border-t border-border/50">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full h-8 text-xs"
+            onClick={onSaveAsDefaults}
+            disabled={isSavingDefaults}
+          >
+            {isSavingDefaults ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5 mr-1" />
+            )}
+            Save as org defaults
+          </Button>
+          <p className="text-[10px] text-muted-foreground mt-1 text-center">
+            Saves colors and style preferences for future brochures
+          </p>
+        </div>
+      )}
     </div>
   );
 }
