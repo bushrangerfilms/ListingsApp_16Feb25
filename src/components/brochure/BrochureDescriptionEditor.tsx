@@ -4,13 +4,16 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 import type { BrochureDescription } from '@/lib/brochure/types';
+import { getHeadingDefaults } from '@/lib/brochure/types';
 
 interface BrochureDescriptionEditorProps {
   description: BrochureDescription;
   onChange: (description: BrochureDescription) => void;
+  templateId?: string;
 }
 
-export function BrochureDescriptionEditor({ description, onChange }: BrochureDescriptionEditorProps) {
+export function BrochureDescriptionEditor({ description, onChange, templateId }: BrochureDescriptionEditorProps) {
+  const defaults = getHeadingDefaults(templateId);
   const wordCount = description.marketingText.trim().split(/\s+/).filter(Boolean).length;
   const addFeature = () => {
     onChange({
@@ -34,6 +37,28 @@ export function BrochureDescriptionEditor({ description, onChange }: BrochureDes
 
   return (
     <div className="space-y-3 p-3">
+      {defaults.descriptionTitle && (
+        <div>
+          <Label className="text-xs">Section Heading</Label>
+          <Input
+            value={description.sectionTitle || ''}
+            onChange={(e) => onChange({ ...description, sectionTitle: e.target.value || undefined })}
+            placeholder={defaults.descriptionTitle}
+            className="h-7 text-sm"
+          />
+        </div>
+      )}
+      {defaults.keyFeaturesTitle && (
+        <div>
+          <Label className="text-xs">Key Features Heading</Label>
+          <Input
+            value={description.keyFeaturesTitle || ''}
+            onChange={(e) => onChange({ ...description, keyFeaturesTitle: e.target.value || undefined })}
+            placeholder={defaults.keyFeaturesTitle}
+            className="h-7 text-sm"
+          />
+        </div>
+      )}
       <div>
         <div className="flex items-center justify-between">
           <Label className="text-xs">Marketing Description</Label>

@@ -42,6 +42,8 @@ export function BrochureEditPanel({
   onSaveCertDefaults,
   isSavingCertDefaults,
 }: BrochureEditPanelProps) {
+  const templateId = branding?.styleOptions?.templateId || 'classic-1';
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     style: false,
     header: false,
@@ -157,6 +159,7 @@ export function BrochureEditPanel({
           <BrochureDescriptionEditor
             description={content.description}
             onChange={(description) => onChange({ ...content, description })}
+            templateId={templateId}
           />
         )}
       </div>
@@ -196,6 +199,7 @@ export function BrochureEditPanel({
           <BrochureFeaturesEditor
             features={content.features}
             onChange={(features) => onChange({ ...content, features })}
+            templateId={templateId}
           />
         )}
       </div>
@@ -215,6 +219,7 @@ export function BrochureEditPanel({
           <BrochureLocationEditor
             location={content.location}
             onChange={(location) => onChange({ ...content, location })}
+            templateId={templateId}
           />
         )}
       </div>

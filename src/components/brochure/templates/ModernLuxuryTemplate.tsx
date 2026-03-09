@@ -230,7 +230,7 @@ export function ModernAccommodationPageContent({ ctx, margins }: PageContentProp
       {/* Description */}
       {visible.description !== false && coverParagraphs.length > 0 && (
         <View style={{ marginBottom: SPACING.HALF }}>
-          <SectionTitle title="About This Property" primaryColor={primaryColor} />
+          <SectionTitle title={content.description.sectionTitle || 'About This Property'} primaryColor={primaryColor} />
           {coverParagraphs.map((paragraph, i) => (
             <Text key={i} style={{
               ...TYPE.body,
@@ -249,7 +249,7 @@ export function ModernAccommodationPageContent({ ctx, margins }: PageContentProp
       {visible.description !== false && keyFeatures.length > 0 && (
         <View style={{ marginBottom: SPACING.HALF }}>
           <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-            Key Features
+            {content.description.keyFeaturesTitle || 'Key Features'}
           </Text>
           {keyFeatures.map((feature, i) => (
             <BulletItem key={i} text={normalizeText(feature)} style="keyFeature" />
@@ -353,7 +353,7 @@ export function ModernFeaturesPageContent({ ctx, margins }: PageContentProps) {
           {hasServices && (
             <View style={{ flex: 1, marginRight: 10 }}>
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-                Services
+                {content.features.servicesTitle || 'Services'}
               </Text>
               {cappedServices.map((service, i) => (
                 <BulletItem key={i} text={normalizeText(service)} />
@@ -363,7 +363,7 @@ export function ModernFeaturesPageContent({ ctx, margins }: PageContentProps) {
           {hasExternal && (
             <View style={{ flex: 1, marginRight: 10 }}>
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-                Features
+                {content.features.externalTitle || 'Features'}
               </Text>
               {cappedExternal.map((feature, i) => (
                 <BulletItem key={i} text={normalizeText(feature)} />
@@ -373,7 +373,7 @@ export function ModernFeaturesPageContent({ ctx, margins }: PageContentProps) {
           {hasNearby && (
             <View style={{ flex: 1 }}>
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-                Nearby
+                {content.features.nearbyTitle || 'Nearby'}
               </Text>
               {cappedNearby.map((item, i) => (
                 <BulletItem key={i} text={normalizeText(item)} />
@@ -386,7 +386,7 @@ export function ModernFeaturesPageContent({ ctx, margins }: PageContentProps) {
       {/* Location */}
       {visible.location !== false && content.location.text && (
         <View>
-          <SectionTitle title="Location" primaryColor={primaryColor} />
+          <SectionTitle title={content.location.sectionTitle || 'Location'} primaryColor={primaryColor} />
           <Text style={{ ...TYPE.location, color: COLORS.textSecondary, textAlign: 'justify' }}>
             {normalizeText(content.location.text)}
           </Text>

@@ -428,7 +428,7 @@ export function AccommodationPageContent({ ctx, margins }: PageContentProps) {
       {visible.description !== false && keyFeatures.length > 0 && (
         <View style={{ marginBottom: SPACING.HALF }}>
           <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-            Key Features
+            {content.description.keyFeaturesTitle || 'Key Features'}
           </Text>
           {keyFeatures.map((feature, i) => (
             <BulletItem key={i} text={normalizeText(feature)} style="keyFeature" />
@@ -442,7 +442,7 @@ export function AccommodationPageContent({ ctx, margins }: PageContentProps) {
       {visible.rooms !== false && page2Rooms.length > 0 && (
         <View>
           <SectionTitle
-            title="Accommodation"
+            title={content.description.sectionTitle || 'Accommodation'}
             primaryColor={primaryColor}
             accentColor={accentColor}
             ruleWidth="50%"
@@ -515,7 +515,7 @@ export function FeaturesPageContent({ ctx, margins }: PageContentProps) {
           {hasServices && (
             <View style={styles.featureColumn}>
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-                Services
+                {content.features.servicesTitle || 'Services'}
               </Text>
               {ctx.cappedServices.map((service, i) => (
                 <BulletItem key={i} text={normalizeText(service)} />
@@ -525,7 +525,7 @@ export function FeaturesPageContent({ ctx, margins }: PageContentProps) {
           {hasExternal && (
             <View style={styles.featureColumn}>
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-                Features
+                {content.features.externalTitle || 'Features'}
               </Text>
               {ctx.cappedExternal.map((feature, i) => (
                 <BulletItem key={i} text={normalizeText(feature)} />
@@ -535,7 +535,7 @@ export function FeaturesPageContent({ ctx, margins }: PageContentProps) {
           {hasNearby && (
             <View style={styles.featureColumn}>
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-                Nearby
+                {content.features.nearbyTitle || 'Nearby'}
               </Text>
               {ctx.cappedNearby.map((item, i) => (
                 <BulletItem key={i} text={normalizeText(item)} />
@@ -548,7 +548,7 @@ export function FeaturesPageContent({ ctx, margins }: PageContentProps) {
       {/* Location */}
       {visible.location !== false && content.location.text && (
         <View>
-          <SectionTitle title="Location" primaryColor={primaryColor} accentColor={accentColor} ruleWidth="25%" />
+          <SectionTitle title={content.location.sectionTitle || 'Location'} primaryColor={primaryColor} accentColor={accentColor} ruleWidth="25%" />
           <Text style={{ ...TYPE.location, color: COLORS.textSecondary, textAlign: 'justify' }}>
             {normalizeText(content.location.text)}
           </Text>

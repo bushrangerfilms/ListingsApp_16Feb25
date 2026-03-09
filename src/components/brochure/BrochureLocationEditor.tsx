@@ -4,15 +4,27 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 import type { BrochureLocation } from '@/lib/brochure/types';
+import { getHeadingDefaults } from '@/lib/brochure/types';
 
 interface BrochureLocationEditorProps {
   location: BrochureLocation;
   onChange: (location: BrochureLocation) => void;
+  templateId?: string;
 }
 
-export function BrochureLocationEditor({ location, onChange }: BrochureLocationEditorProps) {
+export function BrochureLocationEditor({ location, onChange, templateId }: BrochureLocationEditorProps) {
+  const defaults = getHeadingDefaults(templateId);
   return (
     <div className="space-y-3 p-3">
+      <div>
+        <Label className="text-xs">Section Heading</Label>
+        <Input
+          value={location.sectionTitle || ''}
+          onChange={(e) => onChange({ ...location, sectionTitle: e.target.value || undefined })}
+          placeholder={defaults.locationTitle}
+          className="h-7 text-sm"
+        />
+      </div>
       <div>
         <Label className="text-xs">Location Description</Label>
         <Textarea

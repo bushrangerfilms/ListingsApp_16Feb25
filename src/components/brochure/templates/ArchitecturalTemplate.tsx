@@ -243,7 +243,7 @@ export function ArchDescriptionPageContent({ ctx, margins }: PageContentProps) {
         {/* Description (left, ~60%) */}
         <View style={{ flex: 3, paddingRight: SPACING.S1 }}>
           <Text style={{ ...TYPE.sectionTitle, color: primaryColor, marginBottom: 4 }}>
-            {"What\u2019s Special"}
+            {content.description.sectionTitle || "What\u2019s Special"}
           </Text>
           {visible.description !== false && coverParagraphs.map((paragraph, i) => (
             <Text key={i} style={{
@@ -433,7 +433,7 @@ export function ArchFeaturesPageContent({ ctx, margins }: PageContentProps) {
           {visible.features !== false && (hasServices || hasExternal || hasNearby) && (
             <View>
               <Text style={{ ...TYPE.sectionTitle, color: primaryColor, marginBottom: 4 }}>
-                Property Details
+                {content.features.servicesTitle || 'Property Details'}
               </Text>
               {hasServices && cappedServices.map((s, i) => (
                 <BulletItem key={`s-${i}`} text={normalizeText(s)} />
@@ -451,7 +451,7 @@ export function ArchFeaturesPageContent({ ctx, margins }: PageContentProps) {
           {visible.location !== false && content.location.text && (
             <View style={{ marginTop: SPACING.HALF }}>
               <Text style={{ ...TYPE.featureTitle, color: primaryColor, marginBottom: 3 }}>
-                Location
+                {content.location.sectionTitle || 'Location'}
               </Text>
               <Text style={{ ...TYPE.location, color: COLORS.textSecondary }}>
                 {normalizeText(content.location.text)}
