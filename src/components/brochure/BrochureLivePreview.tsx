@@ -14,8 +14,10 @@ export function BrochureLivePreview({ content, branding, templateId }: BrochureL
   const resolvedTemplateId = branding.styleOptions?.templateId || templateId || 'classic-1';
   const template = getTemplate(resolvedTemplateId);
   const pageFormat = branding.styleOptions?.pageFormat || 'a5';
+  // Preview always uses reader layout (individual pages) for easy editing.
+  // The print-ready imposed layout is only generated on download.
   const TemplateComponent = pageFormat === 'a5'
-    ? (template.a5PrintReadyComponent || template.component)
+    ? (template.a5ReaderComponent || template.component)
     : template.component;
 
   // Debounce the content to avoid excessive re-renders of the PDF

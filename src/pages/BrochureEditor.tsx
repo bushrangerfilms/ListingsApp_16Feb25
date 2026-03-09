@@ -22,6 +22,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -212,7 +213,12 @@ export default function BrochureEditor() {
         });
       }
 
-      toast({ title: 'PDF downloaded' });
+      toast({
+        title: 'PDF downloaded',
+        description: format === 'print-ready'
+          ? 'Print on A4, double-sided (flip on short edge), then fold in half.'
+          : undefined,
+      });
     } catch (err) {
       toast({
         title: 'Download failed',
@@ -406,21 +412,28 @@ export default function BrochureEditor() {
                   <ChevronDown className="h-3 w-3 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleDownload('reader')}>
-                  <BookOpen className="h-3.5 w-3.5 mr-2" />
-                  <div>
-                    <div className="text-xs font-medium">Reader PDF</div>
-                    <div className="text-[10px] text-muted-foreground">4 pages — digital viewing</div>
-                  </div>
-                </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-64">
                 <DropdownMenuItem onClick={() => handleDownload('print-ready')}>
-                  <FileStack className="h-3.5 w-3.5 mr-2" />
+                  <FileStack className="h-3.5 w-3.5 mr-2 shrink-0" />
                   <div>
                     <div className="text-xs font-medium">Print-Ready PDF</div>
-                    <div className="text-[10px] text-muted-foreground">2 sheets — duplex print & fold</div>
+                    <div className="text-[10px] text-muted-foreground">2 sheets — print double-sided, fold in half</div>
                   </div>
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload('reader')}>
+                  <BookOpen className="h-3.5 w-3.5 mr-2 shrink-0" />
+                  <div>
+                    <div className="text-xs font-medium">Reader PDF</div>
+                    <div className="text-[10px] text-muted-foreground">4 individual pages — for email or screen</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5">
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    <span className="font-medium">Print tip:</span> Select "Print-Ready", then print on A4 with
+                    double-sided / flip on short edge. Fold the sheet in half for a finished booklet.
+                  </p>
+                </div>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
