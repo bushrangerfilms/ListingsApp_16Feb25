@@ -15,6 +15,7 @@ import {
   getImageBorderStyle,
   PAGE_VERTICAL,
   normalizeText,
+  spaceCurrency,
   getLayoutDimensions,
   getTypeOverrides,
   type LayoutDimensions,
@@ -384,7 +385,7 @@ export function CoverPageContent({ ctx, margins }: PageContentProps) {
       <View style={styles.coverBottomRow}>
         {content.cover.price && (
           <Text style={[priceStyle, { color: accentColor }]}>
-            Guide Price: {content.cover.price}
+            Guide Price: {spaceCurrency(content.cover.price)}
           </Text>
         )}
         {content.cover.energyRating && (
@@ -621,7 +622,7 @@ export function FeaturesPageContent({ ctx, margins }: PageContentProps) {
       {showInnerPrice && content.cover.price && (
         <View style={styles.priceBanner}>
           <Text style={[styles.priceBannerText, { color: accentColor }]}>
-            Guide Price: {content.cover.price}
+            Guide Price: {spaceCurrency(content.cover.price)}
           </Text>
         </View>
       )}
@@ -801,7 +802,7 @@ export function BackCoverPageContent({ ctx, margins }: PageContentProps) {
       {showBackCoverPrice && content.cover.price && (
         <View style={styles.backPriceBanner}>
           <Text style={[styles.backPriceText, { color: accentColor }]}>
-            Guide Price: {content.cover.price}
+            Guide Price: {spaceCurrency(content.cover.price)}
           </Text>
         </View>
       )}

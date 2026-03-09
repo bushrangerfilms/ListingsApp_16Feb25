@@ -242,6 +242,11 @@ export const RULE_WEIGHT_HEAVY = 0.75;
 // ── Text Normalization ────────────────────────────────────────────────
 
 /** Strip soft hyphens, zero-width chars, fix encoding artifacts before PDF rendering */
+/** Ensure a space after currency symbols (e.g. "€180,000" → "€ 180,000") */
+export function spaceCurrency(price: string): string {
+  return price.replace(/^([€£$])(\d)/, '$1 $2');
+}
+
 export function normalizeText(text: string): string {
   if (!text) return '';
   return text
