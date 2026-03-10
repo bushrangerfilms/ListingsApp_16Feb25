@@ -186,14 +186,6 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
                 <Edit className="h-4 w-4 mr-1" />{t('listings.card.editListing')}
               </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full border-orange-400 text-orange-600 hover:bg-orange-50"
-              onClick={() => onBrochure?.(listing.id)}
-            >
-              <FileText className="h-4 w-4 mr-1" />Brochure - Under Construction
-            </Button>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1" onClick={() => onArchive?.(listing.id, listing.archived || false)}>
                 <Archive className="h-4 w-4 mr-1" />{listing.archived ? t('listings.card.unarchiveListing') : t('listings.card.archiveListing')}
@@ -202,6 +194,14 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
                 <Trash2 className="h-4 w-4 mr-1" />{t('listings.card.deleteListing')}
               </Button>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => onBrochure?.(listing.id)}
+            >
+              <FileText className="h-4 w-4 mr-1" />Generate Brochure
+            </Button>
           </div>
         )}
       </CardContent>
