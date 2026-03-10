@@ -55,7 +55,7 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, impersonationState } = useAuth();
+  const { user, impersonationState, isSuperAdmin } = useAuth();
 
   // Load organization for authenticated admin users
   useEffect(() => {
@@ -90,37 +90,58 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
 
-        // PRIORITY 2: Get ALL user's organizations from public schema
-        const { data: userOrgs, error: userOrgError } = await supabase
-          .schema('public')
-          .from('user_organizations')
-          .select('organization_id')
-          .eq('user_id', user.id);
+        // PRIORITY 2: Get organizations
+        // Super admins see ALL orgs; regular users see only their linked orgs
+        let orgIds: string[];
 
-        if (userOrgError) {
-          console.error('[OrganizationContext] Error fetching user organization:', userOrgError);
-          setLoading(false);
-          return;
-        }
+        if (isSuperAdmin) {
+          console.log('[OrganizationContext] Super admin detected, fetching all organizations');
+          const { data: allOrgs, error: allOrgsError } = await supabase
+            .schema('public')
+            .from('organizations')
+            .select('id, business_name, slug, logo_url')
+            .order('business_name');
 
-        if (!userOrgs || userOrgs.length === 0) {
-          console.warn('[OrganizationContext] No organization link found for user:', user.id);
-          console.log('[OrganizationContext] User email:', user.email);
-          setLoading(false);
-          return;
-        }
+          if (allOrgsError || !allOrgs || allOrgs.length === 0) {
+            console.error('[OrganizationContext] Error fetching all organizations:', allOrgsError);
+            setLoading(false);
+            return;
+          }
 
-        const orgIds = userOrgs.map(uo => uo.organization_id);
-
-        // Fetch all org details for the switcher
-        const { data: allOrgs, error: allOrgsError } = await supabase
-          .schema('public')
-          .from('organizations')
-          .select('id, business_name, slug, logo_url')
-          .in('id', orgIds);
-
-        if (!allOrgsError && allOrgs) {
           setUserOrganizations(allOrgs);
+          orgIds = allOrgs.map(o => o.id);
+        } else {
+          const { data: userOrgs, error: userOrgError } = await supabase
+            .schema('public')
+            .from('user_organizations')
+            .select('organization_id')
+            .eq('user_id', user.id);
+
+          if (userOrgError) {
+            console.error('[OrganizationContext] Error fetching user organization:', userOrgError);
+            setLoading(false);
+            return;
+          }
+
+          if (!userOrgs || userOrgs.length === 0) {
+            console.warn('[OrganizationContext] No organization link found for user:', user.id);
+            console.log('[OrganizationContext] User email:', user.email);
+            setLoading(false);
+            return;
+          }
+
+          orgIds = userOrgs.map(uo => uo.organization_id);
+
+          // Fetch org details for the switcher
+          const { data: allOrgs, error: allOrgsError } = await supabase
+            .schema('public')
+            .from('organizations')
+            .select('id, business_name, slug, logo_url')
+            .in('id', orgIds);
+
+          if (!allOrgsError && allOrgs) {
+            setUserOrganizations(allOrgs);
+          }
         }
 
         // Check if user previously selected an org (persisted in localStorage)
@@ -151,7 +172,7 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
     };
 
     loadUserOrganization();
-  }, [user, impersonationState]);
+  }, [user, impersonationState, isSuperAdmin]);
 
   // Listen for impersonation changes
   useEffect(() => {
