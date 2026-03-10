@@ -293,7 +293,7 @@ INSTRUCTIONS:
 
 6. Write a location description in EXACTLY 2 sentences about ${listing.address_town || 'the area'}, ${listing.county || ''}, ${localeConfig.country}. Mention the town and 2-3 key nearby amenities.
 
-7. For the gallery, select up to 4 visually interesting photos from the available photos list. These are used as accent photos throughout the brochure. ${hasDescriptions ? 'Use the photo descriptions to write accurate captions that describe what is actually shown in each photo.' : 'Assign brief captions.'}
+7. For the gallery, select up to 4 visually interesting photos from the available photos list. These are used as accent photos throughout the brochure. ${hasDescriptions ? 'Use the photo descriptions to understand what each photo shows, but write captions as short buyer-appeal marketing copy (2-4 words), NOT literal descriptions. Examples: "Outdoor space potential", "Generous rear garden", "Period character features", "Countryside setting".' : 'Write captions as short buyer-appeal marketing copy (2-4 words), e.g. "Generous rear garden", "Period character features".'}
 
 8. Determine the sale method based on the Category field above. If "For Sale", use "For Sale by Private Treaty" unless the description mentions auction. If "To Let" or "Holiday Let", use "To Let". Do NOT use the listing's status (New/Published/Sold/Sale Agreed) as the sale method — always use the appropriate sale method phrase.
 ${customInstructions}
