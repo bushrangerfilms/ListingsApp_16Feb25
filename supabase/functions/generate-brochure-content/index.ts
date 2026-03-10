@@ -84,6 +84,7 @@ function buildCustomInstructionsSection(instructions: AIInstructionSet[]): strin
 
 const MAX_IMAGE_SIZE = 4 * 1024 * 1024; // 4MB limit
 const VISION_CONCURRENCY = 3;
+const MAX_VISION_PHOTOS = 12; // Cap vision analysis — brochure only uses ~4 rooms + gallery
 
 const PHOTO_ANALYSIS_PROMPT = `Identify this real estate photo in one line.
 Format: "[Room/Space type]: [Key features in 8-10 words]"
@@ -174,11 +175,13 @@ async function analyzeAllPhotos(
   const descriptions = new Map<string, string>();
   if (photoUrls.length === 0) return descriptions;
 
-  console.log(`[Brochure] Analyzing ${photoUrls.length} photos with vision...`);
+  // Cap photos to avoid timeout on listings with many images
+  const photosToAnalyze = photoUrls.slice(0, MAX_VISION_PHOTOS);
+  console.log(`[Brochure] Analyzing ${photosToAnalyze.length}/${photoUrls.length} photos with vision...`);
 
   // Process in batches for rate limiting
-  for (let i = 0; i < photoUrls.length; i += VISION_CONCURRENCY) {
-    const batch = photoUrls.slice(i, i + VISION_CONCURRENCY);
+  for (let i = 0; i < photosToAnalyze.length; i += VISION_CONCURRENCY) {
+    const batch = photosToAnalyze.slice(i, i + VISION_CONCURRENCY);
     const results = await Promise.all(
       batch.map(async (url) => {
         const imageData = await fetchImageAsBase64(url);
@@ -196,12 +199,12 @@ async function analyzeAllPhotos(
     }
 
     // Small delay between batches to respect rate limits
-    if (i + VISION_CONCURRENCY < photoUrls.length) {
+    if (i + VISION_CONCURRENCY < photosToAnalyze.length) {
       await new Promise(r => setTimeout(r, 1000));
     }
   }
 
-  console.log(`[Brochure] Vision analysis complete: ${descriptions.size}/${photoUrls.length} photos described`);
+  console.log(`[Brochure] Vision analysis complete: ${descriptions.size}/${photosToAnalyze.length} photos described`);
   return descriptions;
 }
 
@@ -515,6 +518,7 @@ serve(async (req) => {
             topK: 40,
             topP: 0.95,
             maxOutputTokens: 8192,
+            thinkingConfig: { thinkingBudget: 0 },
           },
           safetySettings: [
             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -594,12 +598,17 @@ serve(async (req) => {
       locale: effectiveLocale,
       currency: org.currency || localeConfig.currency.code,
       countryCode: org.country_code || 'IE',
-      ...((org.default_brochure_style_options || org.default_brochure_certifications) ? {
-        styleOptions: {
-          ...(org.default_brochure_style_options || {}),
-          ...(org.default_brochure_certifications ? { certificationLogos: org.default_brochure_certifications } : {}),
-        },
-      } : {}),
+      styleOptions: {
+        templateId: 'classic-1',
+        frameStyle: 'classic',
+        imageCornerRadius: 'rounded',
+        imageBorder: true,
+        showInnerPrice: false,
+        showBackCoverPrice: false,
+        pageFormat: 'a5',
+        ...(org.default_brochure_style_options || {}),
+        ...(org.default_brochure_certifications ? { certificationLogos: org.default_brochure_certifications } : {}),
+      },
     };
 
     const tokenUsage = {

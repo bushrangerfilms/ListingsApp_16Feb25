@@ -91,7 +91,7 @@ interface BrochureStyleEditorProps {
 const TEMPLATE_LIST = Object.values(BROCHURE_TEMPLATES);
 
 export function BrochureStyleEditor({ branding, onChange, onSaveAsDefaults, isSavingDefaults = false }: BrochureStyleEditorProps) {
-  const opts = branding.styleOptions || DEFAULT_STYLE_OPTIONS;
+  const opts = { ...DEFAULT_STYLE_OPTIONS, ...branding.styleOptions };
   const currentTemplateId = opts.templateId || 'classic-1';
 
   const update = (patch: Partial<BrochureStyleOptions>) => {
