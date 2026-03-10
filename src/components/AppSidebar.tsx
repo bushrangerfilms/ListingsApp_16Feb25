@@ -69,7 +69,7 @@ export function AppSidebar() {
   const { open, toggleSidebar } = useSidebar();
   const { organization, userOrganizations, switchOrganization } = useOrganization();
   const { isAdmin, isSuperAdmin, impersonationState } = useAuth();
-  const hasMultipleOrgs = userOrganizations.length > 1;
+  const hasMultipleOrgs = userOrganizations.length > 1 || isSuperAdmin;
   const { t } = useLocale();
   
   const [hidePublicSite, setHidePublicSite] = useState(false);
