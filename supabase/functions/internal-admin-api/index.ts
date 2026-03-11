@@ -725,6 +725,67 @@ async function handleSetPassword(supabase: SupabaseClient, auth: AuthResult, use
   return { success: true, userId: userId.trim() };
 }
 
+async function handleFailedPostsList(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+  params: { limit?: number; offset?: number; organization_id?: string; date_from?: string; date_to?: string }
+) {
+  if (!auth.isSuperAdmin) {
+    throw new Error("Only super admins can view failed posts");
+  }
+
+  const limit = params.limit || 50;
+  const offset = params.offset || 0;
+
+  // Build query for failed posts
+  let query = supabase
+    .from("listing_posting_schedule")
+    .select("id, organization_id, listing_id, scheduled_for, post_category, content_type, aspect_ratio, error_message, updated_at, failure_notified_at, platforms_to_post, listings(title, address)", { count: "exact" })
+    .eq("status", "failed")
+    .order("updated_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (params.organization_id) {
+    query = query.eq("organization_id", params.organization_id);
+  }
+  if (params.date_from) {
+    query = query.gte("updated_at", params.date_from);
+  }
+  if (params.date_to) {
+    query = query.lte("updated_at", params.date_to);
+  }
+
+  const { data: posts, error, count } = await query;
+
+  if (error) {
+    console.error("Failed posts query error:", error);
+    throw new Error(`Failed to fetch failed posts: ${error.message}`);
+  }
+
+  // Look up org names for all affected orgs
+  const orgIds = [...new Set((posts || []).map(p => p.organization_id).filter(Boolean))];
+  let orgNameMap: Record<string, string> = {};
+  if (orgIds.length > 0) {
+    const { data: orgsData } = await supabase
+      .from("organizations")
+      .select("id, business_name")
+      .in("id", orgIds);
+    for (const org of (orgsData || [])) {
+      orgNameMap[org.id] = org.business_name || org.id;
+    }
+  }
+
+  // Enrich posts with org name
+  const enrichedPosts = (posts || []).map(p => ({
+    ...p,
+    organization_name: orgNameMap[p.organization_id] || p.organization_id,
+    listing_title: p.listings?.title || null,
+    listing_address: p.listings?.address || null,
+  }));
+
+  return { posts: enrichedPosts, total: count || 0 };
+}
+
 async function handleEmailQueue(supabase: SupabaseClient, auth: AuthResult, limit = 50) {
   const { data, error } = await supabase
     .from("email_queue")
@@ -3474,6 +3535,14 @@ serve(async (req) => {
     } else if (path === "/analytics/video/events" && method === "GET") {
       const limit = parseInt(url.searchParams.get("limit") || "50");
       responseData = await handleVideoAnalyticsEvents(supabase, authResult, limit);
+    } else if (path === "/failed-posts" && method === "GET") {
+      responseData = await handleFailedPostsList(supabase, authResult, {
+        limit: parseInt(url.searchParams.get("limit") || "50"),
+        offset: parseInt(url.searchParams.get("offset") || "0"),
+        organization_id: url.searchParams.get("organization_id") || undefined,
+        date_from: url.searchParams.get("date_from") || undefined,
+        date_to: url.searchParams.get("date_to") || undefined,
+      });
     } else {
       return new Response(
         JSON.stringify({ error: "Not found", path }),
