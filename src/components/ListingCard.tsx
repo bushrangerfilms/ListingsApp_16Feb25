@@ -151,14 +151,18 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
         </div>
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
-          <div className="flex items-center gap-1">
-            <Bed className="h-4 w-4" />
-            <span>{listing.bedrooms}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Bath className="h-4 w-4" />
-            <span>{listing.bathrooms}</span>
-          </div>
+          {listing.buildingType !== 'Land' && (
+            <>
+              <div className="flex items-center gap-1">
+                <Bed className="h-4 w-4" />
+                <span>{listing.bedrooms}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Bath className="h-4 w-4" />
+                <span>{listing.bathrooms}</span>
+              </div>
+            </>
+          )}
           <span className="text-xs">{listing.buildingType}</span>
           {listing.buildingSize && listing.buildingSize > 0 && (
             <span className="text-xs">{listing.buildingSize}m²</span>
