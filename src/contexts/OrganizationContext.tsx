@@ -55,7 +55,7 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user, impersonationState, isSuperAdmin } = useAuth();
+  const { user, impersonationState, isSuperAdmin, loading: authLoading } = useAuth();
 
   // Load organization for authenticated admin users
   useEffect(() => {
@@ -63,6 +63,13 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
       if (!user) {
         console.log('[OrganizationContext] No user found, skipping organization load');
         setLoading(false);
+        return;
+      }
+
+      // Wait for AuthContext to finish loading roles before fetching orgs
+      // Otherwise isSuperAdmin is false on the first run, causing a flash of linked-only orgs
+      if (authLoading) {
+        console.log('[OrganizationContext] Auth still loading roles, waiting...');
         return;
       }
 
@@ -172,7 +179,7 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
     };
 
     loadUserOrganization();
-  }, [user, impersonationState, isSuperAdmin]);
+  }, [user, impersonationState, isSuperAdmin, authLoading]);
 
   // Listen for impersonation changes
   useEffect(() => {
