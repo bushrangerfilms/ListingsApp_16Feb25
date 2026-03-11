@@ -20,7 +20,7 @@ export type DomainType = 'marketing' | 'admin' | 'org-public';
 /**
  * Determines what type of domain the current hostname represents:
  * - 'marketing': autolisting.io or www.autolisting.io (marketing/landing pages)
- * - 'admin': app.autolisting.io, localhost, replit dev domains (admin portal/dashboard)
+ * - 'admin': app.autolisting.io, localhost, Vercel preview deployments (admin portal/dashboard)
  * - 'org-public': custom organization domains (public listings for an org)
  */
 export function getDomainType(): DomainType {
@@ -35,18 +35,12 @@ export function getDomainType(): DomainType {
     return 'marketing';
   }
   
-  // Admin portal: app.autolisting.io, localhost, or any replit dev domain
+  // Admin portal: app.autolisting.io, localhost, or Vercel preview deployments
   if (
-    hostname === 'localhost' || 
+    hostname === 'localhost' ||
     hostname === '127.0.0.1' ||
     hostname === 'app.autolisting.io' ||
-    hostname.includes('.replit.') ||
-    hostname.includes('.replit.dev') ||
-    hostname.includes('.repl.co') ||
-    hostname.includes('.spock.replit.dev') ||
-    hostname.includes('.picard.replit.dev') ||
-    hostname.includes('.kirk.replit.dev') ||
-    hostname.includes('.janeway.replit.dev')
+    hostname.endsWith('.vercel.app')
   ) {
     console.log('[DomainDetection] Admin portal domain detected');
     return 'admin';

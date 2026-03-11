@@ -10,6 +10,16 @@ const ALLOWED_ORIGINS = new Set([
   'http://localhost:3000',
 ]);
 
+function isAllowedOrigin(origin: string): boolean {
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  // Allow Vercel preview deployments
+  try {
+    const url = new URL(origin);
+    if (url.hostname.endsWith('.vercel.app') && url.protocol === 'https:') return true;
+  } catch { /* invalid URL */ }
+  return false;
+}
+
 /**
  * Returns CORS headers with origin restricted to allowed domains.
  * If the request origin isn't in the allowed list, defaults to the primary app origin.
@@ -20,7 +30,7 @@ export function getCorsHeaders(
   extraHeaders?: string
 ): Record<string, string> {
   const origin =
-    requestOrigin && ALLOWED_ORIGINS.has(requestOrigin)
+    requestOrigin && isAllowedOrigin(requestOrigin)
       ? requestOrigin
       : 'https://app.autolisting.io';
 
