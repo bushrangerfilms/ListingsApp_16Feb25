@@ -35,6 +35,7 @@ import {
   Brain,
   Music,
   Rocket,
+  AlertTriangle,
 } from "lucide-react";
 import { useAdminPermissions } from "@/hooks/admin/useAdminPermissions";
 
@@ -100,6 +101,7 @@ const navSections: NavSection[] = [
     items: [
       { path: '/internal/gdpr', label: 'GDPR Compliance', icon: ShieldCheck },
       { path: '/internal/alerts', label: 'Alerts', icon: Bell, superAdminOnly: true },
+      { path: '/internal/failed-posts', label: 'Failed Posts', icon: AlertTriangle, superAdminOnly: true },
       { path: '/internal/audit-log', label: 'Audit Log', icon: ScrollText, permission: 'canViewAuditLog' },
     ]
   },

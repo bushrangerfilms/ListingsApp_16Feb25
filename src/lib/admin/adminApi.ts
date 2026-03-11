@@ -152,6 +152,28 @@ export interface AdminNote {
   created_at: string;
 }
 
+export interface FailedPost {
+  id: string;
+  organization_id: string;
+  organization_name: string;
+  listing_id: string | null;
+  listing_title: string | null;
+  listing_address: string | null;
+  post_category: string;
+  content_type: string | null;
+  aspect_ratio: string | null;
+  error_message: string | null;
+  scheduled_for: string;
+  updated_at: string;
+  failure_notified_at: string | null;
+  platforms_to_post: string[] | null;
+}
+
+export interface FailedPostsResponse {
+  posts: FailedPost[];
+  total: number;
+}
+
 export interface EmailQueueItem {
   id: string;
   to_email: string;
@@ -944,6 +966,19 @@ export const adminApi = {
         method: "POST",
         body: JSON.stringify(data || {}),
       }),
+  },
+
+  failedPosts: {
+    list: (params?: { limit?: number; offset?: number; organization_id?: string; date_from?: string; date_to?: string }) => {
+      const searchParams = new URLSearchParams();
+      if (params?.limit) searchParams.set("limit", params.limit.toString());
+      if (params?.offset) searchParams.set("offset", params.offset.toString());
+      if (params?.organization_id) searchParams.set("organization_id", params.organization_id);
+      if (params?.date_from) searchParams.set("date_from", params.date_from);
+      if (params?.date_to) searchParams.set("date_to", params.date_to);
+      const query = searchParams.toString();
+      return adminFetch<FailedPostsResponse>(`/failed-posts${query ? `?${query}` : ""}`);
+    },
   },
 
   videoMusic: {

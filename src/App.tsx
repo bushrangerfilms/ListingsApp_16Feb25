@@ -94,6 +94,7 @@ const AnalyticsPage = lazy(() => import("./pages/internal/AnalyticsPage"));
 const GdprCompliancePage = lazy(() => import("./pages/internal/GdprCompliancePage"));
 const AlertsPage = lazy(() => import("./pages/internal/AlertsPage"));
 const EmailQueuePage = lazy(() => import("./pages/internal/EmailQueuePage"));
+const FailedPostsPage = lazy(() => import("./pages/internal/FailedPostsPage"));
 const UsageRatesPage = lazy(() => import("./pages/internal/UsageRatesPage"));
 const AITrainingPage = lazy(() => import("./pages/internal/AITrainingPage"));
 const VideoMusicPage = lazy(() => import("./pages/internal/VideoMusicPage"));
@@ -247,6 +248,7 @@ function AdminRoutes() {
         <Route path="/internal/alerts" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><AlertsPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/audit-log" element={<SuperAdminRouteGuard><SuperAdminLayout><AuditLogPage /></SuperAdminLayout></SuperAdminRouteGuard>} />
         <Route path="/internal/email-queue" element={<SuperAdminRouteGuard><SuperAdminLayout><EmailQueuePage /></SuperAdminLayout></SuperAdminRouteGuard>} />
+        <Route path="/internal/failed-posts" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><FailedPostsPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/usage-rates" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><UsageRatesPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/ai-training" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><AITrainingPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/video-music" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><VideoMusicPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
