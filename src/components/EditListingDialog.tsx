@@ -197,6 +197,14 @@ export function EditListingDialog({
         listingFields['photos'] = finalPhotoUrls;
         listingFields['hero_photo'] = finalHeroUrl;
         listingFields['social_media_photos'] = finalSocialMediaUrls;
+
+        if (finalSocialMediaUrls.length < 2) {
+          toast({
+            title: "Insufficient social photos",
+            description: "Please add/select more social media photos for this listing to avoid multiple social media types to fail generating.",
+            variant: "destructive",
+          });
+        }
       }
 
       const { data, error } = await supabase.functions.invoke('update-listing-details', {
