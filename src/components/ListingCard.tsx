@@ -174,14 +174,6 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
 
         {!isPublicView && (
           <div className="space-y-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full" 
-              onClick={() => window.open(propertyLink, '_blank')}
-            >
-              <ExternalLink className="h-4 w-4 mr-1" />{t('listings.card.viewListing')}
-            </Button>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1" onClick={() => onStatusChange?.(listing.id, listing.status)}>
                 {t('listings.status.update')}
@@ -198,14 +190,24 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
                 <Trash2 className="h-4 w-4 mr-1" />{t('listings.card.deleteListing')}
               </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => onBrochure?.(listing.id)}
-            >
-              <FileText className="h-4 w-4 mr-1" />Generate Brochure
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => window.open(propertyLink, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mr-1" />{t('listings.card.viewListing')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={() => onBrochure?.(listing.id)}
+              >
+                <FileText className="h-4 w-4 mr-1" />Generate Brochure
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
