@@ -79,7 +79,8 @@ export default function PublicListings() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [priceRange, setPriceRange] = useState<string>('all');
-  const [bedroomFilter, setBedroomFilter] = useState<string>('all');
+  const [bedroomFilters, setBedroomFilters] = useState<Set<string>>(new Set());
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState<'all' | 'properties' | 'land'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<string>('newest');
@@ -301,16 +302,20 @@ export default function PublicListings() {
       }
     }
 
-    // Bedroom filter
-    if (bedroomFilter !== "all") {
+    // Bedroom filter (multi-select)
+    if (bedroomFilters.size > 0) {
       const bedrooms = typeof listing.bedrooms === 'string' ? parseInt(listing.bedrooms) : (listing.bedrooms || 0);
-      if (bedroomFilter === "5+") {
-        if (bedrooms < 5) return false;
-      } else {
-        const targetBedrooms = parseInt(bedroomFilter);
-        if (bedrooms !== targetBedrooms) return false;
-      }
+      const matches = Array.from(bedroomFilters).some(f => {
+        if (f === '5+') return bedrooms >= 5;
+        return bedrooms === parseInt(f);
+      });
+      if (!matches) return false;
     }
+
+    // Property type filter (land vs properties)
+    if (propertyTypeFilter === 'land' && listing.buildingType !== 'Land') return false;
+    if (propertyTypeFilter === 'properties' && listing.buildingType === 'Land') return false;
+
     return true;
   });
 
@@ -418,33 +423,65 @@ export default function PublicListings() {
             </div>
 
             {/* Advanced Filters */}
-            {showFilters && <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-card rounded-lg border">
-                <Select value={priceRange} onValueChange={setPriceRange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('listings.filters.priceRange')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('listings.filters.allPrices')}</SelectItem>
-                    <SelectItem value="0-200000">{t('listings.filters.price0to200k')}</SelectItem>
-                    <SelectItem value="200000-400000">{t('listings.filters.price200kto400k')}</SelectItem>
-                    <SelectItem value="400000-600000">{t('listings.filters.price400kto600k')}</SelectItem>
-                    <SelectItem value="600000+">{t('listings.filters.price600kPlus')}</SelectItem>
-                  </SelectContent>
-                </Select>
+            {showFilters && <div className="mt-4 space-y-4 p-4 bg-card rounded-lg border">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  <Select value={priceRange} onValueChange={setPriceRange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('listings.filters.priceRange')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">{t('listings.filters.allPrices')}</SelectItem>
+                      <SelectItem value="0-200000">{t('listings.filters.price0to200k')}</SelectItem>
+                      <SelectItem value="200000-400000">{t('listings.filters.price200kto400k')}</SelectItem>
+                      <SelectItem value="400000-600000">{t('listings.filters.price400kto600k')}</SelectItem>
+                      <SelectItem value="600000+">{t('listings.filters.price600kPlus')}</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                <Select value={bedroomFilter} onValueChange={setBedroomFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('listings.filters.bedrooms')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('listings.filters.allBedrooms')}</SelectItem>
-                    <SelectItem value="1">{t('listings.filters.bedroom1')}</SelectItem>
-                    <SelectItem value="2">{t('listings.filters.bedrooms2')}</SelectItem>
-                    <SelectItem value="3">{t('listings.filters.bedrooms3')}</SelectItem>
-                    <SelectItem value="4">{t('listings.filters.bedrooms4')}</SelectItem>
-                    <SelectItem value="5+">{t('listings.filters.bedrooms5Plus')}</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">Bedrooms:</span>
+                    <div className="flex gap-1">
+                      {['1', '2', '3', '4', '5+'].map(val => (
+                        <button
+                          key={val}
+                          onClick={() => {
+                            const next = new Set(bedroomFilters);
+                            if (next.has(val)) next.delete(val); else next.add(val);
+                            setBedroomFilters(next);
+                          }}
+                          className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-colors ${
+                            bedroomFilters.has(val)
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background text-foreground border-input hover:bg-accent'
+                          }`}
+                        >
+                          {val}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {(categoryFilter === 'all' || categoryFilter === 'Listing') && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">Type:</span>
+                    <div className="flex gap-1">
+                      {([['all', 'All'], ['properties', 'Properties'], ['land', 'Land']] as const).map(([val, label]) => (
+                        <button
+                          key={val}
+                          onClick={() => setPropertyTypeFilter(val)}
+                          className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-colors ${
+                            propertyTypeFilter === val
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-background text-foreground border-input hover:bg-accent'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>}
           </div>
         </div>

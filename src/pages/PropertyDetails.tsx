@@ -485,14 +485,18 @@ export default function PropertyDetails() {
                  </div>
 
                 <div className="flex items-center gap-6 py-4 border-y flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <Bed className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-semibold">{property.bedrooms} Bedrooms</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Bath className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-semibold">{property.bathrooms} Bathrooms</span>
-                  </div>
+                  {property.buildingType !== 'Land' && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Bed className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-semibold">{property.bedrooms} Bedrooms</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Bath className="h-5 w-5 text-muted-foreground" />
+                        <span className="font-semibold">{property.bathrooms} Bathrooms</span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex items-center gap-2">
                     <Home className="h-5 w-5 text-muted-foreground" />
                     <span className="font-semibold">{property.buildingType}</span>

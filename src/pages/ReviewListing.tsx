@@ -46,6 +46,8 @@ const ReviewListing = () => {
         let title = '';
         if (data.category === 'Holiday Rental') {
           title = `Holiday Rental in ${data.addressTown || ''}, ${data.county || ''}`;
+        } else if (data.buildingType === 'Land') {
+          title = `Land in ${data.addressTown || ''}, ${data.county || ''}`;
         } else {
           title = `${data.bedrooms || ''} Bed, ${data.bathrooms || ''} Bath ${data.buildingType || ''} in ${data.addressTown || ''}, ${data.county || ''}`;
         }
