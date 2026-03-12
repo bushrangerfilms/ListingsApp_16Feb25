@@ -63,7 +63,7 @@ function buildPropertyDetails(
   config: DisplaySignageConfig,
   locale: string | null,
 ): { details: string[]; showBer: boolean } {
-  const measurements = getRegionConfig((locale || 'en-IE') as SupportedLocale).measurements;
+  const measurements = getRegionConfig((locale || 'en-IE') as SupportedLocale).property.measurements;
   const isLand = listing.building_type === 'Land';
   const isCommercial = listing.building_type === 'Commercial';
   const details: string[] = [];
@@ -927,7 +927,7 @@ export default function ShopWindowDisplay() {
   }
 
   const currentListing = listings[currentIndex];
-  if (!currentListing) return <ComingSoonScreen organization={displayOrg} />;
+  if (!displayOrg || !currentListing) return <ComingSoonScreen organization={displayOrg} />;
 
   const previousListing = previousIndex !== null ? listings[previousIndex] : null;
   const primaryColor = displayOrg?.primary_color || '#1e3a5f';
