@@ -172,18 +172,18 @@ function DisplaySlide({
         <img
           src={organization.logo_url}
           alt={organization.business_name}
-          className="object-contain"
+          className="object-contain mx-auto"
           style={{
-            height: 'clamp(2rem, 4vh, 3rem)',
-            maxWidth: '12rem',
+            height: 'clamp(5rem, 10vh, 7.5rem)',
+            maxWidth: '20rem',
             opacity: 0.9,
           }}
         />
       )}
-      <h1 className="font-bold leading-tight line-clamp-2 text-white" style={{
+      <h1 className="font-bold leading-tight text-white" style={{
         fontSize: orientation === 'portrait'
-          ? `clamp(1.8rem, ${4 * fontScale}vh, ${3 * fontScale}rem)`
-          : `clamp(1.8rem, ${3.5 * fontScale}vw, ${3.5 * fontScale}rem)`,
+          ? `clamp(1.4rem, ${3.5 * fontScale}vh, ${2.5 * fontScale}rem)`
+          : `clamp(1.4rem, ${2.8 * fontScale}vw, ${2.8 * fontScale}rem)`,
       }}>
         {listing.title || 'Property'}
       </h1>
@@ -192,7 +192,7 @@ function DisplaySlide({
           fontSize: orientation === 'portrait'
             ? `clamp(2rem, ${5 * fontScale}vh, ${3.5 * fontScale}rem)`
             : `clamp(2rem, ${4 * fontScale}vw, ${4 * fontScale}rem)`,
-          color: secondaryColor,
+          color: '#ffffff',
         }}>
           {formatDisplayPrice(listing.price, organization.locale, organization.currency, listing.category)}
         </p>
