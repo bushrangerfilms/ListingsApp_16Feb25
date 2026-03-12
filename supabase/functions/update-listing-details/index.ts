@@ -154,7 +154,13 @@ Deno.serve(async (req) => {
     if (fields['Furnishing Status']) supabaseFields.furnished = fields['Furnishing Status'];
     if (fields['Booking Platform Link']) supabaseFields.booking_link = fields['Booking Platform Link'];
     if (fields['Building Size sqm']) supabaseFields.floor_area_size = fields['Building Size sqm'];
-    
+    if (fields['Land Size (Acres)'] !== undefined) supabaseFields.land_size = fields['Land Size (Acres)'];
+    if (fields['Address Line 1'] !== undefined) supabaseFields.address_detail = fields['Address Line 1'];
+    if (fields['Address Town'] !== undefined) supabaseFields.address_town = fields['Address Town'];
+    if (fields['County'] !== undefined) supabaseFields.county = fields['County'];
+    if (fields['Eircode'] !== undefined) supabaseFields.eircode = fields['Eircode'];
+    if (fields['Folio Number'] !== undefined) supabaseFields.folio_number = fields['Folio Number'];
+
     // Handle photo fields
     if (fields['photos'] !== undefined) supabaseFields.photos = fields['photos'];
     if (fields['hero_photo'] !== undefined) supabaseFields.hero_photo = fields['hero_photo'];

@@ -59,6 +59,7 @@ export function EditListingDialog({
     "Building Size (Sq M)": 0,
     "Land Size (Acres)": 0,
     "Show NEW Badge": false,
+    "Folio Number": "",
   });
   const [landSizeInput, setLandSizeInput] = useState("");
   const [photoChanges, setPhotoChanges] = useState<PhotoChanges | null>(null);
@@ -83,6 +84,7 @@ export function EditListingDialog({
         "Building Size (Sq M)": listing.buildingSize || 0,
         "Land Size (Acres)": landSize,
         "Show NEW Badge": listing.showNewBadge || false,
+        "Folio Number": listing.folioNumber || listing.folio_number || "",
       });
       setLandSizeInput(landSize ? String(landSize) : "");
       setPhotoChanges(null);
@@ -191,6 +193,7 @@ export function EditListingDialog({
         'BER Rating': formData.BER,
         'Building Size sqm': formData["Building Size (Sq M)"] || null,
         'Land Size (Acres)': formData["Land Size (Acres)"] || null,
+        'Folio Number': formData["Folio Number"] || null,
       };
 
       if (photoChanges) {
@@ -368,7 +371,6 @@ export function EditListingDialog({
                 placeholder={addressConfig.postalCodePlaceholder}
                 value={formData.Eircode}
                 onChange={(e) => setFormData({ ...formData, Eircode: e.target.value })}
-                required
               />
             </div>
           </div>
@@ -467,6 +469,19 @@ export function EditListingDialog({
               required={formData["Building Type"] === "Land"}
             />
           </div>
+
+          {/* Folio Number - Only for Land */}
+          {formData["Building Type"] === "Land" && (
+            <div>
+              <Label htmlFor="folioNumber">Folio Number</Label>
+              <Input
+                id="folioNumber"
+                placeholder="e.g. RN12345"
+                value={formData["Folio Number"]}
+                onChange={(e) => setFormData({ ...formData, "Folio Number": e.target.value })}
+              />
+            </div>
+          )}
 
           <div>
             <Label htmlFor="description">{t('listings.create.details.description')}</Label>

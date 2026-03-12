@@ -28,6 +28,7 @@ interface ListingData {
   category: string;
   furnishingStatus?: string;
   bookingPlatformLink?: string;
+  folioNumber?: string;
   photoUrls: string[];
   heroPhotoUrl: string;
   socialMediaPhotoUrls?: string[];
@@ -153,6 +154,7 @@ serve(async (req) => {
         address_town: listingData.addressTown,
         county: listingData.county,
         eircode: listingData.eircode,
+        folio_number: listingData.folioNumber || null,
         ber_rating: listingData.berRating,
         category: listingData.category,
         furnished: listingData.furnishingStatus,
