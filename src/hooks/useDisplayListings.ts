@@ -10,7 +10,7 @@ const CATEGORY_MAP: Record<string, string> = {
   holiday_rentals: 'Holiday Rental',
 };
 
-const LISTING_SELECT = 'id, title, price, address, address_detail, address_town, county, bedrooms, bathrooms, building_type, floor_area_size, ber_rating, category, status, hero_photo, photos, date_posted';
+const LISTING_SELECT = 'id, title, price, address, address_detail, address_town, county, bedrooms, bathrooms, building_type, floor_area_size, land_size, ber_rating, category, status, hero_photo, photos, date_posted, description, ensuite, furnished';
 
 function shuffleArray<T>(arr: T[]): T[] {
   const shuffled = [...arr];
