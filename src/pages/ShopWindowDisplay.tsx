@@ -9,6 +9,8 @@ import { X, Play, Monitor } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getLogosForLocale } from '@/lib/brochure/certificationLogos';
 import { useDisplayAnalytics } from '@/hooks/useDisplayAnalytics';
+import { getRegionConfig } from '@/lib/regionConfig';
+import type { SupportedLocale } from '@/lib/i18n';
 
 // ── Status badge colors ──────────────────────────────────────────────
 
@@ -54,6 +56,63 @@ function formatDisplayPrice(
   return formatted;
 }
 
+// ── Type-aware property details builder ──────────────────────────────
+
+function buildPropertyDetails(
+  listing: DisplayListing,
+  config: DisplaySignageConfig,
+  locale: string | null,
+): { details: string[]; showBer: boolean } {
+  const measurements = getRegionConfig((locale || 'en-IE') as SupportedLocale).measurements;
+  const isLand = listing.building_type === 'Land';
+  const isCommercial = listing.building_type === 'Commercial';
+  const details: string[] = [];
+
+  if (isLand) {
+    if (config.show_land_size && listing.land_size) {
+      const converted = measurements.convertFromAcres(listing.land_size);
+      const formatted = converted % 1 === 0 ? converted.toString() : converted.toFixed(2);
+      details.push(`${formatted} ${measurements.landSymbol}`);
+    }
+    if (listing.building_type) details.push(listing.building_type);
+    return { details, showBer: false };
+  }
+
+  if (isCommercial) {
+    if (listing.floor_area_size) {
+      details.push(`${listing.floor_area_size.toLocaleString()} ${measurements.areaSymbol}`);
+    }
+    if (listing.building_type) details.push(listing.building_type);
+    return { details, showBer: true };
+  }
+
+  // Residential
+  if (config.show_bedrooms_bathrooms) {
+    if (listing.bedrooms) details.push(`${listing.bedrooms} Bed`);
+    if (listing.bathrooms) details.push(`${listing.bathrooms} Bath`);
+    if (listing.ensuite) details.push(`${listing.ensuite} Ensuite`);
+  }
+  if (listing.building_type) details.push(listing.building_type);
+  if (listing.floor_area_size) {
+    details.push(`${listing.floor_area_size.toLocaleString()} ${measurements.areaSymbol}`);
+  }
+  if (listing.furnished && (listing.category === 'Rental' || listing.category === 'Holiday Rental')) {
+    details.push(listing.furnished);
+  }
+  return { details, showBer: true };
+}
+
+// ── Description excerpt helper ──────────────────────────────────────
+
+function getDescriptionExcerpt(description: string | null, maxChars = 150): string | null {
+  if (!description) return null;
+  const firstParagraph = description.split(/\n\n|\r\n\r\n/)[0].trim();
+  if (firstParagraph.length <= maxChars) return firstParagraph;
+  const truncated = firstParagraph.substring(0, maxChars);
+  const lastSpace = truncated.lastIndexOf(' ');
+  return (lastSpace > 0 ? truncated.substring(0, lastSpace) : truncated) + '...';
+}
+
 // ── Slide component ──────────────────────────────────────────────────
 
 function DisplaySlide({
@@ -82,13 +141,7 @@ function DisplaySlide({
     : null;
 
   const location = [listing.address_town, listing.county].filter(Boolean).join(', ');
-  const details: string[] = [];
-  if (config.show_bedrooms_bathrooms) {
-    if (listing.bedrooms) details.push(`${listing.bedrooms} Bed`);
-    if (listing.bathrooms) details.push(`${listing.bathrooms} Bath`);
-  }
-  if (listing.building_type) details.push(listing.building_type);
-  if (listing.floor_area_size) details.push(`${listing.floor_area_size} sqm`);
+  const { details, showBer } = buildPropertyDetails(listing, config, organization.locale);
 
   const statusBadge = badge && (
     <div
@@ -100,10 +153,13 @@ function DisplaySlide({
   );
 
   // Count visible detail rows for dynamic font scaling (2.6)
+  const hasDescription = config.show_description && !!listing.description;
   const visibleDetailCount = [
+    config.show_logo_on_slide && !!organization.logo_url,
     config.show_price && listing.price !== null,
     details.length > 0,
-    config.show_ber_rating && listing.ber_rating && listing.ber_rating !== 'EXEMPT',
+    hasDescription,
+    showBer && config.show_ber_rating && listing.ber_rating && listing.ber_rating !== 'EXEMPT',
     config.show_address && location,
   ].filter(Boolean).length;
 
@@ -112,6 +168,18 @@ function DisplaySlide({
 
   const detailsContent = (
     <>
+      {config.show_logo_on_slide && organization.logo_url && (
+        <img
+          src={organization.logo_url}
+          alt={organization.business_name}
+          className="object-contain"
+          style={{
+            height: 'clamp(2rem, 4vh, 3rem)',
+            maxWidth: '12rem',
+            opacity: 0.9,
+          }}
+        />
+      )}
       <h1 className="font-bold leading-tight line-clamp-2 text-white" style={{
         fontSize: orientation === 'portrait'
           ? `clamp(1.8rem, ${4 * fontScale}vh, ${3 * fontScale}rem)`
@@ -138,7 +206,20 @@ function DisplaySlide({
           {details.join('  \u00b7  ')}
         </p>
       )}
-      {config.show_ber_rating && listing.ber_rating && listing.ber_rating !== 'EXEMPT' && (
+      {hasDescription && (
+        <p className="text-white/60 italic leading-snug" style={{
+          fontSize: orientation === 'portrait'
+            ? `clamp(0.8rem, ${1.8 * fontScale}vh, ${1.1 * fontScale}rem)`
+            : `clamp(0.8rem, ${1 * fontScale}vw, ${1.1 * fontScale}rem)`,
+          display: '-webkit-box',
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}>
+          {getDescriptionExcerpt(listing.description)}
+        </p>
+      )}
+      {showBer && config.show_ber_rating && listing.ber_rating && listing.ber_rating !== 'EXEMPT' && (
         <p className="text-white/70" style={{
           fontSize: orientation === 'portrait'
             ? `clamp(0.9rem, ${2 * fontScale}vh, ${1.3 * fontScale}rem)`

@@ -521,6 +521,9 @@ export default function AdminShopWindowDisplay() {
                   { key: 'show_address', label: 'Address' },
                   { key: 'show_bedrooms_bathrooms', label: 'Bedrooms & Bathrooms' },
                   { key: 'show_ber_rating', label: 'BER / Energy Rating' },
+                  { key: 'show_description', label: 'Description Excerpt' },
+                  { key: 'show_land_size', label: 'Land Size (for land listings)' },
+                  { key: 'show_logo_on_slide', label: 'Logo on Each Slide' },
                   { key: 'show_contact_info', label: 'Contact Info & PSRA' },
                   { key: 'show_qr_code', label: 'QR Code (links to listing)' },
                   { key: 'show_clock', label: 'Clock & Date' },
@@ -658,7 +661,7 @@ function PreviewSlide({
   organization,
   config,
 }: {
-  listing: { title: string | null; price: number | null; address_town: string | null; county: string | null; bedrooms: number | null; bathrooms: number | null; building_type: string | null; hero_photo: string | null; ber_rating: string | null; category: string | null; status: string | null };
+  listing: { title: string | null; price: number | null; address_town: string | null; county: string | null; bedrooms: number | null; bathrooms: number | null; building_type: string | null; hero_photo: string | null; ber_rating: string | null; category: string | null; status: string | null; floor_area_size: number | null; land_size: number | null; description: string | null; ensuite: number | null; furnished: string | null };
   organization: { business_name: string; logo_url: string | null; primary_color: string | null; secondary_color: string | null; contact_phone: string | null; domain: string | null; locale: string | null; currency: string | null };
   config: DisplaySignageConfig;
 }) {
@@ -666,12 +669,31 @@ function PreviewSlide({
   const secondary = organization.secondary_color || '#f0f4f8';
   const location = [listing.address_town, listing.county].filter(Boolean).join(', ');
 
+  // Type-aware details
+  const isLand = listing.building_type === 'Land';
+  const isCommercial = listing.building_type === 'Commercial';
   const details: string[] = [];
-  if (config.show_bedrooms_bathrooms) {
-    if (listing.bedrooms) details.push(`${listing.bedrooms} Bed`);
-    if (listing.bathrooms) details.push(`${listing.bathrooms} Bath`);
+  let showBer = true;
+
+  if (isLand) {
+    if (config.show_land_size && listing.land_size) {
+      details.push(`${listing.land_size} acres`);
+    }
+    if (listing.building_type) details.push(listing.building_type);
+    showBer = false;
+  } else if (isCommercial) {
+    if (listing.floor_area_size) details.push(`${listing.floor_area_size} sqm`);
+    if (listing.building_type) details.push(listing.building_type);
+  } else {
+    if (config.show_bedrooms_bathrooms) {
+      if (listing.bedrooms) details.push(`${listing.bedrooms} Bed`);
+      if (listing.bathrooms) details.push(`${listing.bathrooms} Bath`);
+    }
+    if (listing.building_type) details.push(listing.building_type);
+    if (listing.furnished && (listing.category === 'Rental' || listing.category === 'Holiday Rental')) {
+      details.push(listing.furnished);
+    }
   }
-  if (listing.building_type) details.push(listing.building_type);
 
   let priceText = '';
   if (config.show_price && listing.price) {
@@ -686,6 +708,11 @@ function PreviewSlide({
       priceText = `${organization.currency || '€'}${listing.price.toLocaleString()}`;
     }
   }
+
+  // Description excerpt for preview
+  const descExcerpt = config.show_description && listing.description
+    ? (listing.description.split(/\n\n/)[0].substring(0, 80) + (listing.description.length > 80 ? '...' : ''))
+    : null;
 
   return (
     <div className="h-full w-full flex flex-col" style={{ padding: '2%' }}>
@@ -715,6 +742,9 @@ function PreviewSlide({
           className="flex-[3] flex flex-col justify-center gap-1 px-2 rounded-lg"
           style={{ backgroundColor: `${primary}18` }}
         >
+          {config.show_logo_on_slide && organization.logo_url && (
+            <img src={organization.logo_url} alt="" className="object-contain" style={{ height: '0.8rem', maxWidth: '3rem' }} />
+          )}
           <p className="font-bold text-white leading-tight line-clamp-2" style={{ fontSize: '0.65rem' }}>
             {listing.title || 'Property'}
           </p>
@@ -728,7 +758,12 @@ function PreviewSlide({
               {details.join(' · ')}
             </p>
           )}
-          {config.show_ber_rating && listing.ber_rating && listing.ber_rating !== 'EXEMPT' && (
+          {descExcerpt && (
+            <p className="text-white/60 italic line-clamp-2" style={{ fontSize: '0.35rem' }}>
+              {descExcerpt}
+            </p>
+          )}
+          {showBer && config.show_ber_rating && listing.ber_rating && listing.ber_rating !== 'EXEMPT' && (
             <p className="text-white/70" style={{ fontSize: '0.4rem' }}>BER: {listing.ber_rating}</p>
           )}
           {config.show_address && location && (

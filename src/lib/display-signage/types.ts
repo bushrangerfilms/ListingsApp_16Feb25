@@ -17,6 +17,9 @@ export interface DisplaySignageConfig {
   show_clock: boolean;
   excluded_listing_ids: string[];
   display_theme: 'classic' | 'modern' | 'minimal';
+  show_description: boolean;
+  show_land_size: boolean;
+  show_logo_on_slide: boolean;
 }
 
 export const ALL_DISPLAY_STATUSES = ['New', 'Published', 'Sale Agreed', 'Let Agreed'] as const;
@@ -40,6 +43,9 @@ export const DEFAULT_DISPLAY_CONFIG: DisplaySignageConfig = {
   show_clock: false,
   excluded_listing_ids: [],
   display_theme: 'classic',
+  show_description: true,
+  show_land_size: true,
+  show_logo_on_slide: true,
 };
 
 export interface DisplaySignageSettings {
@@ -64,12 +70,16 @@ export interface DisplayListing {
   bathrooms: number | null;
   building_type: string | null;
   floor_area_size: number | null;
+  land_size: number | null;
   ber_rating: string | null;
   category: string | null;
   status: string | null;
   hero_photo: string | null;
   photos: string[] | null;
   date_posted: string | null;
+  description: string | null;
+  ensuite: number | null;
+  furnished: string | null;
 }
 
 export interface DisplayOrganization {
