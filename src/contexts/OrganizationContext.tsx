@@ -32,6 +32,8 @@ interface Organization {
   // Branding colors
   primary_color?: string | null;
   secondary_color?: string | null;
+  // Locale for region-specific rendering (address format, currency, etc.)
+  locale?: string | null;
 }
 
 interface UserOrganization {

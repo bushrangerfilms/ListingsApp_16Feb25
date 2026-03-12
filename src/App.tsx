@@ -6,11 +6,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, MutationCache } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { OrganizationProvider } from "./contexts/OrganizationContext";
+import { OrganizationProvider, useOrganization } from "./contexts/OrganizationContext";
 import { OrganizationViewProvider } from "./contexts/OrganizationViewContext";
 import { PublicListingsProvider, usePublicListings } from "./contexts/PublicListingsContext";
 import { LocaleProvider } from "./lib/i18n/LocaleProvider";
+import { useLocaleContext } from "./lib/i18n/LocaleProvider";
 import { LocalePreviewProvider } from "./components/admin/LocalePreviewProvider";
+import { SUPPORTED_LOCALES, type SupportedLocale } from "./lib/i18n";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { OrganizationRoute } from "./components/OrganizationRoute";
 import { PilotModeRouteGuard } from "./components/admin/PilotModeRouteGuard";
@@ -340,15 +342,35 @@ function AuthAwareRoutes({ domainType }: { domainType: DomainType }) {
   );
 }
 
+/**
+ * Syncs the organization's locale from the database to the i18n system.
+ * Must be rendered inside both OrganizationProvider and LocalePreviewProvider.
+ * Without this, i18n defaults to browser language (e.g. en-US) instead of
+ * the org's configured locale (e.g. en-IE), causing wrong address formats.
+ */
+function OrgLocaleSync() {
+  const { organization } = useOrganization();
+  const { setLocale } = useLocaleContext();
+
+  useEffect(() => {
+    if (organization?.locale && SUPPORTED_LOCALES.includes(organization.locale as SupportedLocale)) {
+      setLocale(organization.locale as SupportedLocale);
+    }
+  }, [organization?.locale, setLocale]);
+
+  return null;
+}
+
 const App = () => {
   const domainType = useMemo(() => getDomainType(), []);
-  
+
   return (
     <QueryClientProvider client={queryClient}>
       <LocalePreviewProvider>
         <AuthProvider>
           <OrganizationViewProvider>
             <OrganizationProvider>
+              <OrgLocaleSync />
               <PublicListingsProvider>
                 <TooltipProvider>
                   <Toaster />
