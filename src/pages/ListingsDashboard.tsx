@@ -61,6 +61,9 @@ const ListingsDashboard = () => {
   const [editingListing, setEditingListing] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingListing, setDeletingListing] = useState<{ id: string; title: string } | null>(null);
+  const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
+  const [regeneratingListingId, setRegeneratingListingId] = useState<string | null>(null);
+  const [pendingRegenerateId, setPendingRegenerateId] = useState<string | null>(null);
   
   // Determine which organization to use: viewAs takes precedence over user's organization
   const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
@@ -218,6 +221,45 @@ const ListingsDashboard = () => {
     } finally {
       setDeleteDialogOpen(false);
       setDeletingListing(null);
+    }
+  };
+
+  const handleRegenerateClick = (id: string) => {
+    setPendingRegenerateId(id);
+    setRegenerateDialogOpen(true);
+  };
+
+  const handleConfirmRegenerate = async () => {
+    if (!pendingRegenerateId || !organization) return;
+
+    const listingId = pendingRegenerateId;
+    setRegenerateDialogOpen(false);
+    setPendingRegenerateId(null);
+    setRegeneratingListingId(listingId);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('regenerate-schedule', {
+        body: {
+          clientSlug: organization.slug,
+          listingId,
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Schedule Regenerating",
+        description: "The posting schedule is being regenerated. This may take a moment.",
+      });
+    } catch (error) {
+      console.error('Error regenerating schedule:', error);
+      toast({
+        title: t('listings.toast.error'),
+        description: "Failed to regenerate schedule. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setRegeneratingListingId(null);
     }
   };
 
@@ -552,6 +594,8 @@ const ListingsDashboard = () => {
               onArchive={handleArchive}
               onDelete={handleDeleteClick}
               onBrochure={(id) => navigate(`/admin/brochure/${id}`)}
+              onRegenerateSchedule={handleRegenerateClick}
+              isRegenerating={regeneratingListingId === listing.id}
               orgSlug={targetOrg?.slug}
               organizationDomain={targetOrg?.domain}
             />
@@ -589,6 +633,24 @@ const ListingsDashboard = () => {
             <AlertDialogCancel>{t('listings.dialog.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {t('listings.dialog.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Regenerate Schedule Confirmation Dialog */}
+      <AlertDialog open={regenerateDialogOpen} onOpenChange={setRegenerateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Regenerate Schedule</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel all pending scheduled posts for this listing and generate a fresh posting schedule. Are you sure you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('listings.dialog.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRegenerate}>
+              Regenerate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

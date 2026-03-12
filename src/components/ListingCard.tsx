@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, Bath, Edit, Archive, Trash2, X, ExternalLink, FileText } from "lucide-react";
+import { Bed, Bath, Edit, Archive, Trash2, X, ExternalLink, FileText, RefreshCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { isPublicSite } from "@/lib/domainDetection";
 import { useLocale } from "@/hooks/useLocale";
@@ -33,12 +33,14 @@ interface ListingCardProps {
   onArchive?: (id: string, archived: boolean) => void;
   onDelete?: (id: string, title: string) => void;
   onBrochure?: (id: string) => void;
+  onRegenerateSchedule?: (id: string) => void;
+  isRegenerating?: boolean;
   isPublicView?: boolean;
   orgSlug?: string;
   organizationDomain?: string;
 }
 
-export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDelete, onBrochure, isPublicView = false, orgSlug, organizationDomain }: ListingCardProps) {
+export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDelete, onBrochure, onRegenerateSchedule, isRegenerating = false, isPublicView = false, orgSlug, organizationDomain }: ListingCardProps) {
   const { t, formatCurrency } = useLocale();
   
   // "New" badge is now driven by status, not date calculation
@@ -208,6 +210,20 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
                 <FileText className="h-4 w-4 mr-1" />Generate Brochure
               </Button>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => onRegenerateSchedule?.(listing.id)}
+              disabled={isRegenerating}
+            >
+              {isRegenerating ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-1" />
+              )}
+              Regenerate Schedule
+            </Button>
           </div>
         )}
       </CardContent>
