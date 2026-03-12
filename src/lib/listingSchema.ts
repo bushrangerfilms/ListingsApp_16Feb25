@@ -35,6 +35,10 @@ export const listingSchema = z.object({
       { message: "Building size must be a whole number" }
     ),
   
+  folioNumber: z.string()
+    .max(50, "Folio number must be less than 50 characters")
+    .optional(),
+
   landSize: z.string()
     .optional()
     .transform((val) => {

@@ -867,6 +867,23 @@ const CreateListing = () => {
                 />
               )}
 
+              {/* Folio Number - Only for Land */}
+              {form.watch('category') !== "Holiday Rental" && form.watch('buildingType') === "Land" && (
+                <FormField
+                  control={form.control}
+                  name="folioNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Folio Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. RN12345" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
               {/* Building Type - NOT for Holiday Rental */}
               {form.watch('category') !== "Holiday Rental" && (
                 <FormField

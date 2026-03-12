@@ -283,6 +283,7 @@ const ReviewListing = () => {
         category: formData.category || "Listing",
         furnishingStatus: formData.furnishingStatus,
         bookingPlatformLink: formData.bookingPlatformLink,
+        folioNumber: formData.folioNumber || undefined,
         photoUrls: imageData.photoUrls,
         heroPhotoUrl: imageData.heroPhotoUrl,
         socialMediaPhotoUrls,
@@ -593,6 +594,19 @@ const ReviewListing = () => {
                       className={!formData.landSize ? "placeholder:text-amber-500" : ""}
                     />
                   </div>
+                </div>
+              )}
+
+              {/* Folio Number - Only for Land */}
+              {formData.category !== 'Holiday Rental' && formData.buildingType === 'Land' && (
+                <div>
+                  <Label htmlFor="folioNumber">Folio Number</Label>
+                  <Input
+                    id="folioNumber"
+                    value={formData.folioNumber || ""}
+                    onChange={(e) => handleFieldUpdate("folioNumber", e.target.value)}
+                    placeholder="e.g. RN12345"
+                  />
                 </div>
               )}
 
