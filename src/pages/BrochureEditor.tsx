@@ -145,14 +145,18 @@ export default function BrochureEditor() {
       setContent(result.content);
       setBranding(result.branding);
 
-      // Save to DB
-      await saveMutation.mutateAsync({
-        listingId,
-        organizationId: organization.id,
-        content: result.content,
-        branding: result.branding,
-        status: 'draft',
-      });
+      // Save to DB (separate try/catch so a save failure doesn't mask successful generation)
+      try {
+        await saveMutation.mutateAsync({
+          listingId,
+          organizationId: organization.id,
+          content: result.content,
+          branding: result.branding,
+          status: 'draft',
+        });
+      } catch (saveErr) {
+        console.error('Brochure save failed after generation:', saveErr);
+      }
 
       toast({ title: 'Brochure generated', description: 'You can now edit and download your brochure.' });
     } catch (err) {
@@ -278,8 +282,9 @@ export default function BrochureEditor() {
         status: 'draft',
       });
       toast({ title: 'Brochure saved' });
-    } catch {
-      toast({ title: 'Save failed', variant: 'destructive' });
+    } catch (err) {
+      console.error('Brochure manual save failed:', err);
+      toast({ title: 'Save failed', description: err instanceof Error ? err.message : 'Check console for details.', variant: 'destructive' });
     }
   }, [content, branding, listingId, organization, saveMutation, toast]);
 
