@@ -168,6 +168,7 @@ export function LeadMagnetQuiz() {
     return currentQuestions.every((q: any) => {
       if (!q.required) return true;
       const answer = answers[q.key];
+      if (typeof answer === "number" && isNaN(answer)) return false;
       return answer !== undefined && answer !== null && answer !== "";
     });
   };
@@ -187,7 +188,7 @@ export function LeadMagnetQuiz() {
   };
 
   const submitQuiz = async () => {
-    if (!org || !config) return;
+    if (!org || !config || submitting) return;
 
     setSubmitting(true);
     try {
@@ -224,7 +225,7 @@ export function LeadMagnetQuiz() {
   };
 
   const handleUnlock = async () => {
-    if (!unlockForm.email || !unlockForm.consent) return;
+    if (!unlockForm.email || !unlockForm.consent || unlocking) return;
 
     setUnlocking(true);
     try {
@@ -253,7 +254,7 @@ export function LeadMagnetQuiz() {
   };
 
   const handleContactAgent = async () => {
-    if (!submissionId) return;
+    if (!submissionId || sendingContact) return;
 
     setSendingContact(true);
     try {
@@ -444,8 +445,12 @@ export function LeadMagnetQuiz() {
             ) : (
               <>
                 <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-                <h2 className="text-xl font-semibold mb-2">Quiz Not Available</h2>
-                <p className="text-muted-foreground">{errorMessage}</p>
+                <h2 className="text-xl font-semibold mb-2">Something Went Wrong</h2>
+                <p className="text-muted-foreground mb-4">{errorMessage}</p>
+                <Button variant="outline" onClick={() => { setError(null); setSubmitting(false); }}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
               </>
             )}
           </CardContent>
@@ -524,6 +529,43 @@ export function LeadMagnetQuiz() {
             </div>
           </DialogContent>
         </Dialog>
+      </div>
+    );
+  }
+
+  // After submission: show gated results with unlock button (instead of quiz form)
+  if (gatedResult && submissionId && !fullResult) {
+    return (
+      <div className="min-h-screen bg-background py-8 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Header org={org} />
+          <Card className="mt-6">
+            <CardContent className="pt-6 text-center space-y-4">
+              <Lock className="h-10 w-10 text-primary mx-auto" />
+              <h2 className="text-xl font-semibold">Your Results Are Ready</h2>
+              <GatedResultPreview result={gatedResult} type={normalizedType} />
+              <p className="text-sm text-muted-foreground">
+                Enter your details to unlock your full personalised report.
+              </p>
+              <Button onClick={() => setShowUnlockModal(true)} data-testid="button-unlock-report">
+                <Unlock className="h-4 w-4 mr-2" />
+                Unlock Full Report
+              </Button>
+            </CardContent>
+          </Card>
+
+          <UnlockModal
+            open={showUnlockModal}
+            onOpenChange={setShowUnlockModal}
+            gatedResult={gatedResult}
+            type={normalizedType}
+            form={unlockForm}
+            onFormChange={setUnlockForm}
+            onUnlock={handleUnlock}
+            unlocking={unlocking}
+            org={org}
+          />
+        </div>
       </div>
     );
   }
