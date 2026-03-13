@@ -282,8 +282,9 @@ export default function BrochureEditor() {
         status: 'draft',
       });
       toast({ title: 'Brochure saved' });
-    } catch {
-      toast({ title: 'Save failed', variant: 'destructive' });
+    } catch (err) {
+      console.error('Brochure manual save failed:', err);
+      toast({ title: 'Save failed', description: err instanceof Error ? err.message : 'Check console for details.', variant: 'destructive' });
     }
   }, [content, branding, listingId, organization, saveMutation, toast]);
 

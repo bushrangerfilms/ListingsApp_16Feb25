@@ -44,12 +44,17 @@ export function useSaveBrochure() {
       templateId?: string;
       status?: string;
     }) => {
-      const { data: existing } = await supabase
+      const { data: existing, error: fetchError } = await supabase
         .from('listing_brochures' as any)
         .select('id')
         .eq('listing_id', listingId)
         .eq('is_archived', false)
         .maybeSingle();
+
+      if (fetchError) {
+        console.error('[Brochure Save] Failed to check existing:', fetchError);
+        throw fetchError;
+      }
 
       if (existing) {
         const { data, error } = await supabase
@@ -65,9 +70,13 @@ export function useSaveBrochure() {
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('[Brochure Save] Update failed:', error);
+          throw error;
+        }
         return data as unknown as ListingBrochure;
       } else {
+        console.log('[Brochure Save] No existing brochure found, inserting new one');
         const { data, error } = await supabase
           .from('listing_brochures' as any)
           .insert({
@@ -81,7 +90,10 @@ export function useSaveBrochure() {
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error('[Brochure Save] Insert failed:', error);
+          throw error;
+        }
         return data as unknown as ListingBrochure;
       }
     },
