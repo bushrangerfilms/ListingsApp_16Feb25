@@ -5,17 +5,52 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, AlertTriangle, RefreshCw, Search } from "lucide-react";
-import { useState } from "react";
+import { Loader2, AlertTriangle, RefreshCw, Search, ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
+import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { adminApi, type FailedPost } from "@/lib/admin/adminApi";
 import { useSuperAdminPermissions } from '@/hooks/useSuperAdminPermissions';
+
+function contentTypeLabel(ct: string | null): string {
+  if (!ct) return '-';
+  const map: Record<string, string> = {
+    video_style_1: 'VS1',
+    video_style_2: 'VS2',
+    video_style_3: 'VS3',
+    video_style_4: 'VS4',
+  };
+  return map[ct] || ct.replace(/_/g, ' ');
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [text]);
+  return (
+    <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); copy(); }} className="h-7 px-2">
+      {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+    </Button>
+  );
+}
 
 export default function FailedPostsPage() {
   const { hasSuperAdminAccess, loading: authLoading } = useSuperAdminPermissions();
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const navigate = useNavigate();
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const { data, isLoading, refetch, isRefetching, isError } = useQuery({
     queryKey: ['admin', 'failed-posts', dateFrom, dateTo],
@@ -37,7 +72,9 @@ export default function FailedPostsPage() {
       (post.organization_name || '').toLowerCase().includes(q) ||
       (post.listing_title || '').toLowerCase().includes(q) ||
       (post.listing_address || '').toLowerCase().includes(q) ||
-      (post.error_message || '').toLowerCase().includes(q)
+      (post.error_message || '').toLowerCase().includes(q) ||
+      (post.content_type || '').toLowerCase().includes(q) ||
+      (post.platforms_to_post || []).some(p => p.toLowerCase().includes(q))
     );
   });
 
@@ -144,35 +181,125 @@ export default function FailedPostsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[30px]"></TableHead>
                     <TableHead>Organization</TableHead>
                     <TableHead>Listing</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Platforms</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Error</TableHead>
                     <TableHead>Scheduled For</TableHead>
                     <TableHead>Failed At</TableHead>
+                    <TableHead>ID</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPosts.map((post) => (
-                    <TableRow key={post.id}>
-                      <TableCell className="font-medium">{post.organization_name}</TableCell>
-                      <TableCell className="max-w-[180px] truncate">
-                        {post.listing_title || post.listing_address || (post.post_category === 'lead_magnet' ? 'Quiz Post' : '-')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{post.post_category || 'listing'}</Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[280px]">
-                        <ErrorCell message={post.error_message} />
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                        {format(new Date(post.scheduled_for), 'MMM d, HH:mm')}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                        {format(new Date(post.updated_at), 'MMM d, HH:mm')}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredPosts.map((post) => {
+                    const isExpanded = expandedIds.has(post.id);
+                    const listingLabel = post.listing_title || post.listing_address || (post.post_category === 'lead_magnet' ? 'Quiz Post' : '-');
+                    return (
+                      <>
+                        <TableRow
+                          key={post.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => toggleExpand(post.id)}
+                        >
+                          <TableCell className="px-2">
+                            {isExpanded
+                              ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            }
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <button
+                              className="text-blue-600 hover:underline text-left"
+                              onClick={(e) => { e.stopPropagation(); navigate('/internal/organizations'); }}
+                            >
+                              {post.organization_name}
+                            </button>
+                          </TableCell>
+                          <TableCell>{listingLabel}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{post.post_category || 'listing'}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {(post.platforms_to_post || []).map(p => (
+                                <Badge key={p} variant="secondary" className="text-xs">{p}</Badge>
+                              ))}
+                              {(!post.platforms_to_post || post.platforms_to_post.length === 0) && (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">{contentTypeLabel(post.content_type)}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-red-600">
+                              {post.error_message
+                                ? post.error_message.length > 80
+                                  ? post.error_message.substring(0, 80) + '...'
+                                  : post.error_message
+                                : '-'
+                              }
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                            {format(new Date(post.scheduled_for), 'MMM d, HH:mm')}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                            {format(new Date(post.updated_at), 'MMM d, HH:mm')}
+                          </TableCell>
+                          <TableCell>
+                            <code className="text-xs text-muted-foreground font-mono">{post.id.substring(0, 8)}</code>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow key={`${post.id}-expanded`}>
+                            <TableCell colSpan={10} className="bg-muted/30 border-b">
+                              <div className="p-4 space-y-3">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1 space-y-2">
+                                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Full Error Message</div>
+                                    <p className="text-sm text-red-600 whitespace-pre-wrap break-all bg-red-50 dark:bg-red-950/30 rounded-md p-3 border border-red-200 dark:border-red-800">
+                                      {post.error_message || 'No error message'}
+                                    </p>
+                                  </div>
+                                  {post.error_message && <CopyButton text={post.error_message} />}
+                                </div>
+                                <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                                  <div>
+                                    <span className="text-muted-foreground">Schedule ID: </span>
+                                    <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded select-all">{post.id}</code>
+                                    <CopyButton text={post.id} />
+                                  </div>
+                                  {post.listing_id && (
+                                    <div>
+                                      <span className="text-muted-foreground">Listing ID: </span>
+                                      <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded select-all">{post.listing_id}</code>
+                                      <CopyButton text={post.listing_id} />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <span className="text-muted-foreground">Org ID: </span>
+                                    <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded select-all">{post.organization_id}</code>
+                                    <CopyButton text={post.organization_id} />
+                                  </div>
+                                  {post.aspect_ratio && (
+                                    <div>
+                                      <span className="text-muted-foreground">Aspect Ratio: </span>
+                                      <span>{post.aspect_ratio}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -188,28 +315,5 @@ export default function FailedPostsPage() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function ErrorCell({ message }: { message: string | null }) {
-  if (!message) return <span className="text-muted-foreground">-</span>;
-
-  const truncated = message.length > 80 ? message.substring(0, 80) + '...' : message;
-
-  if (message.length <= 80) {
-    return <span className="text-sm text-red-600">{message}</span>;
-  }
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="text-sm text-red-600 cursor-help">{truncated}</span>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-[400px]">
-          <p className="text-sm whitespace-pre-wrap">{message}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
   );
 }
