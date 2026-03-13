@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Plus, X, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Plus, X, GripVertical, ChevronDown, ChevronRight, ZoomIn } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -40,6 +41,7 @@ function SortableRoom({
   photos: string[];
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: room.id });
 
   const style = {
@@ -110,29 +112,44 @@ function SortableRoom({
           </div>
           <div>
             <Label className="text-xs">Room Photo</Label>
-            <div className="flex gap-1.5 flex-wrap mt-1 max-h-24 overflow-y-auto">
+            <div className="flex gap-1.5 flex-wrap mt-1 max-h-36 overflow-y-auto">
               <button
                 type="button"
                 onClick={() => onUpdate({ ...room, photoUrl: undefined })}
-                className={`w-12 h-9 rounded border-2 flex items-center justify-center text-xs text-muted-foreground shrink-0 ${
+                className={`w-16 h-12 rounded border-2 flex items-center justify-center text-xs text-muted-foreground shrink-0 ${
                   !room.photoUrl ? 'border-primary bg-muted' : 'border-muted'
                 }`}
               >
                 None
               </button>
               {photos.map((photo, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => onUpdate({ ...room, photoUrl: photo })}
-                  className={`w-12 h-9 rounded border-2 overflow-hidden ${
-                    room.photoUrl === photo ? 'border-primary' : 'border-transparent'
-                  }`}
-                >
-                  <img src={photo} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
-                </button>
+                <div key={i} className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => onUpdate({ ...room, photoUrl: photo })}
+                    className={`w-16 h-12 rounded border-2 overflow-hidden ${
+                      room.photoUrl === photo ? 'border-primary' : 'border-transparent'
+                    }`}
+                  >
+                    <img src={photo} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setPreviewPhoto(photo); }}
+                    className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded"
+                  >
+                    <ZoomIn className="h-4 w-4 text-white" />
+                  </button>
+                </div>
               ))}
             </div>
+            <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
+              <DialogContent className="max-w-2xl p-2">
+                {previewPhoto && (
+                  <img src={previewPhoto} alt="Photo preview" className="w-full h-auto rounded" />
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       )}
