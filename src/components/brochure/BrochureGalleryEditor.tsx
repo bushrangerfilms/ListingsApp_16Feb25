@@ -50,8 +50,6 @@ function SortableGalleryItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const isAccentPhoto = index < 2;
-
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-2 py-1.5">
       <button {...attributes} {...listeners} className="cursor-grab p-0.5 text-muted-foreground hover:text-foreground shrink-0">
@@ -68,16 +66,12 @@ function SortableGalleryItem({
         </button>
       </div>
       <div className="flex-1 min-w-0">
-        {isAccentPhoto ? (
-          <Input
-            value={item.caption}
-            onChange={(e) => onUpdateCaption(e.target.value)}
-            placeholder="Caption for accent photo..."
-            className="h-7 text-xs"
-          />
-        ) : (
-          <span className="text-[10px] text-muted-foreground italic">Back cover — no caption shown</span>
-        )}
+        <Input
+          value={item.caption}
+          onChange={(e) => onUpdateCaption(e.target.value)}
+          placeholder={index < 2 ? "Caption for accent photo..." : "Caption (back cover)..."}
+          className="h-7 text-xs"
+        />
       </div>
       <Button
         type="button"
@@ -161,7 +155,7 @@ export function BrochureGalleryEditor({ gallery, onChange, availablePhotos }: Br
         <div>
           <Label className="text-xs mb-0.5 block">Selected ({gallery.length}/4)</Label>
           <p className="text-[10px] text-muted-foreground mb-1.5">
-            First 2 photos appear as accent images with captions. Drag to reorder.
+            First 2 photos appear as accent images on page 3. Drag to reorder.
           </p>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={gallery.map((g) => g.id)} strategy={verticalListSortingStrategy}>
