@@ -110,17 +110,17 @@ function SortableRoom({
           </div>
           <div>
             <Label className="text-xs">Room Photo</Label>
-            <div className="flex gap-1.5 flex-wrap mt-1">
+            <div className="flex gap-1.5 flex-wrap mt-1 max-h-24 overflow-y-auto">
               <button
                 type="button"
                 onClick={() => onUpdate({ ...room, photoUrl: undefined })}
-                className={`w-12 h-9 rounded border-2 flex items-center justify-center text-xs text-muted-foreground ${
+                className={`w-12 h-9 rounded border-2 flex items-center justify-center text-xs text-muted-foreground shrink-0 ${
                   !room.photoUrl ? 'border-primary bg-muted' : 'border-muted'
                 }`}
               >
                 None
               </button>
-              {photos.slice(0, 10).map((photo, i) => (
+              {photos.map((photo, i) => (
                 <button
                   key={i}
                   type="button"

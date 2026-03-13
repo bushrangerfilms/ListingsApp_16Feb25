@@ -95,12 +95,40 @@ export default function BrochureEditor() {
     !!content && !!organization
   );
 
-  // Get listing photos
+  // Fetch upscaled photo URLs (matches edge function logic so photo selections align)
+  const { data: upscaleJobs } = useQuery({
+    queryKey: ['photo-upscale-jobs', listingId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('photo_upscale_jobs' as any)
+        .select('photo_index, photo_type, upscaled_url')
+        .eq('listing_id', listingId!)
+        .eq('status', 'completed')
+        .not('upscaled_url', 'is', null);
+      return (data as any[]) || [];
+    },
+    enabled: !!listingId,
+  });
+
+  // Build photo array with upscaled versions where available
+  // This must match the logic in generate-brochure-content edge function
+  // so that AI-assigned photoUrls match the thumbnails shown in the editor
   const photos: string[] = listing
-    ? [
-        ...(listing.hero_photo ? [listing.hero_photo as string] : []),
-        ...((listing.photos as string[]) || []),
-      ].filter((v, i, a) => a.indexOf(v) === i)
+    ? (() => {
+        const originalPhotos = (listing.photos as string[]) || [];
+        const mappedPhotos = originalPhotos.map((url: string, index: number) => {
+          const upscaled = upscaleJobs?.find(
+            (j: any) => j.photo_index === index && j.photo_type === 'gallery'
+          );
+          return upscaled?.upscaled_url || url;
+        });
+        const heroUpscale = upscaleJobs?.find((j: any) => j.photo_type === 'hero');
+        const hero = heroUpscale?.upscaled_url || (listing.hero_photo as string);
+        return [
+          ...(hero ? [hero] : []),
+          ...mappedPhotos,
+        ].filter((v, i, a) => a.indexOf(v) === i);
+      })()
     : [];
 
   // Generate full brochure
