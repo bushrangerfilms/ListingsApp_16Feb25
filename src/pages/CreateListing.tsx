@@ -75,6 +75,7 @@ const CreateListing = () => {
       heroPhotoIndex: 0,
       socialMediaPhotoIndices: [],
       markAsNew: false,
+      excludeAiMotion: false,
     },
   });
 
@@ -146,8 +147,9 @@ const CreateListing = () => {
         photos: photoFilesArray,
         heroPhotoIndex,
         socialMediaPhotoIndices,
-        markAsNew: data.markAsNew
-      } 
+        markAsNew: data.markAsNew,
+        excludeAiMotion: data.excludeAiMotion
+      }
     });
   };
 
@@ -697,6 +699,30 @@ const CreateListing = () => {
                       </FormLabel>
                       <FormDescription>
                         {t('listings.create.markAsNew.description')}
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {/* Exclude AI Motion Checkbox */}
+              <FormField
+                control={form.control}
+                name="excludeAiMotion"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Exclude AI Motion Videos
+                      </FormLabel>
+                      <FormDescription>
+                        Some images are more prone to glitching and hallucinating with AI motion. If your listing has flat images like drone photos with land border graphics, floor plans and tight shots of stone wall you may want to exclude this listing from video styles that use AI motion.
                       </FormDescription>
                     </div>
                   </FormItem>

@@ -59,6 +59,7 @@ export function EditListingDialog({
     "Building Size (Sq M)": 0,
     "Land Size (Acres)": 0,
     "Show NEW Badge": false,
+    "Exclude AI Motion": false,
     "Folio Number": "",
   });
   const [landSizeInput, setLandSizeInput] = useState("");
@@ -84,6 +85,7 @@ export function EditListingDialog({
         "Building Size (Sq M)": listing.buildingSize || 0,
         "Land Size (Acres)": landSize,
         "Show NEW Badge": listing.showNewBadge || false,
+        "Exclude AI Motion": listing.excludeAiMotion || listing.exclude_ai_motion || false,
         "Folio Number": listing.folioNumber || listing.folio_number || "",
       });
       setLandSizeInput(landSize ? String(landSize) : "");
@@ -194,6 +196,7 @@ export function EditListingDialog({
         'Building Size sqm': formData["Building Size (Sq M)"] || null,
         'Land Size (Acres)': formData["Land Size (Acres)"] || null,
         'Folio Number': formData["Folio Number"] || null,
+        'Exclude AI Motion': formData["Exclude AI Motion"],
       };
 
       if (photoChanges) {
@@ -287,6 +290,21 @@ export function EditListingDialog({
                 onCheckedChange={(checked) => setFormData({ ...formData, "Show NEW Badge": checked })}
               />
             </div>
+          </div>
+
+          {/* Exclude AI Motion Toggle */}
+          <div className="flex items-center justify-between space-x-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="exclude-ai-motion">Exclude AI Motion Videos</Label>
+              <p className="text-xs text-muted-foreground">
+                Some images are more prone to glitching and hallucinating with AI motion. If your listing has flat images like drone photos with land border graphics, floor plans and tight shots of stone wall you may want to exclude this listing from video styles that use AI motion.
+              </p>
+            </div>
+            <Switch
+              id="exclude-ai-motion"
+              checked={formData["Exclude AI Motion"]}
+              onCheckedChange={(checked) => setFormData({ ...formData, "Exclude AI Motion": checked })}
+            />
           </div>
 
           {/* Energy Rating - only if enabled in region, NOT for Land */}
