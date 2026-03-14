@@ -33,6 +33,7 @@ interface ListingData {
   heroPhotoUrl: string;
   socialMediaPhotoUrls?: string[];
   markAsNew?: boolean;
+  excludeAiMotion?: boolean;
 }
 
 serve(async (req) => {
@@ -163,6 +164,7 @@ serve(async (req) => {
         hero_photo: listingData.heroPhotoUrl,
         social_media_photos: listingData.socialMediaPhotoUrls || [],
         booking_link: listingData.bookingPlatformLink,
+        exclude_ai_motion: listingData.excludeAiMotion || false,
         status,
         status_changed_date: today,
         new_status_set_date: listingData.markAsNew ? today : null,

@@ -160,6 +160,7 @@ Deno.serve(async (req) => {
     if (fields['County'] !== undefined) supabaseFields.county = fields['County'];
     if (fields['Eircode'] !== undefined) supabaseFields.eircode = fields['Eircode'];
     if (fields['Folio Number'] !== undefined) supabaseFields.folio_number = fields['Folio Number'];
+    if (fields['Exclude AI Motion'] !== undefined) supabaseFields.exclude_ai_motion = fields['Exclude AI Motion'];
 
     // Handle photo fields
     if (fields['photos'] !== undefined) supabaseFields.photos = fields['photos'];
