@@ -51,7 +51,7 @@ const ListingsDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [priceRange, setPriceRange] = useState<string>("all");
-  const [bedroomFilter, setBedroomFilter] = useState<string>("all");
+  const [bedroomFilters, setBedroomFilters] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
@@ -338,15 +338,14 @@ const ListingsDashboard = () => {
       }
     }
 
-    // Bedroom filter
-    if (bedroomFilter !== "all") {
+    // Bedroom filter (multi-select)
+    if (bedroomFilters.size > 0) {
       const bedrooms = listing.bedrooms || 0;
-      const targetBedrooms = parseInt(bedroomFilter);
-      if (bedroomFilter === "5+") {
-        if (bedrooms < 5) return false;
-      } else {
-        if (bedrooms !== targetBedrooms) return false;
-      }
+      const matches = Array.from(bedroomFilters).some(f => {
+        if (f === '5+') return bedrooms >= 5;
+        return bedrooms === parseInt(f);
+      });
+      if (!matches) return false;
     }
 
     // Property type filter (land vs properties)
@@ -482,19 +481,30 @@ const ListingsDashboard = () => {
           </SelectContent>
         </Select>
 
-        <Select value={bedroomFilter} onValueChange={setBedroomFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder={t('listings.filters.bedrooms')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('listings.filters.allBedrooms')}</SelectItem>
-            <SelectItem value="1">{t('listings.filters.bedroom', { count: 1 })}</SelectItem>
-            <SelectItem value="2">{t('listings.filters.bedrooms_plural', { count: 2 })}</SelectItem>
-            <SelectItem value="3">{t('listings.filters.bedrooms_plural', { count: 3 })}</SelectItem>
-            <SelectItem value="4">{t('listings.filters.bedrooms_plural', { count: 4 })}</SelectItem>
-            <SelectItem value="5+">{t('listings.filters.bedroomsPlus', { count: 5 })}</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            {t('listings.filters.bedrooms')}:
+          </span>
+          <div className="flex gap-1">
+            {['1', '2', '3', '4', '5+'].map(val => (
+              <button
+                key={val}
+                onClick={() => {
+                  const next = new Set(bedroomFilters);
+                  if (next.has(val)) next.delete(val); else next.add(val);
+                  setBedroomFilters(next);
+                }}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-colors ${
+                  bedroomFilters.has(val)
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-input hover:bg-accent'
+                }`}
+              >
+                {val}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger>
@@ -597,11 +607,11 @@ const ListingsDashboard = () => {
       ) : sortedListings.length === 0 ? (
         <div className="text-center py-12 bg-card rounded-lg border border-border">
           <p className="text-muted-foreground">
-            {searchQuery || priceRange !== "all" || bedroomFilter !== "all" || propertyTypeFilter !== "all"
+            {searchQuery || priceRange !== "all" || bedroomFilters.size > 0 || propertyTypeFilter !== "all"
               ? t('listings.empty.noMatchingListings')
               : t('listings.empty.noListings')}
           </p>
-          {!searchQuery && priceRange === "all" && bedroomFilter === "all" && propertyTypeFilter === "all" && (
+          {!searchQuery && priceRange === "all" && bedroomFilters.size === 0 && propertyTypeFilter === "all" && (
             <Button className="mt-4" onClick={() => navigate('/admin/create')}>
               <Plus className="h-4 w-4 mr-2" />
               {t('listings.createFirst')}
