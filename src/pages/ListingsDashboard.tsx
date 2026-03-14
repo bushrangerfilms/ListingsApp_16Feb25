@@ -55,6 +55,7 @@ const ListingsDashboard = () => {
   const [activeFilter, setActiveFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState<string>("all");
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<{ id: string; status: string } | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -348,6 +349,10 @@ const ListingsDashboard = () => {
       }
     }
 
+    // Property type filter (land vs properties)
+    if (propertyTypeFilter === 'land' && listing.buildingType !== 'Land') return false;
+    if (propertyTypeFilter === 'properties' && listing.buildingType === 'Land') return false;
+
     return true;
   });
 
@@ -540,6 +545,26 @@ const ListingsDashboard = () => {
         </Tabs>
       )}
 
+      {/* Property Type Filter (Land vs Properties) */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-sm text-muted-foreground whitespace-nowrap">Type:</span>
+        <div className="flex gap-1">
+          {([['all', 'All'], ['properties', 'Properties'], ['land', 'Land']] as const).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setPropertyTypeFilter(val)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-colors ${
+                propertyTypeFilter === val
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-input hover:bg-accent'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Status Filters */}
       <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-8">
         <TabsList className="w-full h-auto flex-wrap gap-1 justify-start p-1">
@@ -572,11 +597,11 @@ const ListingsDashboard = () => {
       ) : sortedListings.length === 0 ? (
         <div className="text-center py-12 bg-card rounded-lg border border-border">
           <p className="text-muted-foreground">
-            {searchQuery || priceRange !== "all" || bedroomFilter !== "all" 
+            {searchQuery || priceRange !== "all" || bedroomFilter !== "all" || propertyTypeFilter !== "all"
               ? t('listings.empty.noMatchingListings')
               : t('listings.empty.noListings')}
           </p>
-          {!searchQuery && priceRange === "all" && bedroomFilter === "all" && (
+          {!searchQuery && priceRange === "all" && bedroomFilter === "all" && propertyTypeFilter === "all" && (
             <Button className="mt-4" onClick={() => navigate('/admin/create')}>
               <Plus className="h-4 w-4 mr-2" />
               {t('listings.createFirst')}
