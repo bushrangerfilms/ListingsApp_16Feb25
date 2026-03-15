@@ -19,6 +19,7 @@ import { useEndCardSetupCheck } from "@/hooks/useEndCardSetupCheck";
 import { EndCardSetupBanner } from "@/components/EndCardSetupBanner";
 import { useSocialConnectionCheck } from "@/hooks/useSocialConnectionCheck";
 import { SocialConnectionBanner } from "@/components/SocialConnectionBanner";
+import { matchesListingSearch } from "@/lib/listingSearch";
 
 interface Listing {
   id: string;
@@ -32,6 +33,9 @@ interface Listing {
   bedrooms: number;
   bathrooms: number;
   buildingType: string;
+  eircode?: string;
+  description?: string;
+  specs?: string;
   heroPhoto: string;
   datePosted: string;
   statusChangedDate?: string;
@@ -310,13 +314,7 @@ const ListingsDashboard = () => {
 
     // Text search
     if (searchQuery) {
-      const search = searchQuery.toLowerCase();
-      const matchesSearch = 
-        listing.title?.toLowerCase().includes(search) ||
-        listing.addressLine1?.toLowerCase().includes(search) ||
-        listing.addressTown?.toLowerCase().includes(search) ||
-        listing.county?.toLowerCase().includes(search);
-      if (!matchesSearch) return false;
+      if (!matchesListingSearch(listing, searchQuery)) return false;
     }
 
     // Price filter
