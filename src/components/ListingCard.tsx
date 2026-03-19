@@ -26,6 +26,7 @@ interface ListingCardProps {
     datePosted?: string;
     statusChangedDate?: string;
     archived?: boolean;
+    automation_enabled?: boolean;
     priceOnApplication?: boolean;
   };
   onStatusChange?: (id: string, currentStatus: string) => void;
@@ -148,6 +149,11 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
           {listing.status !== 'Published' && (
             <Badge variant="outline" className={getStatusColor(listing.status)}>
               {listing.status}
+            </Badge>
+          )}
+          {listing.automation_enabled === false && (
+            <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
+              Excluded from Social Media
             </Badge>
           )}
         </div>

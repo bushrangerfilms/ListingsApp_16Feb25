@@ -193,6 +193,47 @@ Deno.serve(async (req) => {
 
     console.log('[SUPABASE] Updated successfully');
 
+    // Handle Exclude from Social Media: cancel/regenerate schedule directly
+    // Both apps share the same DB, so we handle this here for reliability
+    if (fields['Exclude from Social Media'] !== undefined) {
+      const listingId = existingListing.id;
+      if (fields['Exclude from Social Media'] === true) {
+        // EXCLUDING: Cancel all scheduled posts, release slots, deactivate templates
+        console.log(`[SOCIAL] Excluding listing ${listingId} from social media`);
+        const { data: cancelledPosts } = await supabase
+          .from('listing_posting_schedule')
+          .update({
+            status: 'cancelled',
+            is_cancelled: true,
+            error_message: 'Excluded from social media',
+            updated_at: new Date().toISOString()
+          })
+          .eq('listing_id', listingId)
+          .in('status', ['scheduled', 'pending_approval', 'pending_video'])
+          .eq('is_cancelled', false)
+          .select('id, slot_id');
+
+        const cancelledCount = cancelledPosts?.length ?? 0;
+
+        if (cancelledCount > 0) {
+          const slotIds = (cancelledPosts || []).map((p: any) => p.slot_id).filter(Boolean);
+          if (slotIds.length > 0) {
+            await supabase
+              .from('listing_schedule_slots')
+              .update({ has_post: false })
+              .in('id', slotIds);
+          }
+        }
+
+        await supabase
+          .from('recurring_schedule_templates')
+          .update({ is_active: false })
+          .eq('listing_id', listingId);
+
+        console.log(`[SOCIAL] Excluded: cancelled ${cancelledCount} posts, deactivated templates`);
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
