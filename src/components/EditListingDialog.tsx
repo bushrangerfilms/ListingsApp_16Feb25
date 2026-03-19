@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -60,9 +61,11 @@ export function EditListingDialog({
     "Land Size (Acres)": 0,
     "Show NEW Badge": false,
     "Exclude AI Motion": false,
+    "Exclude from Social Media": false,
     "Folio Number": "",
   });
   const [landSizeInput, setLandSizeInput] = useState("");
+  const [confirmExclude, setConfirmExclude] = useState<boolean | null>(null);
   const [photoChanges, setPhotoChanges] = useState<PhotoChanges | null>(null);
   const [photoKey, setPhotoKey] = useState(0);
 
@@ -86,6 +89,7 @@ export function EditListingDialog({
         "Land Size (Acres)": landSize,
         "Show NEW Badge": listing.showNewBadge || false,
         "Exclude AI Motion": listing.excludeAiMotion || listing.exclude_ai_motion || false,
+        "Exclude from Social Media": listing.automation_enabled === false,
         "Folio Number": listing.folioNumber || listing.folio_number || "",
       });
       setLandSizeInput(landSize ? String(landSize) : "");
@@ -197,6 +201,7 @@ export function EditListingDialog({
         'Land Size (Acres)': formData["Land Size (Acres)"] || null,
         'Folio Number': formData["Folio Number"] || null,
         'Exclude AI Motion': formData["Exclude AI Motion"],
+        'Exclude from Social Media': formData["Exclude from Social Media"],
       };
 
       if (photoChanges) {
@@ -306,6 +311,46 @@ export function EditListingDialog({
               onCheckedChange={(checked) => setFormData({ ...formData, "Exclude AI Motion": checked })}
             />
           </div>
+
+          {/* Exclude from Social Media Toggle */}
+          <div className="flex items-center justify-between space-x-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="exclude-social-media">Exclude from Social Media</Label>
+              <p className="text-xs text-muted-foreground">
+                Switch on if you don't want a social media schedule or social media generated for this listing.
+              </p>
+            </div>
+            <Switch
+              id="exclude-social-media"
+              checked={formData["Exclude from Social Media"]}
+              onCheckedChange={(checked) => setConfirmExclude(checked)}
+            />
+          </div>
+
+          {/* Confirmation dialog for Exclude from Social Media */}
+          <AlertDialog open={confirmExclude !== null} onOpenChange={(open) => { if (!open) setConfirmExclude(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {confirmExclude ? "Exclude from Social Media?" : "Re-include in Social Media?"}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {confirmExclude
+                    ? "This will cancel all scheduled social media posts for this listing. Are you sure?"
+                    : "This will generate a new social media schedule for this listing. Are you sure?"}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setConfirmExclude(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => {
+                  setFormData({ ...formData, "Exclude from Social Media": confirmExclude! });
+                  setConfirmExclude(null);
+                }}>
+                  Confirm
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Energy Rating - only if enabled in region, NOT for Land */}
           {energyRatings.enabled && formData["Building Type"] !== "Land" && (
