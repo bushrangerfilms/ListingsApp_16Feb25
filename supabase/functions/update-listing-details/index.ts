@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
     // Support both CRM-migrated (crm_record_id) and Supabase-native (id) listings
     let listingQuery = supabase
       .from('listings')
-      .select('id')
+      .select('id, status')
       .eq('organization_id', orgData.id);
     
     if (isUUID) {
@@ -231,6 +231,46 @@ Deno.serve(async (req) => {
           .eq('listing_id', listingId);
 
         console.log(`[SOCIAL] Excluded: cancelled ${cancelledCount} posts, deactivated templates`);
+      } else if (fields['Exclude from Social Media'] === false) {
+        // RE-INCLUDING: Trigger handle-status-change to regenerate schedule
+        console.log(`[SOCIAL] Re-including listing ${listingId} in social media`);
+
+        // Get automation secret from DB (same approach as cron jobs)
+        const { data: secretRow } = await supabase
+          .from('automation_secrets')
+          .select('value')
+          .eq('key', 'automation_secret')
+          .single();
+
+        const automationSecret = secretRow?.value || Deno.env.get('AUTOMATION_SECRET');
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+        if (automationSecret && supabaseUrl && supabaseKey) {
+          try {
+            const response = await fetch(`${supabaseUrl}/functions/v1/handle-status-change`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-automation-secret': automationSecret,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey
+              },
+              body: JSON.stringify({
+                listing_id: listingId,
+                old_status: 'none',
+                new_status: existingListing.status || 'Published',
+                force_process: true
+              })
+            });
+            const result = await response.json();
+            console.log(`[SOCIAL] Schedule regeneration triggered:`, result);
+          } catch (err) {
+            console.error(`[SOCIAL] Error triggering schedule regeneration:`, err);
+          }
+        } else {
+          console.error('[SOCIAL] Missing secrets for handle-status-change call');
+        }
       }
     }
 
