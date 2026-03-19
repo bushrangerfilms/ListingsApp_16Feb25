@@ -143,6 +143,11 @@ export function EditListingDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await doSubmit();
+  };
+
+  const doSubmit = async (overrideFormData?: typeof formData) => {
+    const activeFormData = overrideFormData || formData;
     setIsUpdating(true);
 
     try {
@@ -185,23 +190,23 @@ export function EditListingDialog({
       const finalSocialMediaUrls = [...(photoChanges?.socialMediaUrls || []), ...newSocialMediaUrls];
 
       const listingFields: Record<string, any> = {
-        'Listing Title': formData.Title,
-        'Price €': formData.Price,
-        'Address Line 1': formData["Address Line 1"],
-        'Address Town': formData["Address Town"],
-        'County': formData.County,
-        'Eircode': formData.Eircode,
-        'Bedrooms': formData.Bedrooms,
-        'Bathrooms': formData.Bathrooms,
-        'Building Type': formData["Building Type"],
-        'Description': formData.Description,
-        'Specs (Dimensions / Services)': formData.Specs,
-        'BER Rating': formData.BER,
-        'Building Size sqm': formData["Building Size (Sq M)"] || null,
-        'Land Size (Acres)': formData["Land Size (Acres)"] || null,
-        'Folio Number': formData["Folio Number"] || null,
-        'Exclude AI Motion': formData["Exclude AI Motion"],
-        'Exclude from Social Media': formData["Exclude from Social Media"],
+        'Listing Title': activeFormData.Title,
+        'Price €': activeFormData.Price,
+        'Address Line 1': activeFormData["Address Line 1"],
+        'Address Town': activeFormData["Address Town"],
+        'County': activeFormData.County,
+        'Eircode': activeFormData.Eircode,
+        'Bedrooms': activeFormData.Bedrooms,
+        'Bathrooms': activeFormData.Bathrooms,
+        'Building Type': activeFormData["Building Type"],
+        'Description': activeFormData.Description,
+        'Specs (Dimensions / Services)': activeFormData.Specs,
+        'BER Rating': activeFormData.BER,
+        'Building Size sqm': activeFormData["Building Size (Sq M)"] || null,
+        'Land Size (Acres)': activeFormData["Land Size (Acres)"] || null,
+        'Folio Number': activeFormData["Folio Number"] || null,
+        'Exclude AI Motion': activeFormData["Exclude AI Motion"],
+        'Exclude from Social Media': activeFormData["Exclude from Social Media"],
       };
 
       if (photoChanges) {
@@ -342,9 +347,11 @@ export function EditListingDialog({
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setConfirmExclude(null)}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => {
-                  setFormData({ ...formData, "Exclude from Social Media": confirmExclude! });
+                <AlertDialogAction onClick={async () => {
+                  const updatedFormData = { ...formData, "Exclude from Social Media": confirmExclude! };
+                  setFormData(updatedFormData);
                   setConfirmExclude(null);
+                  await doSubmit(updatedFormData);
                 }}>
                   Confirm
                 </AlertDialogAction>
