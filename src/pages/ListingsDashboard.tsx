@@ -7,7 +7,7 @@ import { ListingCard } from "@/components/ListingCard";
 import { StatusUpdateDialog } from "@/components/StatusUpdateDialog";
 import { EditListingDialog } from "@/components/EditListingDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Download, Loader2, ArrowUpDown, Home, Key, Palmtree } from "lucide-react";
+import { Plus, Download, Loader2, ArrowUpDown, Home, Key, Palmtree, Archive, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -64,6 +64,8 @@ const ListingsDashboard = () => {
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
   const [regeneratingListingId, setRegeneratingListingId] = useState<string | null>(null);
   const [pendingRegenerateId, setPendingRegenerateId] = useState<string | null>(null);
+  const [isArchivedView, setIsArchivedView] = useState(false);
+  const [archivedCount, setArchivedCount] = useState(0);
   
   // Determine which organization to use: viewAs takes precedence over user's organization
   const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
@@ -82,10 +84,10 @@ const ListingsDashboard = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('get-listings', {
-        body: { 
-          clientSlug: targetOrg.slug, 
-          filter: filter === "All" || filter === "Archived" ? null : filter,
-          archived: filter === "Archived" ? true : false,
+        body: {
+          clientSlug: targetOrg.slug,
+          filter: filter === "All" ? null : filter,
+          archived: isArchivedView,
         }
       });
 
@@ -107,12 +109,24 @@ const ListingsDashboard = () => {
     }
   };
 
+  const fetchArchivedCount = async () => {
+    const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
+    if (!targetOrg) return;
+    try {
+      const { data } = await supabase.functions.invoke('get-listings', {
+        body: { clientSlug: targetOrg.slug, archived: true, pageSize: 1 }
+      });
+      if (data?.totalCount != null) setArchivedCount(data.totalCount);
+    } catch { /* silent */ }
+  };
+
   useEffect(() => {
     const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
     if (targetOrg) {
       fetchListings(activeFilter);
+      fetchArchivedCount();
     }
-  }, [activeFilter, organization, viewAsOrganizationId, selectedOrganization, isOrganizationView]);
+  }, [activeFilter, isArchivedView, organization, viewAsOrganizationId, selectedOrganization, isOrganizationView]);
 
   const handleStatusChange = (id: string, currentStatus: string) => {
     setSelectedListing({ id, status: currentStatus });
@@ -175,6 +189,7 @@ const ListingsDashboard = () => {
           description: !currentlyArchived ? t('listings.toast.archivedSuccessfully') : t('listings.toast.unarchivedSuccessfully'),
         });
         await fetchListings(activeFilter);
+        fetchArchivedCount();
       }
     } catch (error) {
       console.error('Error archiving listing:', error);
@@ -388,7 +403,6 @@ const ListingsDashboard = () => {
 
   const getFilterCount = (status: string) => {
     if (status === "All") return listings.length;
-    if (status === "Archived") return listings.filter((l) => l.archived === true).length;
     return listings.filter((l) => l.status === status).length;
   };
 
@@ -541,28 +555,52 @@ const ListingsDashboard = () => {
       )}
 
       {/* Status Filters */}
-      <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-8">
-        <TabsList className="w-full h-auto flex-wrap gap-1 justify-start p-1">
-          <TabsTrigger value="All" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.all')} <span className="ml-1">({getFilterCount("All")})</span>
-          </TabsTrigger>
-          <TabsTrigger value="New" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.new')} <span className="ml-1">({getFilterCount("New")})</span>
-          </TabsTrigger>
-          <TabsTrigger value="Published" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.forSale')} <span className="ml-1">({getFilterCount("Published")})</span>
-          </TabsTrigger>
-          <TabsTrigger value="Sale Agreed" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.saleAgreed')} <span className="ml-1">({getFilterCount("Sale Agreed")})</span>
-          </TabsTrigger>
-          <TabsTrigger value="Sold" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.sold')} <span className="ml-1">({getFilterCount("Sold")})</span>
-          </TabsTrigger>
-          <TabsTrigger value="Archived" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.archived')} <span className="ml-1">({getFilterCount("Archived")})</span>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex items-start justify-between gap-4 mb-8">
+        {!isArchivedView ? (
+          <Tabs value={activeFilter} onValueChange={setActiveFilter} className="flex-1 min-w-0">
+            <TabsList className="w-full h-auto flex-wrap gap-1 justify-start p-1">
+              <TabsTrigger value="All" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                {t('listings.status.all')} <span className="ml-1">({getFilterCount("All")})</span>
+              </TabsTrigger>
+              <TabsTrigger value="New" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                {t('listings.status.new')} <span className="ml-1">({getFilterCount("New")})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Published" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                {t('listings.status.forSale')} <span className="ml-1">({getFilterCount("Published")})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Sale Agreed" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                {t('listings.status.saleAgreed')} <span className="ml-1">({getFilterCount("Sale Agreed")})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Sold" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                {t('listings.status.sold')} <span className="ml-1">({getFilterCount("Sold")})</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setIsArchivedView(false); setActiveFilter("All"); }}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t('listings.status.backToActive')}
+            </button>
+            <h2 className="text-lg font-semibold">
+              {t('listings.status.archived')} ({archivedCount})
+            </h2>
+          </div>
+        )}
+
+        {!isArchivedView && archivedCount > 0 && (
+          <button
+            onClick={() => { setIsArchivedView(true); setActiveFilter("All"); }}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap mt-1"
+          >
+            <Archive className="h-4 w-4" />
+            {t('listings.status.archived')} ({archivedCount})
+          </button>
+        )}
+      </div>
 
       {/* Listings Grid */}
       {isLoading ? (
