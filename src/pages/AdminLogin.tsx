@@ -97,7 +97,7 @@ export default function AdminLogin() {
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2">
             <img
-              src="/lovable-uploads/6b9e3ead-a7c7-4122-b5f6-4cce857b1e85.png"
+              src="/autolisting-logo.png"
               alt="AutoListing.io"
               className="h-10 w-10"
             />
