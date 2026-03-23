@@ -1,91 +1,174 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Coins, CreditCard, TrendingUp, History, BarChart3, Users, Zap, ArrowUpRight, Calendar, Loader2, Check, Sparkles, ExternalLink } from 'lucide-react';
+import {
+  CreditCard, TrendingUp, BarChart3, History, Loader2, Check,
+  Sparkles, ExternalLink, Building2, Home, LayoutGrid, Mail, Users, Zap,
+  ArrowRight
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { PurchaseCreditsModal } from '@/components/billing/PurchaseCreditsModal';
 import { BillingHistoryTable } from '@/components/billing/BillingHistoryTable';
 import { UsageAnalyticsDashboard } from '@/components/billing/UsageAnalyticsDashboard';
 import { AccountStatusBanner } from '@/components/billing/AccountStatusBanner';
-import { getCreditBalance, getUsageRates, getBillingProfile } from '@/lib/billing/billingClient';
-import { getBalanceStatus, getBalanceColor, getTrialDaysRemaining, type AccountStatus } from '@/lib/billing/types';
+import { getOrgPlanSummary, getPlanDefinitions, getBillingProfile } from '@/lib/billing/billingClient';
+import type { AccountStatus, PlanDefinition, OrgPlanSummary } from '@/lib/billing/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useLocale } from '@/hooks/useLocale';
 import { supabase } from '@/integrations/supabase/client';
 
-interface PlanConfig {
-  name: string;
-  priceEur: number;
-  monthlyCredits: number;
-  maxUsers: number;
-  features: string[];
-  popular?: boolean;
+function UsageMeter({ label, current, max, icon: Icon }: {
+  label: string;
+  current: number;
+  max: number | null;
+  icon: React.ElementType;
+}) {
+  const isUnlimited = max === null;
+  const percentage = isUnlimited ? 0 : max > 0 ? Math.min((current / max) * 100, 100) : 0;
+  const isNearLimit = !isUnlimited && percentage >= 80;
+  const isAtLimit = !isUnlimited && current >= (max ?? 0);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Icon className="h-4 w-4" />
+          <span>{label}</span>
+        </div>
+        <span className={`font-medium ${isAtLimit ? 'text-red-600' : isNearLimit ? 'text-orange-600' : ''}`}>
+          {current} / {isUnlimited ? '∞' : max}
+        </span>
+      </div>
+      {!isUnlimited && (
+        <Progress
+          value={percentage}
+          className={`h-2 ${isAtLimit ? '[&>div]:bg-red-500' : isNearLimit ? '[&>div]:bg-orange-500' : ''}`}
+        />
+      )}
+    </div>
+  );
 }
 
-const PLAN_CONFIGS: PlanConfig[] = [
-  {
-    name: 'starter',
-    priceEur: 29,
-    monthlyCredits: 200,
-    maxUsers: 1,
-    features: ['All platform features', '200 credits/month', '1 user'],
-  },
-  {
-    name: 'pro',
-    priceEur: 79,
-    monthlyCredits: 500,
-    maxUsers: 10,
-    features: ['All platform features', '500 credits/month', 'Up to 10 users', 'Priority support'],
-    popular: true,
-  },
-];
+function PlanCard({ plan, isCurrentPlan, onSubscribe, isLoading }: {
+  plan: PlanDefinition;
+  isCurrentPlan: boolean;
+  onSubscribe: (planName: string) => void;
+  isLoading: boolean;
+}) {
+  const isFree = plan.plan_tier === 'free';
+  const isPopular = plan.name === 'professional';
+  const isMultiBranch = plan.plan_tier === 'multi_branch';
+
+  return (
+    <Card
+      className={`relative ${isPopular ? 'border-primary shadow-md' : ''} ${isCurrentPlan ? 'bg-muted/30' : ''}`}
+      data-testid={`card-plan-${plan.name}`}
+    >
+      {isPopular && (
+        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
+          Most Popular
+        </Badge>
+      )}
+      {isCurrentPlan && (
+        <Badge variant="secondary" className="absolute -top-3 right-4">
+          Current Plan
+        </Badge>
+      )}
+      <CardHeader className="pb-3">
+        <CardTitle>{plan.display_name}</CardTitle>
+        <CardDescription>{plan.description}</CardDescription>
+        <div className="mt-2">
+          {isFree ? (
+            <span className="text-3xl font-bold">Free</span>
+          ) : (
+            <>
+              <span className="text-3xl font-bold">TBD</span>
+              <span className="text-muted-foreground">/{plan.billing_interval}</span>
+            </>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <ul className="space-y-2">
+          {(plan.features as string[]).map((feature, i) => (
+            <li key={i} className="flex items-center gap-2 text-sm">
+              <Check className="w-4 h-4 text-green-500 shrink-0" />
+              <span>{feature}</span>
+            </li>
+          ))}
+        </ul>
+        {!isCurrentPlan && !isFree && (
+          <Button
+            className="w-full"
+            variant={isPopular ? 'default' : 'outline'}
+            onClick={() => onSubscribe(plan.name)}
+            disabled={isLoading}
+            data-testid={`button-subscribe-${plan.name}`}
+          >
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <>
+                Upgrade to {plan.display_name}
+                <Sparkles className="w-4 h-4 ml-2" />
+              </>
+            )}
+          </Button>
+        )}
+        {isCurrentPlan && (
+          <Button className="w-full" variant="outline" disabled>
+            Current Plan
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminBilling() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organization } = useOrganization();
   const { t, formatCurrency } = useLocale();
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [isLoadingCheckout, setIsLoadingCheckout] = useState<string | null>(null);
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
 
-  const { data: balance, isLoading: balanceLoading } = useQuery({
-    queryKey: ['/api/billing/balance', organization?.id],
-    queryFn: () => getCreditBalance(organization!.id),
+  const { data: planSummary, isLoading: planLoading } = useQuery({
+    queryKey: ['plan-summary', organization?.id],
+    queryFn: () => getOrgPlanSummary(organization!.id),
     enabled: !!organization?.id,
-    refetchInterval: 30000,
+    refetchInterval: 60000,
   });
 
-  const { data: usageRates } = useQuery({
-    queryKey: ['/api/billing/usage-rates'],
-    queryFn: getUsageRates,
+  const { data: allPlans } = useQuery({
+    queryKey: ['plan-definitions'],
+    queryFn: getPlanDefinitions,
   });
 
-  const { data: billingProfile, isLoading: isLoadingProfile } = useQuery({
+  const { data: billingProfile } = useQuery({
     queryKey: ['billing-profile', organization?.id],
-    queryFn: async () => {
-      if (!organization?.id) return null;
-      return getBillingProfile(organization.id);
-    },
+    queryFn: () => getBillingProfile(organization!.id),
     enabled: !!organization?.id,
   });
 
-  const currentBalance = balance ?? 0;
-  const status = getBalanceStatus(currentBalance);
-  const colorClass = getBalanceColor(status);
-
-  const accountStatus = (organization?.account_status || 'trial') as AccountStatus;
-  const isOnTrial = accountStatus === 'trial';
-  const isTrialExpired = accountStatus === 'trial_expired';
+  const accountStatus = (organization?.account_status || 'free') as AccountStatus;
   const hasActiveSubscription = billingProfile?.subscription_status === 'active';
-  const needsPlanSelection = isOnTrial || isTrialExpired || !hasActiveSubscription;
-  const currentPlan = billingProfile?.subscription_plan || 'starter';
+  const effectivePlan = planSummary?.effective_plan_name || 'free';
+  const isPilot = planSummary?.has_billing_override || false;
+
+  // Filter plans for display: show standard tiers, not multi-branch (those are shown separately)
+  const standardPlans = allPlans?.filter(p =>
+    p.is_active && ['free', 'standard', 'professional'].includes(p.plan_tier)
+  ) || [];
+
+  const multiBranchPlans = allPlans?.filter(p =>
+    p.is_active && p.plan_tier === 'multi_branch'
+  ) || [];
 
   const handleSubscribe = async (planName: string) => {
     if (!organization?.id) {
@@ -187,26 +270,20 @@ export default function AdminBilling() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Billing & Subscription</h1>
+          <h1 className="text-3xl font-bold">Billing & Plan</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your plan, credits, and billing details
+            Manage your plan and track usage
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button 
-            onClick={() => setShowPurchaseModal(true)}
-            variant="outline"
-            data-testid="button-purchase-credits"
-          >
-            <Coins className="h-4 w-4 mr-2" />
-            Buy Credits
-          </Button>
           {hasActiveSubscription && (
-            <Button 
+            <Button
               onClick={handleManageSubscription}
               disabled={isLoadingPortal}
+              variant="outline"
               data-testid="button-manage-subscription"
             >
               {isLoadingPortal ? (
@@ -229,154 +306,191 @@ export default function AdminBilling() {
         readOnlyReason={organization?.read_only_reason || null}
       />
 
-      {needsPlanSelection && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold">Choose a Plan</h2>
-            {isOnTrial && organization?.trial_ends_at && (
-              <Badge variant="secondary">
-                {getTrialDaysRemaining(organization.trial_ends_at) || 0} days left in trial
-              </Badge>
-            )}
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-4">
-            {PLAN_CONFIGS.map((planConfig) => (
-              <Card 
-                key={planConfig.name}
-                className={`relative ${planConfig.popular ? 'border-primary' : ''}`}
-                data-testid={`card-plan-${planConfig.name}`}
+      {/* Current Plan & Usage Overview */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Current Plan Card */}
+        <Card className="lg:col-span-1">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium">Current Plan</CardTitle>
+              {isPilot && <Badge variant="secondary">Pilot</Badge>}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="text-2xl font-bold">
+              {planSummary?.plan_display_name || 'Free'}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {effectivePlan === 'free'
+                ? 'Upgrade to unlock more listings and features'
+                : isPilot
+                  ? 'Pilot programme — custom billing arrangement'
+                  : `Billed weekly`}
+            </p>
+            {effectivePlan === 'free' && (
+              <Button
+                className="w-full mt-4"
+                onClick={() => {
+                  const plansSection = document.getElementById('plans-section');
+                  plansSection?.scrollIntoView({ behavior: 'smooth' });
+                }}
               >
-                {planConfig.popular && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    Most Popular
-                  </Badge>
-                )}
-                <CardHeader>
-                  <CardTitle className="capitalize">{planConfig.name}</CardTitle>
-                  <CardDescription>
-                    {planConfig.name === 'starter' ? 'Perfect for solo agents' : 'For growing teams'}
-                  </CardDescription>
-                  <div className="mt-2">
-                    <span className="text-3xl font-bold">{formatCurrency(planConfig.priceEur)}</span>
-                    <span className="text-muted-foreground">/month</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2">
-                    {planConfig.features.map((feature, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm">
-                        <Check className="w-4 h-4 text-green-500 shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className="w-full"
-                    variant={planConfig.popular ? 'default' : 'outline'}
-                    onClick={() => handleSubscribe(planConfig.name)}
-                    disabled={isLoadingCheckout !== null}
-                    data-testid={`button-subscribe-${planConfig.name}`}
-                  >
-                    {isLoadingCheckout === planConfig.name ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        Subscribe to {planConfig.name.charAt(0).toUpperCase() + planConfig.name.slice(1)}
-                        <Sparkles className="w-4 h-4 ml-2" />
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+                View Plans
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            )}
+          </CardContent>
+        </Card>
 
+        {/* Usage Meters Card */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Usage</CardTitle>
+            <CardDescription>Current usage against your plan limits</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {planLoading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            ) : planSummary ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <UsageMeter
+                  label="Listings"
+                  current={planSummary.listing_count}
+                  max={planSummary.max_listings}
+                  icon={Home}
+                />
+                <UsageMeter
+                  label="Social Hubs"
+                  current={planSummary.hub_count}
+                  max={planSummary.max_social_hubs}
+                  icon={Building2}
+                />
+                <UsageMeter
+                  label="Team Members"
+                  current={0}
+                  max={planSummary.max_users}
+                  icon={Users}
+                />
+                <UsageMeter
+                  label="CRM Contacts"
+                  current={0}
+                  max={planSummary.max_crm_contacts}
+                  icon={Mail}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Unable to load usage data</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Plan Feature Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Current Plan</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold capitalize">
-              {hasActiveSubscription ? currentPlan : isOnTrial ? 'Free Trial' : 'No Plan'}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {hasActiveSubscription 
-                ? `${formatCurrency(currentPlan === 'pro' ? 79 : 29)}/month`
-                : isOnTrial && organization?.trial_ends_at
-                  ? `${getTrialDaysRemaining(organization.trial_ends_at) || 0} days remaining`
-                  : 'Subscribe to get started'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Credit Balance</CardTitle>
-            <Coins className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {balanceLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                <div className={`text-2xl font-bold ${colorClass}`}>
-                  {currentBalance}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  credits available
-                </p>
-                {(status === 'low' || status === 'critical') && (
-                  <Badge variant="destructive" className="mt-2">
-                    {status === 'critical' ? 'Critical - Top up now' : 'Low balance'}
-                  </Badge>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Platform Posts</CardTitle>
+            <CardTitle className="text-sm font-medium">Posts / Listing / Week</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {usageRates?.find(r => r.feature_type === 'post_generation')?.credits_per_use || 7}
+              {planSummary?.max_posts_per_listing_per_week ?? '—'}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              credits per platform
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              ≈ {Math.floor(currentBalance / 7)} posts remaining
+              per listing, per week
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Video Generation</CardTitle>
+            <CardTitle className="text-sm font-medium">Lead Magnets / Week</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {planSummary?.max_lead_magnets_per_week === null ? '∞' : planSummary?.max_lead_magnets_per_week ?? '0'}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              quiz posts per week
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Video Styles</CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {usageRates?.find(r => r.feature_type === 'video_generation')?.credits_per_use || 14}
+              {planSummary?.allowed_video_styles?.length ?? 1}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              credits (both 16:9 + 9:16)
+              {planSummary?.has_watermark ? 'With watermark' : 'No watermark'}
             </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              ≈ {Math.floor(currentBalance / 14)} video sets remaining
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Email Campaigns</CardTitle>
+            <Mail className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {planSummary?.max_email_campaigns_per_month === null ? '∞' : planSummary?.max_email_campaigns_per_month ?? '0'}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              per month
             </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Plan Selection */}
+      <div id="plans-section" className="space-y-4 scroll-mt-6">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold">Available Plans</h2>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-4">
+          {standardPlans.map((plan) => (
+            <PlanCard
+              key={plan.name}
+              plan={plan}
+              isCurrentPlan={effectivePlan === plan.name}
+              onSubscribe={handleSubscribe}
+              isLoading={isLoadingCheckout === plan.name}
+            />
+          ))}
+        </div>
+
+        {multiBranchPlans.length > 0 && (
+          <>
+            <h3 className="text-lg font-semibold mt-6 flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Multi-Branch Plans
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              For agencies with multiple offices — each branch gets its own social accounts and posting schedules.
+            </p>
+            <div className="grid md:grid-cols-3 gap-4">
+              {multiBranchPlans.map((plan) => (
+                <PlanCard
+                  key={plan.name}
+                  plan={plan}
+                  isCurrentPlan={effectivePlan === plan.name}
+                  onSubscribe={handleSubscribe}
+                  isLoading={isLoadingCheckout === plan.name}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* History & Analytics */}
       <Tabs defaultValue="history" className="space-y-4">
         <TabsList>
           <TabsTrigger value="history" data-testid="tab-history">
@@ -397,13 +511,6 @@ export default function AdminBilling() {
           <UsageAnalyticsDashboard organizationId={organization.id} />
         </TabsContent>
       </Tabs>
-
-      <PurchaseCreditsModal
-        open={showPurchaseModal}
-        onOpenChange={setShowPurchaseModal}
-        organizationId={organization.id}
-        currentBalance={currentBalance}
-      />
     </div>
   );
 }

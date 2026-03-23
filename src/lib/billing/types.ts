@@ -45,7 +45,8 @@ export function serviceToCategory(service: PropertyService): 'Listing' | 'Rental
 }
 
 // Phase 2.5: Account Lifecycle Types
-export type AccountStatus = 
+export type AccountStatus =
+  | 'free'
   | 'trial'
   | 'active'
   | 'trial_expired'
@@ -118,6 +119,7 @@ export function canSpendCredits(org: { credit_spending_enabled: boolean }): bool
 
 export function getAccountStatusLabel(status: AccountStatus): string {
   switch (status) {
+    case 'free': return 'Free';
     case 'trial': return 'Trial';
     case 'active': return 'Active';
     case 'trial_expired': return 'Trial Expired';
@@ -129,6 +131,7 @@ export function getAccountStatusLabel(status: AccountStatus): string {
 
 export function getAccountStatusColor(status: AccountStatus): string {
   switch (status) {
+    case 'free': return 'text-blue-600 dark:text-blue-400';
     case 'trial': return 'text-blue-600 dark:text-blue-400';
     case 'active': return 'text-green-600 dark:text-green-400';
     case 'trial_expired': return 'text-orange-600 dark:text-orange-400';
@@ -154,26 +157,59 @@ export type FeatureType =
   | 'property_extraction'
   | 'email_send';
 
-export type PlanName = 'starter' | 'pro';
+export type PlanName = 'free' | 'essentials' | 'growth' | 'professional' | 'multi_branch_s' | 'multi_branch_m' | 'multi_branch_l' | 'starter' | 'pro';
+
+export type PlanTier = 'free' | 'standard' | 'professional' | 'multi_branch';
 
 export interface PlanDefinition {
   id: string;
   name: PlanName;
   display_name: string;
   description?: string;
-  price_cents: number;
+  monthly_price_cents: number;
   currency: string;
-  billing_interval: 'month' | 'year';
+  billing_interval: 'week' | 'month' | 'year';
   monthly_credits: number;
   max_users: number;
-  stripe_product_id?: string;
-  stripe_price_id?: string;
+  max_listings: number | null;
+  max_social_hubs: number;
+  max_posts_per_listing_per_week: number | null;
+  max_lead_magnets_per_week: number | null;
+  max_crm_contacts: number | null;
+  max_email_campaigns_per_month: number | null;
+  has_watermark: boolean;
+  allowed_video_styles: string[];
+  plan_tier: PlanTier;
+  stripe_monthly_price_id?: string;
   features: string[];
   is_active: boolean;
   display_order: number;
-  metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
+}
+
+export interface OrgPlanSummary {
+  organization_id: string;
+  organization_name: string;
+  effective_plan_name: PlanName;
+  plan_display_name: string;
+  plan_tier: PlanTier;
+  max_listings: number | null;
+  max_social_hubs: number | null;
+  max_posts_per_listing_per_week: number | null;
+  max_lead_magnets_per_week: number | null;
+  max_crm_contacts: number | null;
+  max_email_campaigns_per_month: number | null;
+  has_watermark: boolean;
+  allowed_video_styles: string[];
+  monthly_credits: number;
+  max_users: number;
+  has_billing_override: boolean;
+  billing_override: Record<string, any> | null;
+  account_status: AccountStatus;
+  credit_spending_enabled: boolean;
+  listing_count: number;
+  hub_count: number;
 }
 
 export interface SignupRequest {
@@ -198,7 +234,7 @@ export interface SignupRequest {
 }
 
 export function getPlanPriceEur(plan: PlanDefinition): number {
-  return plan.price_cents / 100;
+  return plan.monthly_price_cents / 100;
 }
 
 export type TransactionType = 

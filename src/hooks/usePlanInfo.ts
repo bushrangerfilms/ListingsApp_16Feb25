@@ -1,28 +1,28 @@
 import { useQuery } from '@tanstack/react-query';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { getBillingProfile, getPlanByName } from '@/lib/billing/billingClient';
-import type { PlanName, PlanDefinition, AccountStatus } from '@/lib/billing/types';
+import { getOrgPlanSummary } from '@/lib/billing/billingClient';
+import type { PlanName, AccountStatus, OrgPlanSummary } from '@/lib/billing/types';
 
 export interface PlanInfo {
   planName: PlanName | 'trial' | null;
   displayName: string;
   maxUsers: number;
   monthlyCredits: number;
+  maxListings: number | null;
+  maxSocialHubs: number | null;
+  maxPostsPerListingPerWeek: number | null;
+  maxLeadMagnetsPerWeek: number | null;
+  maxCrmContacts: number | null;
+  hasWatermark: boolean;
+  allowedVideoStyles: string[];
   isTrialActive: boolean;
   trialEndsAt: Date | null;
   subscriptionStatus: string | null;
   accountStatus: AccountStatus;
+  isPilot: boolean;
+  listingCount: number;
+  hubCount: number;
 }
-
-const DEFAULT_TRIAL_LIMITS = {
-  maxUsers: 10,
-  monthlyCredits: 100,
-};
-
-const PLAN_DEFAULTS: Record<PlanName, { maxUsers: number; monthlyCredits: number }> = {
-  starter: { maxUsers: 10, monthlyCredits: 200 },
-  pro: { maxUsers: 10, monthlyCredits: 500 },
-};
 
 export function usePlanInfo() {
   const { organization } = useOrganization();
@@ -34,58 +34,54 @@ export function usePlanInfo() {
         throw new Error('No organization');
       }
 
-      const isTrialActive = organization.account_status === 'trial' && 
-        organization.trial_ends_at && 
+      const summary = await getOrgPlanSummary(organization.id);
+
+      const isTrialActive = organization.account_status === 'trial' &&
+        organization.trial_ends_at &&
         new Date(organization.trial_ends_at) > new Date();
 
-      if (isTrialActive || organization.account_status === 'trial') {
+      if (!summary) {
         return {
-          planName: 'trial',
-          displayName: 'Trial',
-          maxUsers: DEFAULT_TRIAL_LIMITS.maxUsers,
-          monthlyCredits: DEFAULT_TRIAL_LIMITS.monthlyCredits,
+          planName: organization.account_status === 'trial' ? 'trial' : 'free',
+          displayName: organization.account_status === 'trial' ? 'Trial' : 'Free',
+          maxUsers: 2,
+          monthlyCredits: 50,
+          maxListings: 2,
+          maxSocialHubs: 1,
+          maxPostsPerListingPerWeek: 1,
+          maxLeadMagnetsPerWeek: 0,
+          maxCrmContacts: 50,
+          hasWatermark: true,
+          allowedVideoStyles: ['video_style_1'],
           isTrialActive: !!isTrialActive,
           trialEndsAt: organization.trial_ends_at ? new Date(organization.trial_ends_at) : null,
           subscriptionStatus: null,
           accountStatus: organization.account_status,
+          isPilot: false,
+          listingCount: 0,
+          hubCount: 1,
         };
       }
-
-      const billingProfile = await getBillingProfile(organization.id);
-      
-      if (!billingProfile?.subscription_plan) {
-        return {
-          planName: null,
-          displayName: 'No Plan',
-          maxUsers: 10,
-          monthlyCredits: 0,
-          isTrialActive: false,
-          trialEndsAt: organization.trial_ends_at ? new Date(organization.trial_ends_at) : null,
-          subscriptionStatus: billingProfile?.subscription_status || null,
-          accountStatus: organization.account_status,
-        };
-      }
-
-      const planName = billingProfile.subscription_plan as PlanName;
-      let planDefinition: PlanDefinition | null = null;
-      
-      try {
-        planDefinition = await getPlanByName(planName);
-      } catch (e) {
-        console.warn('Could not fetch plan definition, using defaults');
-      }
-
-      const defaults = PLAN_DEFAULTS[planName] || { maxUsers: 1, monthlyCredits: 0 };
 
       return {
-        planName,
-        displayName: planDefinition?.display_name || (planName === 'starter' ? 'Starter' : 'Pro'),
-        maxUsers: planDefinition?.max_users ?? defaults.maxUsers,
-        monthlyCredits: planDefinition?.monthly_credits ?? defaults.monthlyCredits,
-        isTrialActive: false,
+        planName: summary.effective_plan_name,
+        displayName: summary.plan_display_name,
+        maxUsers: summary.max_users,
+        monthlyCredits: summary.monthly_credits,
+        maxListings: summary.max_listings,
+        maxSocialHubs: summary.max_social_hubs,
+        maxPostsPerListingPerWeek: summary.max_posts_per_listing_per_week,
+        maxLeadMagnetsPerWeek: summary.max_lead_magnets_per_week,
+        maxCrmContacts: summary.max_crm_contacts,
+        hasWatermark: summary.has_watermark,
+        allowedVideoStyles: summary.allowed_video_styles || ['video_style_1'],
+        isTrialActive: !!isTrialActive,
         trialEndsAt: organization.trial_ends_at ? new Date(organization.trial_ends_at) : null,
-        subscriptionStatus: billingProfile.subscription_status || null,
-        accountStatus: organization.account_status,
+        subscriptionStatus: null,
+        accountStatus: summary.account_status,
+        isPilot: summary.has_billing_override,
+        listingCount: summary.listing_count,
+        hubCount: summary.hub_count,
       };
     },
     enabled: !!organization?.id,
@@ -98,9 +94,13 @@ export function usePlanInfo() {
     error,
     refetch,
     planName: data?.planName || null,
-    maxUsers: data?.maxUsers ?? 10,
+    maxUsers: data?.maxUsers ?? 2,
     monthlyCredits: data?.monthlyCredits ?? 0,
+    maxListings: data?.maxListings ?? 2,
     isTrialActive: data?.isTrialActive ?? false,
     trialEndsAt: data?.trialEndsAt ?? null,
+    isPilot: data?.isPilot ?? false,
+    listingCount: data?.listingCount ?? 0,
+    hubCount: data?.hubCount ?? 1,
   };
 }

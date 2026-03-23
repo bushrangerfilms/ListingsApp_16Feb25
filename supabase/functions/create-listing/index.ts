@@ -131,6 +131,34 @@ serve(async (req) => {
 
     console.log('[ORG] Using organization ID:', organizationId);
 
+    // Check plan listing limit before creating
+    const { data: limitCheck, error: limitError } = await supabase.rpc('sp_check_plan_limits', {
+      p_organization_id: organizationId,
+      p_check_type: 'listing',
+    });
+
+    if (!limitError && limitCheck && limitCheck.length > 0 && !limitCheck[0].allowed) {
+      console.log('[PLAN] Listing limit reached for org:', organizationId, limitCheck[0]);
+      return new Response(
+        JSON.stringify({
+          error: 'plan_limit_reached',
+          message: limitCheck[0].reason || 'You have reached your listing limit. Please upgrade your plan.',
+          current_count: limitCheck[0].current_count,
+          max_allowed: limitCheck[0].max_allowed,
+          plan_name: limitCheck[0].plan_name,
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get default social hub for this org
+    const { data: defaultHub } = await supabase
+      .from('social_hubs')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('is_default', true)
+      .maybeSingle();
+
     const today = new Date().toISOString().split('T')[0];
     const status = listingData.markAsNew ? 'New' : 'Published';
 
@@ -140,6 +168,7 @@ serve(async (req) => {
       .from('listings')
       .insert({
         organization_id: organizationId,
+        social_hub_id: defaultHub?.id || null,
         title: listingData.title,
         description: listingData.description,
         building_type: listingData.buildingType,

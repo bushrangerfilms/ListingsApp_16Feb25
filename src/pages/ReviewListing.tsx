@@ -298,6 +298,17 @@ const ReviewListing = () => {
       );
 
       if (createError || !createData?.success) {
+        // Handle plan limit reached — show upgrade prompt instead of generic error
+        if (createData?.error === 'plan_limit_reached') {
+          toast({
+            title: "Listing limit reached",
+            description: createData.message || `You've reached the maximum of ${createData.max_allowed} listings on your current plan. Go to Billing to upgrade.`,
+            variant: "destructive",
+          });
+          setIsCreating(false);
+          return;
+        }
+
         let errorMessage = "Failed to create listing";
         if (createData?.error) {
           errorMessage = createData.error;

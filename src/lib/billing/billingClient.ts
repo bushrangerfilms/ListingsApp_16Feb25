@@ -4,9 +4,9 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { 
-  CreditBalance, 
-  CreditTransaction, 
+import type {
+  CreditBalance,
+  CreditTransaction,
   CreditHistoryResult,
   FeatureType,
   CreditSource,
@@ -14,7 +14,8 @@ import type {
   UsageRate,
   PlanDefinition,
   PlanName,
-  SignupRequest
+  SignupRequest,
+  OrgPlanSummary
 } from './types';
 
 /**
@@ -549,6 +550,29 @@ export async function updateSignupRequest(
   }
 
   return data as SignupRequest;
+}
+
+/**
+ * Get organization plan summary from the v_organization_plan_summary view.
+ * Includes effective plan (respecting billing overrides), limits, and current usage counts.
+ */
+export async function getOrgPlanSummary(organizationId: string): Promise<OrgPlanSummary | null> {
+  const { data, error } = await (supabase as any)
+    .from('v_organization_plan_summary')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116' || error.code === 'PGRST205') {
+      console.warn('[Billing] Plan summary not available:', error.code);
+      return null;
+    }
+    console.error('Failed to get plan summary:', error);
+    return null;
+  }
+
+  return data as OrgPlanSummary;
 }
 
 /**
