@@ -170,6 +170,19 @@ export function Footer() {
               </TooltipProvider>
             )}
           </div>
+          {(!organization?.current_plan_name || organization.current_plan_name === 'free') && (
+            <p className="text-xs text-muted-foreground/60 mt-3 text-center">
+              Powered by{' '}
+              <a
+                href="https://autolisting.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-primary transition-colors"
+              >
+                AutoListing.io
+              </a>
+            </p>
+          )}
         </div>
       </div>
     </footer>
