@@ -31,7 +31,7 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     id: 'save_end_card',
     title: 'Save End Card',
     description: 'Configure video end cards',
-    href: 'https://socials.autolisting.io/organization/settings#end-card',
+    href: 'https://socials.autolisting.io/organization/settings/branding',
     icon: Palette,
     external: true,
   },
