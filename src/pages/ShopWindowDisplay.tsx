@@ -8,6 +8,8 @@ import { DEFAULT_DISPLAY_CONFIG } from '@/lib/display-signage/types';
 import { X, Play, Monitor } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getLogosForLocale } from '@/lib/brochure/certificationLogos';
+import { getRegionConfig } from '@/lib/regionConfig';
+import type { SupportedLocale } from '@/lib/i18n';
 import { useDisplayAnalytics } from '@/hooks/useDisplayAnalytics';
 import { getRegionConfig } from '@/lib/regionConfig';
 import type { SupportedLocale } from '@/lib/i18n';
@@ -530,7 +532,7 @@ function BrandingBar({
           <span>{organization.contact_phone}</span>
         )}
         {config.show_contact_info && organization.psr_licence_number && (
-          <span className="opacity-75">PSRA: {organization.psr_licence_number}</span>
+          <span className="opacity-75">{getRegionConfig((organization.locale || 'en-IE') as SupportedLocale).legal.regulatory.licenceDisplayLabel}: {organization.psr_licence_number}</span>
         )}
         {totalSlides > 1 && (
           <span className="opacity-75">{slideNumber} / {totalSlides}</span>

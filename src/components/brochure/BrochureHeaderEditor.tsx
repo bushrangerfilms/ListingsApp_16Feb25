@@ -93,11 +93,11 @@ export function BrochureHeaderEditor({
       </div>
 
       <div>
-        <Label className="text-xs">Licence Number</Label>
+        <Label className="text-xs">{branding.licenceDisplayLabel || 'Licence Number'}</Label>
         <Input
           value={branding.psrLicenceNumber || ''}
           onChange={(e) => update('psrLicenceNumber', e.target.value || null)}
-          placeholder="e.g. 004763"
+          placeholder={branding.licenceDisplayLabel === 'PSRA Licence' ? '004763' : ''}
           className="h-8 text-sm"
         />
       </div>

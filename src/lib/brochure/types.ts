@@ -110,6 +110,7 @@ export interface BrochureBranding {
   contactPhone: string;
   businessAddress: string;
   psrLicenceNumber: string | null;
+  licenceDisplayLabel: string;
   locale: string;
   currency: string;
   countryCode: string;

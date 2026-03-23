@@ -107,5 +107,15 @@ export const caConfig: RegionConfig = {
       fairHousingRequired: false,
       dataRetentionDays: 2555,
     },
+    regulatory: {
+      licenceRequired: true,
+      regulatoryBody: 'Provincial Regulator',
+      regulatoryBodyFull: 'Provincial Real Estate Regulator (e.g. RECO, BCFSA)',
+      licenceFieldLabel: 'Registration Number',
+      licenceDisplayLabel: 'Reg. No.',
+      licencePlaceholder: '12345678',
+      licenceNote: 'Provincial real estate registration number',
+      phonePlaceholder: '+1 (555) 123-4567',
+    },
   },
 };

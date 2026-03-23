@@ -82,7 +82,7 @@ serve(async (req) => {
     const trimmedFirstName = firstName?.trim();
     const trimmedLastName = lastName?.trim();
     
-    if (!trimmedBusinessName || !trimmedContactEmail || !trimmedUserEmail || !password || !trimmedFirstName || !trimmedLastName) {
+    if (!trimmedBusinessName || !trimmedContactEmail || !trimmedUserEmail || !password) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         {
@@ -178,9 +178,9 @@ serve(async (req) => {
       password,
       email_confirm: isComped, // Pilot users get auto-confirmed, others need to verify
       user_metadata: {
-        first_name: trimmedFirstName,
-        last_name: trimmedLastName,
-        full_name: `${trimmedFirstName} ${trimmedLastName}`,
+        first_name: trimmedFirstName || '',
+        last_name: trimmedLastName || '',
+        full_name: [trimmedFirstName, trimmedLastName].filter(Boolean).join(' ') || trimmedBusinessName,
       },
     });
 

@@ -143,5 +143,15 @@ export const usConfig: RegionConfig = {
       fairHousingRequired: true,
       dataRetentionDays: 2555,
     },
+    regulatory: {
+      licenceRequired: true,
+      regulatoryBody: 'State Real Estate Commission',
+      regulatoryBodyFull: 'State Real Estate Commission (varies by state)',
+      licenceFieldLabel: 'Real Estate License Number',
+      licenceDisplayLabel: 'License No.',
+      licencePlaceholder: '01234567',
+      licenceNote: 'State-issued real estate license number',
+      phonePlaceholder: '+1 (555) 123-4567',
+    },
   },
 };

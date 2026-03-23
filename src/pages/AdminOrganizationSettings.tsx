@@ -16,6 +16,8 @@ import { CustomDomainSetup } from "@/components/CustomDomainSetup";
 import { PropertyServicesSelector } from "@/components/PropertyServicesSelector";
 import { updateOrganizationProfile } from "@/lib/organizationHelpers";
 import { Loader2 } from "lucide-react";
+import { getRegionConfig } from "@/lib/regionConfig";
+import type { SupportedLocale } from "@/lib/i18n";
 
 const organizationSchema = z.object({
   business_name: z.string().min(1, "Business name is required").max(100),
@@ -39,6 +41,8 @@ export default function AdminOrganizationSettings() {
 
   // Use the viewed organization if super admin is viewing as another org
   const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
+  const regionConfig = getRegionConfig((targetOrg?.locale || 'en-IE') as SupportedLocale);
+  const regulatory = regionConfig.legal.regulatory;
 
   const form = useForm<OrganizationFormData>({
     resolver: zodResolver(organizationSchema),
@@ -165,10 +169,13 @@ export default function AdminOrganizationSettings() {
                 name="psr_licence_number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>PSR Licence Number</FormLabel>
+                    <FormLabel>{regulatory.licenceFieldLabel}</FormLabel>
                     <FormControl>
-                      <Input placeholder="002179" {...field} />
+                      <Input placeholder={regulatory.licencePlaceholder} {...field} />
                     </FormControl>
+                    {regulatory.licenceNote && (
+                      <FormDescription>{regulatory.licenceNote}</FormDescription>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

@@ -1,12 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { 
-  Home, 
+import {
+  Home,
   LucideIcon,
   Briefcase,
   Palette,
-  Share2
+  Share2,
+  User,
+  ImageIcon
 } from 'lucide-react';
 
 export interface OnboardingTask {
@@ -21,6 +23,20 @@ export interface OnboardingTask {
 
 export const ONBOARDING_TASKS: OnboardingTask[] = [
   {
+    id: 'complete_profile',
+    title: 'Complete your profile',
+    description: 'Add your name and contact number',
+    href: '/admin/settings',
+    icon: User,
+  },
+  {
+    id: 'upload_logo',
+    title: 'Upload your logo',
+    description: 'Used in videos and your website',
+    href: '/admin/settings',
+    icon: ImageIcon,
+  },
+  {
     id: 'configure_services',
     title: 'Configure property services',
     description: 'Sales, lettings, or holiday rentals',
@@ -28,27 +44,27 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     icon: Briefcase,
   },
   {
-    id: 'save_end_card',
-    title: 'Save End Card',
-    description: 'Configure video end cards',
-    href: 'https://socials.autolisting.io/organization/settings/branding',
-    icon: Palette,
-    external: true,
+    id: 'create_listing',
+    title: 'Add your first listing',
+    description: 'Add a property to get started',
+    href: '/admin/create',
+    icon: Home,
   },
   {
     id: 'connect_social',
-    title: 'Connect Social Accounts',
-    description: 'Link your social media',
+    title: 'Connect social accounts',
+    description: 'Link Instagram, TikTok, Facebook, etc.',
     href: 'https://socials.autolisting.io/accounts',
     icon: Share2,
     external: true,
   },
   {
-    id: 'create_listing',
-    title: 'Create first listing',
-    description: 'Add a property',
-    href: '/admin/create',
-    icon: Home,
+    id: 'save_end_card',
+    title: 'Save end card',
+    description: 'Configure video end cards',
+    href: 'https://socials.autolisting.io/organization/settings/branding',
+    icon: Palette,
+    external: true,
   },
 ];
 

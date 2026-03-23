@@ -5,6 +5,8 @@ import { useOrganization } from '@/contexts/OrganizationContext';
 import { useOnboarding } from './useOnboarding';
 
 interface DetectionResult {
+  complete_profile: boolean;
+  upload_logo: boolean;
   configure_services: boolean;
   save_end_card: boolean;
   connect_social: boolean;
@@ -29,6 +31,8 @@ export function useOnboardingAutoDetect() {
     queryFn: async (): Promise<DetectionResult> => {
       if (!organization?.id) {
         return {
+          complete_profile: false,
+          upload_logo: false,
           configure_services: false,
           save_end_card: false,
           connect_social: false,
@@ -57,7 +61,15 @@ export function useOnboardingAutoDetect() {
         organization.primary_color
       );
 
+      // Profile is complete if contact name is set
+      const hasProfile = !!(organization.contact_name && organization.contact_name.trim().length > 0);
+
+      // Logo is complete if logo_url is set
+      const hasLogo = !!(organization.logo_url && organization.logo_url.length > 0);
+
       return {
+        complete_profile: hasProfile,
+        upload_logo: hasLogo,
         configure_services: !!(organization.property_services && organization.property_services.length > 0),
         save_end_card: hasEndCard,
         connect_social: (socialConnectionsResult.count ?? 0) > 0,

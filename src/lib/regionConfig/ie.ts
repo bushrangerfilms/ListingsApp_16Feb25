@@ -98,5 +98,16 @@ export const ieConfig: RegionConfig = {
       fairHousingRequired: false,
       dataRetentionDays: 2555,
     },
+    regulatory: {
+      licenceRequired: true,
+      regulatoryBody: 'PSRA',
+      regulatoryBodyFull: 'Property Services Regulatory Authority',
+      licenceFieldLabel: 'PSR Licence Number',
+      licenceDisplayLabel: 'PSRA Licence',
+      licencePlaceholder: '002179',
+      licencePattern: /^\d{6}$/,
+      licenceNote: 'Required by PSRA for all property service providers in Ireland',
+      phonePlaceholder: '+353 1 234 5678',
+    },
   },
 };

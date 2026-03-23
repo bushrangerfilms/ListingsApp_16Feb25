@@ -561,7 +561,7 @@ export function ElegantBackCoverPageContent({ ctx, margins }: PageContentProps) 
           )}
           {branding.psrLicenceNumber && (
             <Text style={{ ...TYPE.licence, color: COLORS.textMuted, marginTop: 2 }}>
-              Licence No: {branding.psrLicenceNumber}
+              {branding.licenceDisplayLabel}: {branding.psrLicenceNumber}
             </Text>
           )}
         </View>
