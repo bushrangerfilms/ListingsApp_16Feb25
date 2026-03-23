@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useState } from 'react';
 
-const SOCIALS_HUB_SETUP_URL = 'https://socials.autolisting.io/organization/settings?setup=endcard';
+const SOCIALS_HUB_SETUP_URL = 'https://socials.autolisting.io/organization/settings/branding';
 
 interface EndCardSetupBannerProps {
   className?: string;
