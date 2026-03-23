@@ -14,7 +14,7 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const FROM_EMAIL = "AutoListing Reports <reports@autolisting.io>";
 
 // Send email via Resend
-async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+async function sendEmail(to: string, subject: string, html: string, retries = 1): Promise<boolean> {
   if (!RESEND_API_KEY) {
     console.error("RESEND_API_KEY not configured");
     return false;
@@ -38,12 +38,22 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
     if (!response.ok) {
       const error = await response.text();
       console.error("Resend API error:", error);
+      if (retries > 0) {
+        console.log(`   Retrying email to ${to} in 2s (${retries} retries left)...`);
+        await new Promise(r => setTimeout(r, 2000));
+        return sendEmail(to, subject, html, retries - 1);
+      }
       return false;
     }
 
     return true;
   } catch (error) {
     console.error("Failed to send email:", error);
+    if (retries > 0) {
+      console.log(`   Retrying email to ${to} in 2s (${retries} retries left)...`);
+      await new Promise(r => setTimeout(r, 2000));
+      return sendEmail(to, subject, html, retries - 1);
+    }
     return false;
   }
 }
@@ -59,10 +69,10 @@ const SECTION_MAX_POINTS = {
 
 // Band thresholds (V1 - LOCKED per spec)
 const BANDS = {
-  READY: { min: 85, label: "Ready" },
+  READY: { min: 85, label: "Ready to List" },
   NEARLY_READY: { min: 65, label: "Nearly Ready" },
   EARLY_STAGE: { min: 40, label: "Early Stage" },
-  NOT_READY: { min: 0, label: "Not Ready" },
+  NOT_READY: { min: 0, label: "Getting Started" },
 };
 
 // Legal flags for band capping
@@ -436,13 +446,25 @@ async function handleUnlock(supabase: any, body: any): Promise<Response> {
     });
     
     const emailSent = await sendEmail(orgEmail, emailSubject, emailHtml);
-    
+
     // Update submission with email status
     if (emailSent) {
       await supabase
         .from("lead_submissions")
         .update({ email_sent: true, email_sent_at: new Date().toISOString() })
         .eq("id", submission_id);
+    } else {
+      // Log email failure for monitoring visibility
+      console.error(`   ❌ Lead notification email failed for submission ${submission_id} to ${orgEmail}`);
+      await supabase.from("automation_logs").insert({
+        organization_id: submission.organization_id,
+        event_type: "email_failure",
+        status: "error",
+        message: `Lead magnet email failed for submission ${submission_id}`,
+        metadata: { submission_id, recipient: orgEmail, quiz_type: type },
+      }).then(({ error }) => {
+        if (error) console.error("Failed to log email failure:", error);
+      });
     }
   }
 
@@ -492,14 +514,14 @@ function calculateReadinessScore(answers: any): any {
   // Apply legal caps AFTER scoring (per spec)
   // If LEGAL_RISK OR PLANNING_RISK → cap at "Nearly Ready"
   const hasLegalRisk = legalFlags.includes("LEGAL_RISK") || legalFlags.includes("PLANNING_RISK");
-  if (hasLegalRisk && (band === "Ready")) {
+  if (hasLegalRisk && (band === "Ready to List")) {
     band = "Nearly Ready";
     gaps.push("Legal or planning issues require resolution");
   }
 
   // If 2+ legal flags → cap at "Early Stage"
   if (legalFlags.length >= 2) {
-    if (band === "Ready" || band === "Nearly Ready") {
+    if (band === "Ready to List" || band === "Nearly Ready") {
       band = "Early Stage";
       gaps.push("Multiple legal items need attention");
     }
@@ -1228,7 +1250,7 @@ function getScoreRange(score: number): string {
 
 function getNextSteps(band: string): string[] {
   const steps: Record<string, string[]> = {
-    "Ready": [
+    "Ready to List": [
       "Contact the agent to discuss listing strategy",
       "Prepare marketing materials",
       "Schedule professional photography",
@@ -1243,7 +1265,7 @@ function getNextSteps(band: string): string[] {
       "Gather required documents",
       "Consider a property assessment",
     ],
-    "Not Ready": [
+    "Getting Started": [
       "Focus on legal and compliance items first",
       "Take time to prepare properly",
       "The agent can guide you when you're ready",

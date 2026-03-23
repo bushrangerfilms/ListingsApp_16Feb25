@@ -107,6 +107,7 @@ export const listingSchema = z.object({
     .optional(),
   
   markAsNew: z.boolean().optional(),
+  excludeAiMotion: z.boolean().optional(),
 }).refine((data) => {
   const isLand = data.buildingType === "Land";
   

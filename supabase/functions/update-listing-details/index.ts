@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
     // Support both CRM-migrated (crm_record_id) and Supabase-native (id) listings
     let listingQuery = supabase
       .from('listings')
-      .select('id')
+      .select('id, status')
       .eq('organization_id', orgData.id);
     
     if (isUUID) {
@@ -160,6 +160,8 @@ Deno.serve(async (req) => {
     if (fields['County'] !== undefined) supabaseFields.county = fields['County'];
     if (fields['Eircode'] !== undefined) supabaseFields.eircode = fields['Eircode'];
     if (fields['Folio Number'] !== undefined) supabaseFields.folio_number = fields['Folio Number'];
+    if (fields['Exclude AI Motion'] !== undefined) supabaseFields.exclude_ai_motion = fields['Exclude AI Motion'];
+    if (fields['Exclude from Social Media'] !== undefined) supabaseFields.automation_enabled = !fields['Exclude from Social Media'];
 
     // Handle photo fields
     if (fields['photos'] !== undefined) supabaseFields.photos = fields['photos'];
@@ -190,6 +192,86 @@ Deno.serve(async (req) => {
     }
 
     console.log('[SUPABASE] Updated successfully');
+
+    // Handle Exclude from Social Media: cancel/regenerate schedule directly
+    // Both apps share the same DB, so we handle this here for reliability
+    if (fields['Exclude from Social Media'] !== undefined) {
+      const listingId = existingListing.id;
+      if (fields['Exclude from Social Media'] === true) {
+        // EXCLUDING: Cancel all scheduled posts, release slots, deactivate templates
+        console.log(`[SOCIAL] Excluding listing ${listingId} from social media`);
+        const { data: cancelledPosts } = await supabase
+          .from('listing_posting_schedule')
+          .update({
+            status: 'cancelled',
+            is_cancelled: true,
+            error_message: 'Excluded from social media',
+            updated_at: new Date().toISOString()
+          })
+          .eq('listing_id', listingId)
+          .in('status', ['scheduled', 'pending_approval', 'pending_video'])
+          .eq('is_cancelled', false)
+          .select('id, slot_id');
+
+        const cancelledCount = cancelledPosts?.length ?? 0;
+
+        if (cancelledCount > 0) {
+          const slotIds = (cancelledPosts || []).map((p: any) => p.slot_id).filter(Boolean);
+          if (slotIds.length > 0) {
+            await supabase
+              .from('listing_schedule_slots')
+              .update({ has_post: false })
+              .in('id', slotIds);
+          }
+        }
+
+        await supabase
+          .from('recurring_schedule_templates')
+          .update({ is_active: false })
+          .eq('listing_id', listingId);
+
+        console.log(`[SOCIAL] Excluded: cancelled ${cancelledCount} posts, deactivated templates`);
+      } else if (fields['Exclude from Social Media'] === false) {
+        // RE-INCLUDING: Trigger handle-status-change to regenerate schedule
+        console.log(`[SOCIAL] Re-including listing ${listingId} in social media`);
+
+        const { data: secretRow } = await supabase
+          .from('automation_secrets')
+          .select('value')
+          .eq('key', 'automation_secret')
+          .single();
+
+        const automationSecret = secretRow?.value || Deno.env.get('AUTOMATION_SECRET');
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+        if (automationSecret && supabaseUrl && supabaseKey) {
+          try {
+            const response = await fetch(`${supabaseUrl}/functions/v1/handle-status-change`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-automation-secret': automationSecret,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'apikey': supabaseKey
+              },
+              body: JSON.stringify({
+                listing_id: listingId,
+                old_status: 'none',
+                new_status: existingListing.status || 'Published',
+                force_process: true
+              })
+            });
+            const result = await response.json();
+            console.log(`[SOCIAL] Schedule regeneration triggered:`, result);
+          } catch (err) {
+            console.error(`[SOCIAL] Error triggering schedule regeneration:`, err);
+          }
+        } else {
+          console.error('[SOCIAL] Missing secrets for handle-status-change call');
+        }
+      }
+    }
 
     return new Response(
       JSON.stringify({ 

@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -59,9 +60,12 @@ export function EditListingDialog({
     "Building Size (Sq M)": 0,
     "Land Size (Acres)": 0,
     "Show NEW Badge": false,
+    "Exclude AI Motion": false,
+    "Exclude from Social Media": false,
     "Folio Number": "",
   });
   const [landSizeInput, setLandSizeInput] = useState("");
+  const [confirmExclude, setConfirmExclude] = useState<boolean | null>(null);
   const [photoChanges, setPhotoChanges] = useState<PhotoChanges | null>(null);
   const [photoKey, setPhotoKey] = useState(0);
 
@@ -84,6 +88,8 @@ export function EditListingDialog({
         "Building Size (Sq M)": listing.buildingSize || 0,
         "Land Size (Acres)": landSize,
         "Show NEW Badge": listing.showNewBadge || false,
+        "Exclude AI Motion": listing.excludeAiMotion || listing.exclude_ai_motion || false,
+        "Exclude from Social Media": listing.automation_enabled === false,
         "Folio Number": listing.folioNumber || listing.folio_number || "",
       });
       setLandSizeInput(landSize ? String(landSize) : "");
@@ -137,6 +143,11 @@ export function EditListingDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    await doSubmit();
+  };
+
+  const doSubmit = async (overrideFormData?: typeof formData) => {
+    const activeFormData = overrideFormData || formData;
     setIsUpdating(true);
 
     try {
@@ -179,21 +190,23 @@ export function EditListingDialog({
       const finalSocialMediaUrls = [...(photoChanges?.socialMediaUrls || []), ...newSocialMediaUrls];
 
       const listingFields: Record<string, any> = {
-        'Listing Title': formData.Title,
-        'Price €': formData.Price,
-        'Address Line 1': formData["Address Line 1"],
-        'Address Town': formData["Address Town"],
-        'County': formData.County,
-        'Eircode': formData.Eircode,
-        'Bedrooms': formData.Bedrooms,
-        'Bathrooms': formData.Bathrooms,
-        'Building Type': formData["Building Type"],
-        'Description': formData.Description,
-        'Specs (Dimensions / Services)': formData.Specs,
-        'BER Rating': formData.BER,
-        'Building Size sqm': formData["Building Size (Sq M)"] || null,
-        'Land Size (Acres)': formData["Land Size (Acres)"] || null,
-        'Folio Number': formData["Folio Number"] || null,
+        'Listing Title': activeFormData.Title,
+        'Price €': activeFormData.Price,
+        'Address Line 1': activeFormData["Address Line 1"],
+        'Address Town': activeFormData["Address Town"],
+        'County': activeFormData.County,
+        'Eircode': activeFormData.Eircode,
+        'Bedrooms': activeFormData.Bedrooms,
+        'Bathrooms': activeFormData.Bathrooms,
+        'Building Type': activeFormData["Building Type"],
+        'Description': activeFormData.Description,
+        'Specs (Dimensions / Services)': activeFormData.Specs,
+        'BER Rating': activeFormData.BER,
+        'Building Size sqm': activeFormData["Building Size (Sq M)"] || null,
+        'Land Size (Acres)': activeFormData["Land Size (Acres)"] || null,
+        'Folio Number': activeFormData["Folio Number"] || null,
+        'Exclude AI Motion': activeFormData["Exclude AI Motion"],
+        'Exclude from Social Media': activeFormData["Exclude from Social Media"],
       };
 
       if (photoChanges) {
@@ -288,6 +301,63 @@ export function EditListingDialog({
               />
             </div>
           </div>
+
+          {/* Exclude AI Motion Toggle */}
+          <div className="flex items-center justify-between space-x-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="exclude-ai-motion">Exclude AI Motion Videos</Label>
+              <p className="text-xs text-muted-foreground">
+                Some images are more prone to glitching and hallucinating with AI motion. If your listing has flat images like drone photos with land border graphics, floor plans and tight shots of stone wall you may want to exclude this listing from video styles that use AI motion.
+              </p>
+            </div>
+            <Switch
+              id="exclude-ai-motion"
+              checked={formData["Exclude AI Motion"]}
+              onCheckedChange={(checked) => setFormData({ ...formData, "Exclude AI Motion": checked })}
+            />
+          </div>
+
+          {/* Exclude from Social Media Toggle */}
+          <div className="flex items-center justify-between space-x-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="exclude-social-media">Exclude from Social Media</Label>
+              <p className="text-xs text-muted-foreground">
+                Switch on if you don't want a social media schedule or social media generated for this listing.
+              </p>
+            </div>
+            <Switch
+              id="exclude-social-media"
+              checked={formData["Exclude from Social Media"]}
+              onCheckedChange={(checked) => setConfirmExclude(checked)}
+            />
+          </div>
+
+          {/* Confirmation dialog for Exclude from Social Media */}
+          <AlertDialog open={confirmExclude !== null} onOpenChange={(open) => { if (!open) setConfirmExclude(null); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {confirmExclude ? "Exclude from Social Media?" : "Re-include in Social Media?"}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {confirmExclude
+                    ? "This will cancel all scheduled social media posts for this listing. Are you sure?"
+                    : "This will generate a new social media schedule for this listing. Are you sure?"}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setConfirmExclude(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={async () => {
+                  const updatedFormData = { ...formData, "Exclude from Social Media": confirmExclude! };
+                  setFormData(updatedFormData);
+                  setConfirmExclude(null);
+                  await doSubmit(updatedFormData);
+                }}>
+                  Confirm
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Energy Rating - only if enabled in region, NOT for Land */}
           {energyRatings.enabled && formData["Building Type"] !== "Land" && (

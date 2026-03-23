@@ -7,7 +7,7 @@ import { ListingCard } from "@/components/ListingCard";
 import { StatusUpdateDialog } from "@/components/StatusUpdateDialog";
 import { EditListingDialog } from "@/components/EditListingDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Plus, Download, Loader2, ArrowUpDown, Home, Key, Palmtree } from "lucide-react";
+import { Plus, Download, Loader2, ArrowUpDown, Home, Key, Palmtree, Archive, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
@@ -19,6 +19,7 @@ import { useEndCardSetupCheck } from "@/hooks/useEndCardSetupCheck";
 import { EndCardSetupBanner } from "@/components/EndCardSetupBanner";
 import { useSocialConnectionCheck } from "@/hooks/useSocialConnectionCheck";
 import { SocialConnectionBanner } from "@/components/SocialConnectionBanner";
+import { matchesListingSearch } from "@/lib/listingSearch";
 
 interface Listing {
   id: string;
@@ -32,6 +33,9 @@ interface Listing {
   bedrooms: number;
   bathrooms: number;
   buildingType: string;
+  eircode?: string;
+  description?: string;
+  specs?: string;
   heroPhoto: string;
   datePosted: string;
   statusChangedDate?: string;
@@ -51,10 +55,11 @@ const ListingsDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [priceRange, setPriceRange] = useState<string>("all");
-  const [bedroomFilter, setBedroomFilter] = useState<string>("all");
+  const [bedroomFilters, setBedroomFilters] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [propertyTypeFilter, setPropertyTypeFilter] = useState<string>("all");
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<{ id: string; status: string } | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -64,6 +69,8 @@ const ListingsDashboard = () => {
   const [regenerateDialogOpen, setRegenerateDialogOpen] = useState(false);
   const [regeneratingListingId, setRegeneratingListingId] = useState<string | null>(null);
   const [pendingRegenerateId, setPendingRegenerateId] = useState<string | null>(null);
+  const [isArchivedView, setIsArchivedView] = useState(false);
+  const [archivedCount, setArchivedCount] = useState(0);
   
   // Determine which organization to use: viewAs takes precedence over user's organization
   const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
@@ -82,10 +89,10 @@ const ListingsDashboard = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('get-listings', {
-        body: { 
-          clientSlug: targetOrg.slug, 
-          filter: filter === "All" || filter === "Archived" ? null : filter,
-          archived: filter === "Archived" ? true : false,
+        body: {
+          clientSlug: targetOrg.slug,
+          filter: filter === "All" ? null : filter,
+          archived: isArchivedView,
         }
       });
 
@@ -107,12 +114,24 @@ const ListingsDashboard = () => {
     }
   };
 
+  const fetchArchivedCount = async () => {
+    const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
+    if (!targetOrg) return;
+    try {
+      const { data } = await supabase.functions.invoke('get-listings', {
+        body: { clientSlug: targetOrg.slug, archived: true, pageSize: 1 }
+      });
+      if (data?.totalCount != null) setArchivedCount(data.totalCount);
+    } catch { /* silent */ }
+  };
+
   useEffect(() => {
     const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
     if (targetOrg) {
       fetchListings(activeFilter);
+      fetchArchivedCount();
     }
-  }, [activeFilter, organization, viewAsOrganizationId, selectedOrganization, isOrganizationView]);
+  }, [activeFilter, isArchivedView, organization, viewAsOrganizationId, selectedOrganization, isOrganizationView]);
 
   const handleStatusChange = (id: string, currentStatus: string) => {
     setSelectedListing({ id, status: currentStatus });
@@ -175,6 +194,7 @@ const ListingsDashboard = () => {
           description: !currentlyArchived ? t('listings.toast.archivedSuccessfully') : t('listings.toast.unarchivedSuccessfully'),
         });
         await fetchListings(activeFilter);
+        fetchArchivedCount();
       }
     } catch (error) {
       console.error('Error archiving listing:', error);
@@ -309,13 +329,7 @@ const ListingsDashboard = () => {
 
     // Text search
     if (searchQuery) {
-      const search = searchQuery.toLowerCase();
-      const matchesSearch = 
-        listing.title?.toLowerCase().includes(search) ||
-        listing.addressLine1?.toLowerCase().includes(search) ||
-        listing.addressTown?.toLowerCase().includes(search) ||
-        listing.county?.toLowerCase().includes(search);
-      if (!matchesSearch) return false;
+      if (!matchesListingSearch(listing, searchQuery)) return false;
     }
 
     // Price filter
@@ -337,16 +351,19 @@ const ListingsDashboard = () => {
       }
     }
 
-    // Bedroom filter
-    if (bedroomFilter !== "all") {
+    // Bedroom filter (multi-select)
+    if (bedroomFilters.size > 0) {
       const bedrooms = listing.bedrooms || 0;
-      const targetBedrooms = parseInt(bedroomFilter);
-      if (bedroomFilter === "5+") {
-        if (bedrooms < 5) return false;
-      } else {
-        if (bedrooms !== targetBedrooms) return false;
-      }
+      const matches = Array.from(bedroomFilters).some(f => {
+        if (f === '5+') return bedrooms >= 5;
+        return bedrooms === parseInt(f);
+      });
+      if (!matches) return false;
     }
+
+    // Property type filter (land vs properties)
+    if (propertyTypeFilter === 'land' && listing.buildingType !== 'Land') return false;
+    if (propertyTypeFilter === 'properties' && listing.buildingType === 'Land') return false;
 
     return true;
   });
@@ -388,7 +405,6 @@ const ListingsDashboard = () => {
 
   const getFilterCount = (status: string) => {
     if (status === "All") return listings.length;
-    if (status === "Archived") return listings.filter((l) => l.archived === true).length;
     return listings.filter((l) => l.status === status).length;
   };
 
@@ -477,19 +493,30 @@ const ListingsDashboard = () => {
           </SelectContent>
         </Select>
 
-        <Select value={bedroomFilter} onValueChange={setBedroomFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder={t('listings.filters.bedrooms')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('listings.filters.allBedrooms')}</SelectItem>
-            <SelectItem value="1">{t('listings.filters.bedroom', { count: 1 })}</SelectItem>
-            <SelectItem value="2">{t('listings.filters.bedrooms_plural', { count: 2 })}</SelectItem>
-            <SelectItem value="3">{t('listings.filters.bedrooms_plural', { count: 3 })}</SelectItem>
-            <SelectItem value="4">{t('listings.filters.bedrooms_plural', { count: 4 })}</SelectItem>
-            <SelectItem value="5+">{t('listings.filters.bedroomsPlus', { count: 5 })}</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground whitespace-nowrap">
+            {t('listings.filters.bedrooms')}:
+          </span>
+          <div className="flex gap-1">
+            {['1', '2', '3', '4', '5+'].map(val => (
+              <button
+                key={val}
+                onClick={() => {
+                  const next = new Set(bedroomFilters);
+                  if (next.has(val)) next.delete(val); else next.add(val);
+                  setBedroomFilters(next);
+                }}
+                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-colors ${
+                  bedroomFilters.has(val)
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-input hover:bg-accent'
+                }`}
+              >
+                {val}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger>
@@ -540,29 +567,73 @@ const ListingsDashboard = () => {
         </Tabs>
       )}
 
+      {/* Property Type Filter (Land vs Properties) */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-sm text-muted-foreground whitespace-nowrap">Type:</span>
+        <div className="flex gap-1">
+          {([['all', 'All'], ['properties', 'Properties'], ['land', 'Land']] as const).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => setPropertyTypeFilter(val)}
+              className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-colors ${
+                propertyTypeFilter === val
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-input hover:bg-accent'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Status Filters */}
-      <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-8">
-        <TabsList className="w-full h-auto flex-wrap gap-1 justify-start p-1">
-          <TabsTrigger value="All" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.all')} <span className="ml-1">({getFilterCount("All")})</span>
-          </TabsTrigger>
-          <TabsTrigger value="New" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.new')} <span className="ml-1">({getFilterCount("New")})</span>
-          </TabsTrigger>
-          <TabsTrigger value="Published" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.forSale')} <span className="ml-1">({getFilterCount("Published")})</span>
-          </TabsTrigger>
-          <TabsTrigger value="Sale Agreed" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.saleAgreed')} <span className="ml-1">({getFilterCount("Sale Agreed")})</span>
-          </TabsTrigger>
-          <TabsTrigger value="Sold" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.sold')} <span className="ml-1">({getFilterCount("Sold")})</span>
-          </TabsTrigger>
-          <TabsTrigger value="Archived" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
-            {t('listings.status.archived')} <span className="ml-1">({getFilterCount("Archived")})</span>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex items-start justify-between gap-4 mb-8">
+        {!isArchivedView ? (
+          <Tabs value={activeFilter} onValueChange={setActiveFilter} className="flex-1 min-w-0">
+            <TabsList className="w-full h-auto flex-wrap gap-1 justify-start p-1">
+              <TabsTrigger value="All" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                {t('listings.status.all')} <span className="ml-1">({getFilterCount("All")})</span>
+              </TabsTrigger>
+              <TabsTrigger value="New" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                {t('listings.status.new')} <span className="ml-1">({getFilterCount("New")})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Published" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                {t('listings.status.forSale')} <span className="ml-1">({getFilterCount("Published")})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Sale Agreed" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                {t('listings.status.saleAgreed')} <span className="ml-1">({getFilterCount("Sale Agreed")})</span>
+              </TabsTrigger>
+              <TabsTrigger value="Sold" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                {t('listings.status.sold')} <span className="ml-1">({getFilterCount("Sold")})</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setIsArchivedView(false); setActiveFilter("All"); }}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t('listings.status.backToActive')}
+            </button>
+            <h2 className="text-lg font-semibold">
+              {t('listings.status.archived')} ({archivedCount})
+            </h2>
+          </div>
+        )}
+
+        {!isArchivedView && archivedCount > 0 && (
+          <button
+            onClick={() => { setIsArchivedView(true); setActiveFilter("All"); }}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap mt-1"
+          >
+            <Archive className="h-4 w-4" />
+            {t('listings.status.archived')} ({archivedCount})
+          </button>
+        )}
+      </div>
 
       {/* Listings Grid */}
       {isLoading ? (
@@ -572,11 +643,11 @@ const ListingsDashboard = () => {
       ) : sortedListings.length === 0 ? (
         <div className="text-center py-12 bg-card rounded-lg border border-border">
           <p className="text-muted-foreground">
-            {searchQuery || priceRange !== "all" || bedroomFilter !== "all" 
+            {searchQuery || priceRange !== "all" || bedroomFilters.size > 0 || propertyTypeFilter !== "all"
               ? t('listings.empty.noMatchingListings')
               : t('listings.empty.noListings')}
           </p>
-          {!searchQuery && priceRange === "all" && bedroomFilter === "all" && (
+          {!searchQuery && priceRange === "all" && bedroomFilters.size === 0 && propertyTypeFilter === "all" && (
             <Button className="mt-4" onClick={() => navigate('/admin/create')}>
               <Plus className="h-4 w-4 mr-2" />
               {t('listings.createFirst')}

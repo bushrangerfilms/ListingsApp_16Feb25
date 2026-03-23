@@ -23,6 +23,7 @@ import premiumHouse from '@/assets/premium-house.jpg';
 import { useLocale } from '@/hooks/useLocale';
 import { BrandingProvider } from '@/components/BrandingProvider';
 import { useOrgContent } from '@/hooks/useOrgContent';
+import { matchesListingSearch } from '@/lib/listingSearch';
 
 interface Listing {
   id: string;
@@ -278,9 +279,7 @@ export default function PublicListings() {
 
     // Text search
     if (searchQuery) {
-      const search = searchQuery.toLowerCase();
-      const matchesSearch = listing.title?.toLowerCase().includes(search) || listing.addressLine1?.toLowerCase().includes(search) || listing.addressTown?.toLowerCase().includes(search) || listing.county?.toLowerCase().includes(search);
-      if (!matchesSearch) return false;
+      if (!matchesListingSearch(listing, searchQuery)) return false;
     }
 
     // Price filter

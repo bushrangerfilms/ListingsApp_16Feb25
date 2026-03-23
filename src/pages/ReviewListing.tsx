@@ -29,6 +29,7 @@ const ReviewListing = () => {
   const [socialMediaPhotoIndices, setSocialMediaPhotoIndices] = useState<number[]>([]);
   const [propertyTitle, setPropertyTitle] = useState("");
   const [markAsNew, setMarkAsNew] = useState(false);
+  const [excludeAiMotion, setExcludeAiMotion] = useState(false);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const specsRef = useRef<HTMLTextAreaElement>(null);
 
@@ -40,6 +41,7 @@ const ReviewListing = () => {
       setHeroPhotoIndex(location.state.heroPhotoIndex || 0);
       setSocialMediaPhotoIndices(location.state.socialMediaPhotoIndices || []);
       setMarkAsNew(location.state.markAsNew || false);
+      setExcludeAiMotion(location.state.excludeAiMotion || false);
       
       // Generate property title based on category
       if (data) {
@@ -288,6 +290,7 @@ const ReviewListing = () => {
         heroPhotoUrl: imageData.heroPhotoUrl,
         socialMediaPhotoUrls,
         markAsNew: markAsNew,
+        excludeAiMotion: excludeAiMotion,
       };
 
       const { data: createData, error: createError } = await supabase.functions.invoke(

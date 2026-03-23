@@ -194,6 +194,7 @@ serve(async (req) => {
         status_changed_date: listing.status_changed_date,
         new_status_set_date: listing.new_status_set_date,
         archived: listing.archived ?? false,
+        automation_enabled: listing.automation_enabled ?? true,
         crm_record_id: listing.airtable_record_id,
         created_at: listing.created_at,
         updated_at: listing.updated_at,

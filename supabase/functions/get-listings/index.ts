@@ -302,6 +302,7 @@ serve(async (req) => {
         return {
           ...base,
           archived: record.archived || false,
+          automation_enabled: record.automation_enabled ?? true,
         };
       }
       
