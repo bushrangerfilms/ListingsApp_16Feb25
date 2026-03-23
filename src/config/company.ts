@@ -2,24 +2,24 @@ import type { MarketCountry } from '@/lib/locale/markets';
 
 export const COMPANY_INFO = {
   name: "AutoListing.io",
-  legalName: "[YOUR COMPANY NAME LTD]",
-  croNumber: "[CRO NUMBER]",
-  vatNumber: "[IE VAT NUMBER]",
+  legalName: "Streamlined Digital Tech Ltd",
+  croNumber: "805162",
+  vatNumber: "VAT04549950FH",
   registeredAddress: {
-    street: "[STREET ADDRESS]",
-    city: "[CITY]",
-    county: "[COUNTY]",
+    street: "Castleblakeney",
+    city: "Ballinasloe",
+    county: "Co. Galway",
     country: "Ireland",
-    eircode: "[EIRCODE]",
+    eircode: "H53 YA97",
   },
   contact: {
-    email: "support@autolisting.io",
-    phone: "+353 [PHONE NUMBER]",
+    email: "peter@streamlinedai.tech",
+    phone: "",
     supportHours: "Monday - Friday, 9:00 AM - 5:30 PM (Irish Time)",
   },
   dpo: {
     email: "privacy@autolisting.io",
-    name: "[DATA PROTECTION OFFICER NAME]",
+    name: "Peter Harris",
   },
   social: {
     twitter: "",
