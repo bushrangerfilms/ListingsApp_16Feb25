@@ -108,5 +108,15 @@ export const auConfig: RegionConfig = {
       fairHousingRequired: false,
       dataRetentionDays: 2555,
     },
+    regulatory: {
+      licenceRequired: true,
+      regulatoryBody: 'Fair Trading',
+      regulatoryBodyFull: 'State/Territory Fair Trading or Consumer Affairs',
+      licenceFieldLabel: 'Agent Licence Number',
+      licenceDisplayLabel: 'Licence No.',
+      licencePlaceholder: '1234567',
+      licenceNote: 'State-issued real estate agent licence number',
+      phonePlaceholder: '+61 2 1234 5678',
+    },
   },
 };

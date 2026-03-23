@@ -90,5 +90,15 @@ export const gbConfig: RegionConfig = {
       fairHousingRequired: false,
       dataRetentionDays: 2555,
     },
+    regulatory: {
+      licenceRequired: false,
+      regulatoryBody: 'Propertymark',
+      regulatoryBodyFull: 'Propertymark (ARLA / NAEA)',
+      licenceFieldLabel: 'Membership Number',
+      licenceDisplayLabel: 'Propertymark No.',
+      licencePlaceholder: 'ARLA-12345',
+      licenceNote: 'Optional — Propertymark, RICS, or NAEA membership number',
+      phonePlaceholder: '+44 20 1234 5678',
+    },
   },
 };

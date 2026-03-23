@@ -57,7 +57,7 @@ export function BrochureHeader({ branding, compact = false, margins, dims }: Bro
           )}
           {branding.psrLicenceNumber && (
             <Text style={{ ...TYPE.headerLicence, color: COLORS.textMuted, marginTop: 2 }}>
-              Licence No: {branding.psrLicenceNumber}
+              {branding.licenceDisplayLabel}: {branding.psrLicenceNumber}
             </Text>
           )}
         </View>

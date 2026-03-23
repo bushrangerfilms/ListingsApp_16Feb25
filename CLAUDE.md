@@ -139,11 +139,32 @@ RLS policies enforce org isolation. All queries scoped by `organization_id`.
 
 ## Billing System
 
-- Credit-based usage model backed by Stripe
-- `src/lib/billing/billingClient.ts` — `consumeCredit()`, `checkCreditBalance()`
-- Feature usage checked via `useCreditCheck` hook before AI/premium actions
+- 7-tier plan system: Free / Essentials (€40/wk) / Growth (€70/wk) / Professional (€130/wk) / Multi-Branch S/M/L
+- Credits run under the hood — users see clean plan tiers, not credit counts
+- `src/lib/billing/billingClient.ts` — `getOrgPlanSummary()`, `checkPlanLimit()`, `consumeCredit()`
+- `src/lib/billing/types.ts` — `PlanName`, `PlanTier`, `OrgPlanSummary` types
+- `src/hooks/usePlanInfo.ts` — reads from `v_organization_plan_summary` view
+- Plan limits enforced in `create-listing` edge function via `sp_check_plan_limits()`
+- Pilot customers: `billing_override` JSONB on org bypasses plan limits
 - Stripe webhooks handled by `stripe-webhook` Edge Function
-- Billing-exempt orgs configured via `VITE_BILLING_EXEMPT_ORG_IDS` env var
+- `plan_prices` table supports multi-currency (EUR/GBP/USD)
+- Social Hub zoning: `social_hubs` table, listings assigned to hubs, auto-created per org
+
+## Signup & Onboarding
+
+- Public signup enabled via `marketing_visible` + `public_signup_enabled` feature flags
+- Marketing landing page at `autolisting.io` with dynamic pricing from `plan_definitions`
+- Signup: 3 fields (business name + email + password) → free tier → auto-login
+- `create-organization` edge function defaults to `account_status: 'free'`, `current_plan_name: 'free'`
+- Onboarding checklist (`src/components/onboarding/OnboardingChecklist.tsx`): 6 tasks with auto-detection
+- Login page (`AdminLogin.tsx`): clean form only, no pilot messaging
+
+## Internationalisation
+
+- 6 markets: IE, GB, US, CA, AU, NZ — `src/lib/regionConfig/` with per-market config
+- `RegulatoryConfig` per market: licence field labels, placeholders, regulatory body names, phone formats
+- All licence/registration displays use `regulatory.licenceDisplayLabel` (not hardcoded "PSRA")
+- DB column remains `psr_licence_number` (generic text field) — labels are locale-driven
 
 ## Known Technical Debt
 

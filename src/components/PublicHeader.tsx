@@ -6,6 +6,8 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { useOrganizationView } from "@/contexts/OrganizationViewContext";
 import { OrganizationViewSelector } from "@/components/OrganizationViewSelector";
 import { OrganizationLogo } from "@/components/OrganizationLogo";
+import { getRegionConfig } from "@/lib/regionConfig";
+import type { SupportedLocale } from "@/lib/i18n";
 
 export const PublicHeader = () => {
   const { isAdmin } = useAuth();
@@ -25,6 +27,7 @@ export const PublicHeader = () => {
 
   const businessName = organization?.business_name;
   const psrLicence = organization?.psr_licence_number;
+  const regulatory = getRegionConfig((organization?.locale || 'en-IE') as SupportedLocale).legal.regulatory;
   const homeLink = orgSlug ? `/${orgSlug}` : '/';
   const valuationLink = orgSlug ? `/${orgSlug}/request-valuation` : '/request-valuation';
 
@@ -43,7 +46,7 @@ export const PublicHeader = () => {
                 <h1 className="text-lg sm:text-xl font-bold">{businessName}</h1>
                 <p className="text-xs text-muted-foreground">Premium Property Services</p>
                 {psrLicence && (
-                  <p className="text-xs text-muted-foreground font-medium">PSRA Licence {psrLicence}</p>
+                  <p className="text-xs text-muted-foreground font-medium">{regulatory.licenceDisplayLabel} {psrLicence}</p>
                 )}
               </div>
             )}

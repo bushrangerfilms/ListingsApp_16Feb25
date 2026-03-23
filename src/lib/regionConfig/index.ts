@@ -96,9 +96,31 @@ export interface DateTimeConfig {
   firstDayOfWeek: 0 | 1;
 }
 
+export interface RegulatoryConfig {
+  /** Whether agents are required to display a licence/registration number */
+  licenceRequired: boolean;
+  /** Regulatory body name (e.g. "PSRA", "RICS", "State Real Estate Commission") */
+  regulatoryBody: string;
+  /** Full name of regulatory body */
+  regulatoryBodyFull: string;
+  /** Label for the licence field in forms (e.g. "PSR Licence Number", "Real Estate License Number") */
+  licenceFieldLabel: string;
+  /** Short label for display (e.g. "PSRA Licence", "License No.") */
+  licenceDisplayLabel: string;
+  /** Placeholder example for the form field */
+  licencePlaceholder: string;
+  /** Optional regex for format validation */
+  licencePattern?: RegExp;
+  /** Note text shown below the field (e.g. "Required by PSRA for all property service providers") */
+  licenceNote?: string;
+  /** Phone number format placeholder */
+  phonePlaceholder: string;
+}
+
 export interface LegalConfig {
   terminology: LegalTerminology;
   compliance: ComplianceConfig;
+  regulatory: RegulatoryConfig;
 }
 
 export interface RegionConfig {

@@ -115,5 +115,15 @@ export const nzConfig: RegionConfig = {
       fairHousingRequired: false,
       dataRetentionDays: 2555,
     },
+    regulatory: {
+      licenceRequired: true,
+      regulatoryBody: 'REA',
+      regulatoryBodyFull: 'Real Estate Authority (under REAA 2008)',
+      licenceFieldLabel: 'REA Licence Number',
+      licenceDisplayLabel: 'REA Licence',
+      licencePlaceholder: '10012345',
+      licenceNote: 'Required under the Real Estate Agents Act 2008',
+      phonePlaceholder: '+64 9 123 4567',
+    },
   },
 };

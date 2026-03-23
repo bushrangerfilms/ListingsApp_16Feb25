@@ -2,6 +2,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { BrochureLegal } from '@/lib/brochure/types';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { getRegionConfig } from '@/lib/regionConfig';
+import type { SupportedLocale } from '@/lib/i18n';
 
 interface BrochureLegalEditorProps {
   legal: BrochureLegal;
@@ -9,14 +12,17 @@ interface BrochureLegalEditorProps {
 }
 
 export function BrochureLegalEditor({ legal, onChange }: BrochureLegalEditorProps) {
+  const { organization } = useOrganization();
+  const regulatory = getRegionConfig((organization?.locale || 'en-IE') as SupportedLocale).legal.regulatory;
+
   return (
     <div className="space-y-3 p-3">
       <div>
-        <Label className="text-xs">PSR Licence Number</Label>
+        <Label className="text-xs">{regulatory.licenceFieldLabel}</Label>
         <Input
           value={legal.psrLicenceNumber || ''}
           onChange={(e) => onChange({ ...legal, psrLicenceNumber: e.target.value })}
-          placeholder="e.g. 003442"
+          placeholder={regulatory.licencePlaceholder}
           className="h-8 text-sm"
         />
       </div>
