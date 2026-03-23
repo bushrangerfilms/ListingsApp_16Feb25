@@ -221,15 +221,25 @@ export default function MarketingHome() {
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 9:16 and 16:9 formats for every platform</li>
               </ul>
             </div>
-            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl aspect-video flex items-center justify-center">
-              <Video className="h-16 w-16 text-primary/30" />
+            <div className="rounded-2xl overflow-hidden shadow-lg border">
+              <img
+                src="https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/marketing-video-gen.png"
+                alt="AI-generated property video preview"
+                className="w-full h-auto"
+                loading="lazy"
+              />
             </div>
           </div>
 
           {/* Feature 2: Smart Scheduling */}
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="order-2 lg:order-1 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl aspect-video flex items-center justify-center">
-              <Calendar className="h-16 w-16 text-primary/30" />
+            <div className="order-2 lg:order-1 rounded-2xl overflow-hidden shadow-lg border">
+              <img
+                src="https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/marketing-calendar.png"
+                alt="Smart scheduling calendar with posts"
+                className="w-full h-auto"
+                loading="lazy"
+              />
             </div>
             <div className="order-1 lg:order-2 space-y-6">
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -265,15 +275,25 @@ export default function MarketingHome() {
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Lead magnets and quiz posts</li>
               </ul>
             </div>
-            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl aspect-video flex items-center justify-center">
-              <Share2 className="h-16 w-16 text-primary/30" />
+            <div className="rounded-2xl overflow-hidden shadow-lg border">
+              <img
+                src="https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/marketing-multi-platform.png"
+                alt="Multi-platform social media posting"
+                className="w-full h-auto"
+                loading="lazy"
+              />
             </div>
           </div>
 
           {/* Feature 4: CRM & Website */}
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="order-2 lg:order-1 bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl aspect-video flex items-center justify-center">
-              <Users className="h-16 w-16 text-primary/30" />
+            <div className="order-2 lg:order-1 rounded-2xl overflow-hidden shadow-lg border">
+              <img
+                src="https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/marketing-crm-website.png"
+                alt="CRM and property website"
+                className="w-full h-auto"
+                loading="lazy"
+              />
             </div>
             <div className="order-1 lg:order-2 space-y-6">
               <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
