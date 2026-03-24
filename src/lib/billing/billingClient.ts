@@ -338,11 +338,13 @@ export async function getFeatureCost(featureType: FeatureType): Promise<number> 
 
 /**
  * Create a Stripe checkout session for purchasing credits or subscription
+ * Either priceId or planName must be provided.
  * @returns The checkout URL to redirect the user to
  */
 export async function createCheckoutSession(params: {
-  priceId: string;
-  mode: 'subscription' | 'payment';
+  priceId?: string;
+  planName?: string;
+  mode?: 'subscription' | 'payment';
   organizationId: string;
   successUrl?: string;
   cancelUrl?: string;
