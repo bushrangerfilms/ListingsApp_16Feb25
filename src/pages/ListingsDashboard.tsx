@@ -20,6 +20,8 @@ import { EndCardSetupBanner } from "@/components/EndCardSetupBanner";
 import { useSocialConnectionCheck } from "@/hooks/useSocialConnectionCheck";
 import { SocialConnectionBanner } from "@/components/SocialConnectionBanner";
 import { matchesListingSearch } from "@/lib/listingSearch";
+import { extractPlanLimitError, type PlanLimitError } from "@/lib/planLimitError";
+import { UpgradePlanDialog } from "@/components/billing/UpgradePlanDialog";
 
 interface Listing {
   id: string;
@@ -71,6 +73,7 @@ const ListingsDashboard = () => {
   const [pendingRegenerateId, setPendingRegenerateId] = useState<string | null>(null);
   const [isArchivedView, setIsArchivedView] = useState(false);
   const [archivedCount, setArchivedCount] = useState(0);
+  const [planLimitError, setPlanLimitError] = useState<PlanLimitError | null>(null);
   
   // Determine which organization to use: viewAs takes precedence over user's organization
   const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
@@ -176,7 +179,7 @@ const ListingsDashboard = () => {
 
   const handleArchive = async (id: string, currentlyArchived: boolean) => {
     if (!organization) return;
-    
+
     try {
       const { data, error } = await supabase.functions.invoke('toggle-archive', {
         body: {
@@ -185,6 +188,13 @@ const ListingsDashboard = () => {
           archived: !currentlyArchived,
         }
       });
+
+      // Check for plan limit error (only happens on unarchive)
+      const planLimit = extractPlanLimitError(data, error);
+      if (planLimit) {
+        setPlanLimitError(planLimit);
+        return;
+      }
 
       if (error) throw error;
 
@@ -726,6 +736,14 @@ const ListingsDashboard = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <UpgradePlanDialog
+        open={!!planLimitError}
+        onOpenChange={(open) => { if (!open) setPlanLimitError(null); }}
+        currentCount={planLimitError?.currentCount ?? 0}
+        maxAllowed={planLimitError?.maxAllowed ?? 0}
+        planName={planLimitError?.planName ?? ''}
+      />
     </div>
   );
 };

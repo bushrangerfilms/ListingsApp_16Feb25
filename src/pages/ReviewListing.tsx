@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useLocale } from "@/hooks/useLocale";
 import type { ListingFormData } from "@/lib/listingSchema";
+import { extractPlanLimitError, type PlanLimitError } from "@/lib/planLimitError";
+import { UpgradePlanDialog } from "@/components/billing/UpgradePlanDialog";
 
 const ReviewListing = () => {
   const location = useLocation();
@@ -22,6 +24,7 @@ const ReviewListing = () => {
   const { config } = useLocale();
   const currencySymbol = new Intl.NumberFormat(config.currencyLocale, { style: 'currency', currency: config.currency }).formatToParts(0).find(p => p.type === 'currency')?.value || config.currency;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [planLimitError, setPlanLimitError] = useState<PlanLimitError | null>(null);
   
   const [formData, setFormData] = useState<ListingFormData | null>(null);
   const [photos, setPhotos] = useState<File[]>([]);
@@ -301,6 +304,13 @@ const ReviewListing = () => {
       );
 
       if (createError || !createData?.success) {
+        // Check for plan limit error — show upgrade dialog instead of generic toast
+        const planLimit = extractPlanLimitError(createData, createError);
+        if (planLimit) {
+          setPlanLimitError(planLimit);
+          return;
+        }
+
         let errorMessage = "Failed to create listing";
         if (createData?.error) {
           errorMessage = createData.error;
@@ -779,6 +789,14 @@ const ReviewListing = () => {
           </div>
         </div>
       </div>
+
+      <UpgradePlanDialog
+        open={!!planLimitError}
+        onOpenChange={(open) => { if (!open) setPlanLimitError(null); }}
+        currentCount={planLimitError?.currentCount ?? 0}
+        maxAllowed={planLimitError?.maxAllowed ?? 0}
+        planName={planLimitError?.planName ?? ''}
+      />
     </div>
   );
 };
