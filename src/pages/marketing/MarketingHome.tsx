@@ -19,9 +19,6 @@ import {
   Users,
   Home,
   Sparkles,
-  ChevronDown,
-  ChevronUp,
-  Building2,
 } from 'lucide-react';
 
 const DEMO_VIDEO_URL = 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/pilot-program-demo.mp4';
@@ -79,7 +76,6 @@ function PricingCard({ name, displayName, price, features, isPopular, isFree, bi
 
 export default function MarketingHome() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const [showMultiBranch, setShowMultiBranch] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const browserLocale = typeof navigator !== 'undefined' ? navigator.language : 'en-IE';
@@ -91,8 +87,7 @@ export default function MarketingHome() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const standardPlans = plans?.filter(p => p.is_active && ['free', 'standard', 'professional'].includes(p.plan_tier)) || [];
-  const multiBranchPlans = plans?.filter(p => p.is_active && p.plan_tier === 'multi_branch') || [];
+  const allPlans = plans?.filter(p => p.is_active && ['free', 'standard', 'professional', 'multi_branch'].includes(p.plan_tier)) || [];
 
   const handlePlayVideo = () => {
     setIsVideoPlaying(true);
@@ -310,7 +305,7 @@ export default function MarketingHome() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {standardPlans.map((plan) => (
+            {allPlans.map((plan) => (
               <PricingCard
                 key={plan.name}
                 name={plan.name}
@@ -324,36 +319,6 @@ export default function MarketingHome() {
               />
             ))}
           </div>
-
-          {/* Multi-Branch Toggle */}
-          {multiBranchPlans.length > 0 && (
-            <div className="mt-8 max-w-6xl mx-auto">
-              <button
-                onClick={() => setShowMultiBranch(!showMultiBranch)}
-                className="flex items-center gap-2 mx-auto text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Building2 className="h-4 w-4" />
-                Multi-Branch Plans for Agencies
-                {showMultiBranch ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
-
-              {showMultiBranch && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6">
-                  {multiBranchPlans.map((plan) => (
-                    <PricingCard
-                      key={plan.name}
-                      name={plan.name}
-                      displayName={plan.display_name}
-                      price={plan.monthly_price_cents}
-                      features={plan.features as string[]}
-                      billingInterval={plan.billing_interval}
-                      currency={currency}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </section>
 

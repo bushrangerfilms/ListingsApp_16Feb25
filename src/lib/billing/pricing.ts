@@ -133,10 +133,59 @@ export const DEFAULT_PRICING = {
 } as const;
 
 /**
- * Get currency config for a locale
+ * Timezone → currency fallback when navigator.language doesn't match a known locale.
+ * Covers common cases where browser language is 'en-US' but user is physically elsewhere.
+ */
+const TIMEZONE_TO_CURRENCY: Record<string, SupportedCurrency> = {
+  'Europe/Dublin': 'EUR',
+  'Europe/London': 'GBP',
+  'America/New_York': 'USD',
+  'America/Chicago': 'USD',
+  'America/Denver': 'USD',
+  'America/Los_Angeles': 'USD',
+  'America/Toronto': 'CAD',
+  'America/Vancouver': 'CAD',
+  'America/Edmonton': 'CAD',
+  'America/Winnipeg': 'CAD',
+  'America/Halifax': 'CAD',
+  'Australia/Sydney': 'AUD',
+  'Australia/Melbourne': 'AUD',
+  'Australia/Brisbane': 'AUD',
+  'Australia/Perth': 'AUD',
+  'Australia/Adelaide': 'AUD',
+  'Australia/Hobart': 'AUD',
+  'Pacific/Auckland': 'NZD',
+};
+
+/**
+ * Get currency for a locale string.
+ * Checks navigator.languages array first, then falls back to timezone detection.
  */
 export function getCurrencyForLocale(locale: string): SupportedCurrency {
-  return (LOCALE_TO_CURRENCY as Record<string, SupportedCurrency>)[locale] || 'EUR';
+  // Direct match
+  const direct = (LOCALE_TO_CURRENCY as Record<string, SupportedCurrency>)[locale];
+  if (direct) return direct;
+
+  // Check all browser languages (navigator.languages) for a match
+  if (typeof navigator !== 'undefined' && navigator.languages) {
+    for (const lang of navigator.languages) {
+      const match = (LOCALE_TO_CURRENCY as Record<string, SupportedCurrency>)[lang];
+      if (match) return match;
+    }
+  }
+
+  // Timezone-based fallback
+  if (typeof Intl !== 'undefined') {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const tzMatch = TIMEZONE_TO_CURRENCY[tz];
+      if (tzMatch) return tzMatch;
+    } catch {
+      // ignore
+    }
+  }
+
+  return 'EUR';
 }
 
 /**
@@ -187,9 +236,19 @@ export function estimateGBPPrice(eurCents: number): number {
 }
 
 /**
+ * Round cents to nearest 500 (i.e. nearest 5 in whole currency units).
+ * e.g. 4320 → 4500 ($43.20 → $45), 7560 → 7500 ($75.60 → $75)
+ */
+function roundToNearest5(cents: number): number {
+  return Math.round(cents / 500) * 500;
+}
+
+/**
  * Convert EUR price to target currency (approximate conversion)
- * Used only for display estimates when target currency prices aren't set
+ * Used only for display estimates when target currency prices aren't set.
+ * Rounds to nearest 5 in whole currency units for clean display pricing.
  */
 export function estimatePrice(eurCents: number, toCurrency: SupportedCurrency): number {
-  return Math.round(eurCents * EUR_EXCHANGE_RATES[toCurrency]);
+  if (toCurrency === 'EUR') return eurCents;
+  return roundToNearest5(Math.round(eurCents * EUR_EXCHANGE_RATES[toCurrency]));
 }
