@@ -9,9 +9,16 @@ import { Check, ArrowRight, Building2, ChevronDown, ChevronUp } from 'lucide-rea
 import { getSignupUrl } from '@/lib/appUrls';
 import { useQuery } from '@tanstack/react-query';
 import { getPlanDefinitions } from '@/lib/billing/billingClient';
+import { formatPrice, getCurrencyForLocale, estimatePrice } from '@/lib/billing/pricing';
 
 export default function PricingPage() {
   const [showMultiBranch, setShowMultiBranch] = useState(false);
+
+  const browserLocale = typeof navigator !== 'undefined' ? navigator.language : 'en-IE';
+  const currency = getCurrencyForLocale(browserLocale);
+
+  const formatLocalPrice = (eurCents: number) =>
+    formatPrice(currency === 'EUR' ? eurCents : estimatePrice(eurCents, currency), currency);
 
   const { data: plans } = useQuery({
     queryKey: ['plan-definitions-pricing'],
@@ -60,7 +67,7 @@ export default function PricingPage() {
                         <span className="text-4xl font-bold">Free</span>
                       ) : (
                         <>
-                          <span className="text-4xl font-bold">&euro;{Math.round(plan.monthly_price_cents / 100)}</span>
+                          <span className="text-4xl font-bold">{formatLocalPrice(plan.monthly_price_cents)}</span>
                           <span className="text-muted-foreground">/{plan.billing_interval}</span>
                         </>
                       )}
@@ -120,7 +127,7 @@ export default function PricingPage() {
                         <CardTitle className="text-lg">{plan.display_name}</CardTitle>
                         <p className="text-sm text-muted-foreground">{plan.description}</p>
                         <div className="mt-4">
-                          <span className="text-4xl font-bold">&euro;{Math.round(plan.monthly_price_cents / 100)}</span>
+                          <span className="text-4xl font-bold">{formatLocalPrice(plan.monthly_price_cents)}</span>
                           <span className="text-muted-foreground">/{plan.billing_interval}</span>
                         </div>
                       </CardHeader>

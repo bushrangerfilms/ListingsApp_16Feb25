@@ -8,6 +8,7 @@ import { SEO } from '@/components/SEO';
 import { getSignupUrl } from '@/lib/appUrls';
 import { useQuery } from '@tanstack/react-query';
 import { getPlanDefinitions } from '@/lib/billing/billingClient';
+import { formatPrice, getCurrencyForLocale, estimatePrice, type SupportedCurrency } from '@/lib/billing/pricing';
 import {
   ArrowRight,
   Check,
@@ -26,7 +27,7 @@ import {
 const DEMO_VIDEO_URL = 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/pilot-program-demo.mp4';
 const DEMO_THUMBNAIL_URL = 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/video-thumbnail.png';
 
-function PricingCard({ name, displayName, price, features, isPopular, isFree, billingInterval }: {
+function PricingCard({ name, displayName, price, features, isPopular, isFree, billingInterval, currency }: {
   name: string;
   displayName: string;
   price: number;
@@ -34,6 +35,7 @@ function PricingCard({ name, displayName, price, features, isPopular, isFree, bi
   isPopular?: boolean;
   isFree?: boolean;
   billingInterval: string;
+  currency: SupportedCurrency;
 }) {
   return (
     <Card className={`relative flex flex-col ${isPopular ? 'border-primary shadow-lg scale-[1.02]' : ''}`}>
@@ -47,7 +49,7 @@ function PricingCard({ name, displayName, price, features, isPopular, isFree, bi
             <span className="text-4xl font-bold">Free</span>
           ) : (
             <>
-              <span className="text-4xl font-bold">&euro;{Math.round(price / 100)}</span>
+              <span className="text-4xl font-bold">{formatPrice(currency === 'EUR' ? price : estimatePrice(price, currency), currency)}</span>
               <span className="text-muted-foreground">/{billingInterval}</span>
             </>
           )}
@@ -79,6 +81,9 @@ export default function MarketingHome() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [showMultiBranch, setShowMultiBranch] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const browserLocale = typeof navigator !== 'undefined' ? navigator.language : 'en-IE';
+  const currency = getCurrencyForLocale(browserLocale);
 
   const { data: plans } = useQuery({
     queryKey: ['plan-definitions-marketing'],
@@ -147,7 +152,7 @@ export default function MarketingHome() {
       <section className="py-8 border-y bg-muted/30">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-muted-foreground">
-            Trusted by estate agents and auctioneers across Ireland
+            Trusted by estate agents worldwide
           </p>
         </div>
       </section>
@@ -216,7 +221,7 @@ export default function MarketingHome() {
                 Multiple styles — from cinematic slideshows to AI motion clips.
               </p>
               <ul className="space-y-2">
-                <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Multiple video styles to match your brand</li>
+                <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 2 video styles, carousels and image posts</li>
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Auto-generated captions and hashtags</li>
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 9:16 and 16:9 formats for every platform</li>
               </ul>
@@ -315,6 +320,7 @@ export default function MarketingHome() {
                 isPopular={plan.name === 'professional'}
                 isFree={plan.plan_tier === 'free'}
                 billingInterval={plan.billing_interval}
+                currency={currency}
               />
             ))}
           </div>
@@ -341,6 +347,7 @@ export default function MarketingHome() {
                       price={plan.monthly_price_cents}
                       features={plan.features as string[]}
                       billingInterval={plan.billing_interval}
+                      currency={currency}
                     />
                   ))}
                 </div>
@@ -394,7 +401,7 @@ export default function MarketingHome() {
           <div className="max-w-3xl mx-auto text-center space-y-8">
             <h2 className="text-3xl font-bold">Start Automating Your Social Media Today</h2>
             <p className="text-lg opacity-90">
-              Join estate agents across Ireland who are saving hours every week.
+              Join estate agents who are saving hours every week.
               Start free — no credit card required.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
