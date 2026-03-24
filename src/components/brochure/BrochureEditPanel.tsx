@@ -28,6 +28,7 @@ interface BrochureEditPanelProps {
   isSavingCertDefaults?: boolean;
   onSaveStyleDefaults?: () => void;
   isSavingStyleDefaults?: boolean;
+  orgLogoUrl?: string | null;
 }
 
 export function BrochureEditPanel({
@@ -45,6 +46,7 @@ export function BrochureEditPanel({
   isSavingCertDefaults,
   onSaveStyleDefaults,
   isSavingStyleDefaults,
+  orgLogoUrl,
 }: BrochureEditPanelProps) {
   const templateId = branding?.styleOptions?.templateId || 'classic-1';
 
@@ -128,6 +130,7 @@ export function BrochureEditPanel({
               onSaveAsDefaults={onSaveAsDefaults}
               isSavingDefaults={isSavingDefaults}
               orgId={orgId}
+              orgLogoUrl={orgLogoUrl}
             />
           )}
         </div>
