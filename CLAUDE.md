@@ -6,8 +6,9 @@ Real estate SaaS platform for agents and agencies. Handles listing ingestion, CR
 ## Status
 - Pilot phase — 2 active users on production
 - Shared Supabase project with the Socials app (single production instance — no staging)
-- Deployed on Replit; GitHub is the source of truth for code
+- Deployed on Railway (Docker); GitHub is the source of truth for code
 - App domain: `app.autolisting.io`
+- Railway project: "AutoListing Listings" — auto-deploys from `main` on push to GitHub
 
 ## Tech Stack
 
@@ -55,7 +56,7 @@ This app serves three different site types from one codebase — routing is dete
 | Domain | Type | What It Renders |
 |--------|------|----------------|
 | `autolisting.io`, `www.autolisting.io` | `marketing` | Marketing homepage, pricing, signup |
-| `app.autolisting.io`, `localhost`, `*.replit.dev` | `admin` | Full admin portal |
+| `app.autolisting.io`, `localhost`, `*.vercel.app`, `*.up.railway.app` | `admin` | Full admin portal |
 | Custom org domains | `org-public` | Public property listings for that org |
 
 Detection logic: `src/lib/domainDetection.ts` → `getDomainType()`
@@ -175,9 +176,9 @@ RLS policies enforce org isolation. All queries scoped by `organization_id`.
 
 ## Git Workflow
 
-- `main` — always deployable, synced to Replit. **Never commit directly to main.**
+- `main` — always deployable, synced to Railway. **Never commit directly to main.**
 - Every task gets its own branch: `feature/description`, `fix/description`, `chore/description`
-- Push branch → open PR on GitHub → review → merge to main → Replit auto-deploys
+- Push branch → open PR on GitHub → review → merge to main → Railway auto-deploys
 - **To roll back:** Go to GitHub → Pull requests → Closed → find the PR → click Revert → merge the revert PR. Every merged PR is a restore point.
 
 ## Coding Conventions
