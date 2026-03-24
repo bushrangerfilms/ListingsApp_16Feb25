@@ -9,13 +9,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { getCreditBalance, getBillingProfile, CREDIT_COSTS } from '@/lib/billing/billingClient';
+import { getCreditBalance, getBillingProfile, getPlanDefinitions, CREDIT_COSTS } from '@/lib/billing/billingClient';
 import { AccountStatusBanner } from '@/components/billing/AccountStatusBanner';
 import { TrialCountdown } from '@/components/billing/TrialCountdown';
 import { useLocale } from '@/hooks/useLocale';
-import { 
+import {
   getTrialDaysRemaining,
-  type AccountStatus 
+  type AccountStatus,
+  type PlanDefinition,
 } from '@/lib/billing/types';
 import {
   CreditCard,
@@ -30,32 +31,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-interface PlanConfig {
-  name: string;
-  priceEur: number;
-  monthlyCredits: number;
-  maxUsers: number;
-  featureKeys: string[];
-  popular?: boolean;
-}
-
-const PLAN_CONFIGS: PlanConfig[] = [
-  {
-    name: 'starter',
-    priceEur: 29,
-    monthlyCredits: 200,
-    maxUsers: 1,
-    featureKeys: ['allPlatform', 'credits', 'users'],
-  },
-  {
-    name: 'pro',
-    priceEur: 79,
-    monthlyCredits: 500,
-    maxUsers: 10,
-    featureKeys: ['allPlatform', 'credits', 'users', 'priority'],
-    popular: true,
-  },
-];
+// Plans are fetched dynamically from plan_definitions table
 
 function getAccountStatusLabelTranslated(status: AccountStatus, t: (key: string) => string): string {
   const labels: Record<AccountStatus, string> = {
@@ -95,6 +71,17 @@ export default function ManageSubscription() {
     enabled: !!currentOrganization?.id,
   });
 
+  const { data: planDefinitions } = useQuery({
+    queryKey: ['plan-definitions-manage'],
+    queryFn: getPlanDefinitions,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Filter to active paid plans (exclude free), sorted by display_order
+  const availablePlans = (planDefinitions || []).filter(
+    (p: PlanDefinition) => p.is_active && p.name !== 'free' && ['standard', 'professional'].includes(p.plan_tier)
+  );
+
   const handleSubscribe = async (planName: string) => {
     if (!currentOrganization?.id) {
       toast.error(t('billing.manage.organizationNotFound'));
@@ -121,6 +108,7 @@ export default function ManageSubscription() {
           body: JSON.stringify({
             organizationId: currentOrganization.id,
             planName: planName,
+            mode: 'subscription',
             successUrl: `${window.location.origin}/admin/billing/manage?success=true`,
             cancelUrl: `${window.location.origin}/admin/billing/manage?canceled=true`,
           }),
@@ -196,15 +184,23 @@ export default function ManageSubscription() {
     });
   };
 
-  const getPlanDetails = (planName: string | null | undefined) => {
-    if (planName === 'pro') {
-      return { name: 'Pro', price: 79, credits: 500, users: 10 };
+  const getCurrentPlanDetails = (subPlan: string | null | undefined) => {
+    const match = (planDefinitions || []).find((p: PlanDefinition) => p.name === subPlan);
+    if (match) {
+      return {
+        name: match.display_name,
+        price: match.monthly_price_cents / 100,
+        interval: match.billing_interval,
+        credits: match.monthly_credits,
+        users: match.max_users,
+        listings: match.max_listings,
+      };
     }
-    return { name: 'Starter', price: 29, credits: 200, users: 1 };
+    return { name: subPlan || 'Free', price: 0, interval: 'week', credits: 0, users: 1, listings: 3 };
   };
 
   const isLoading = isLoadingProfile || isLoadingCredits;
-  const plan = getPlanDetails(billingProfile?.subscription_plan);
+  const plan = getCurrentPlanDetails(billingProfile?.subscription_plan);
   const balance = creditBalance || 0;
 
   const accountStatus = (currentOrganization?.account_status || 'trial') as AccountStatus;
@@ -248,50 +244,51 @@ export default function ManageSubscription() {
             )}
           </div>
           
-          <div className="grid md:grid-cols-2 gap-4">
-            {PLAN_CONFIGS.map((planConfig) => {
-              const planName = t(`billing.plans.${planConfig.name}.name`);
-              const planDescription = t(`billing.plans.${planConfig.name}.description`);
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {availablePlans.map((planDef: PlanDefinition) => {
+              const isPopular = planDef.name === 'growth';
+              const priceDisplay = formatCurrency(planDef.monthly_price_cents / 100);
+
               return (
-                <Card 
-                  key={planConfig.name}
-                  className={`relative ${planConfig.popular ? 'border-primary' : ''}`}
-                  data-testid={`card-plan-${planConfig.name}`}
+                <Card
+                  key={planDef.name}
+                  className={`relative ${isPopular ? 'border-primary' : ''}`}
+                  data-testid={`card-plan-${planDef.name}`}
                 >
-                  {planConfig.popular && (
+                  {isPopular && (
                     <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
                       {t('billing.manage.mostPopular')}
                     </Badge>
                   )}
                   <CardHeader>
-                    <CardTitle>{planName}</CardTitle>
-                    <CardDescription>{planDescription}</CardDescription>
+                    <CardTitle>{planDef.display_name}</CardTitle>
+                    <CardDescription>{planDef.description}</CardDescription>
                     <div className="mt-2">
-                      <span className="text-3xl font-bold">{formatCurrency(planConfig.priceEur)}</span>
-                      <span className="text-muted-foreground">{t('billing.manage.perMonth')}</span>
+                      <span className="text-3xl font-bold">{priceDisplay}</span>
+                      <span className="text-muted-foreground">/{planDef.billing_interval}</span>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <ul className="space-y-2">
-                      {planConfig.featureKeys.map((featureKey, i) => (
+                      {(planDef.features as string[]).map((feature, i) => (
                         <li key={i} className="flex items-center gap-2 text-sm">
                           <Check className="w-4 h-4 text-green-500 shrink-0" />
-                          <span>{t(`billing.plans.${planConfig.name}.features.${featureKey}`)}</span>
+                          <span>{feature}</span>
                         </li>
                       ))}
                     </ul>
                     <Button
                       className="w-full"
-                      variant={planConfig.popular ? 'default' : 'outline'}
-                      onClick={() => handleSubscribe(planConfig.name)}
+                      variant={isPopular ? 'default' : 'outline'}
+                      onClick={() => handleSubscribe(planDef.name)}
                       disabled={isLoadingCheckout !== null}
-                      data-testid={`button-subscribe-${planConfig.name}`}
+                      data-testid={`button-subscribe-${planDef.name}`}
                     >
-                      {isLoadingCheckout === planConfig.name ? (
+                      {isLoadingCheckout === planDef.name ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <>
-                          {t('billing.manage.subscribeTo', { plan: planName })}
+                          {t('billing.manage.subscribeTo', { plan: planDef.display_name })}
                           <Sparkles className="w-4 h-4 ml-2" />
                         </>
                       )}
@@ -345,14 +342,14 @@ export default function ManageSubscription() {
                 <Separator />
 
                 <div className="flex flex-col gap-2">
-                  {billingProfile?.subscription_plan === 'starter' && (
+                  {billingProfile?.subscription_plan && billingProfile.subscription_plan !== 'professional' && (
                     <Button
                       onClick={() => navigate('/admin/billing/upgrade')}
                       className="gap-2"
                       data-testid="button-upgrade-plan"
                     >
                       <ArrowUpRight className="w-4 h-4" />
-                      {t('billing.team.upgradeToPro')}
+                      {t('billing.manage.upgradePlan')}
                     </Button>
                   )}
                   

@@ -8,10 +8,10 @@ const corsHeaders = {
 };
 
 interface CheckoutRequest {
-  priceId: string;
-  mode: 'subscription' | 'payment';
+  priceId?: string;
+  planName?: string;
+  mode?: 'subscription' | 'payment';
   organizationId: string;
-  planName?: 'starter' | 'pro';
   successUrl?: string;
   cancelUrl?: string;
 }
@@ -54,14 +54,7 @@ serve(async (req) => {
     }
 
     const body: CheckoutRequest = await req.json();
-    const { priceId, mode, organizationId: requestedOrgId, planName, successUrl, cancelUrl } = body;
-
-    if (!priceId) {
-      return new Response(
-        JSON.stringify({ error: 'priceId is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    let { priceId, planName, mode, organizationId: requestedOrgId, successUrl, cancelUrl } = body;
 
     if (!requestedOrgId) {
       return new Response(
@@ -69,6 +62,46 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // If planName provided without priceId, look up the Stripe price from plan_definitions
+    if (!priceId && planName) {
+      const { data: planDef, error: planError } = await supabase
+        .from('plan_definitions')
+        .select('stripe_monthly_price_id, name')
+        .eq('name', planName)
+        .eq('is_active', true)
+        .single();
+
+      if (planError || !planDef) {
+        console.error('Plan not found:', planName, planError);
+        return new Response(
+          JSON.stringify({ error: `Plan '${planName}' not found` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!planDef.stripe_monthly_price_id) {
+        console.error('Plan has no Stripe price configured:', planName);
+        return new Response(
+          JSON.stringify({ error: `Plan '${planName}' is not yet available for purchase` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      priceId = planDef.stripe_monthly_price_id;
+      mode = mode || 'subscription';
+      console.log(`[STRIPE] Resolved plan '${planName}' to price ${priceId}`);
+    }
+
+    if (!priceId) {
+      return new Response(
+        JSON.stringify({ error: 'Either priceId or planName is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Default mode to subscription
+    mode = mode || 'subscription';
 
     const { data: membershipData, error: membershipError } = await supabase
       .from('user_organizations')
@@ -88,6 +121,7 @@ serve(async (req) => {
     const targetOrgId = membershipData.organization_id;
     const organization = membershipData.organizations as { id: string; business_name: string; slug: string };
 
+    // Validate the price exists in our system
     if (mode === 'payment') {
       const { data: creditPack, error: packError } = await supabase
         .from('credit_packs')
@@ -104,13 +138,14 @@ serve(async (req) => {
         );
       }
     } else if (mode === 'subscription') {
+      // Validate price exists in plan_definitions (check both column names for compatibility)
       const { data: planDef, error: planError } = await supabase
         .from('plan_definitions')
-        .select('stripe_price_id, name')
-        .eq('stripe_price_id', priceId)
+        .select('stripe_monthly_price_id, name')
+        .eq('stripe_monthly_price_id', priceId)
         .eq('is_active', true)
         .single();
-      
+
       if (planError || !planDef) {
         console.error('Invalid subscription price ID:', priceId);
         return new Response(
@@ -118,7 +153,12 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      
+
+      // Use the plan name from the DB if not provided
+      if (!planName) {
+        planName = planDef.name;
+      }
+
       console.log(`[STRIPE] Valid subscription plan: ${planDef.name}`);
     }
 
@@ -167,32 +207,34 @@ serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
-      payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
       mode: checkoutMode,
-      success_url: successUrl || `${baseUrl}/billing?success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${baseUrl}/billing?canceled=true`,
+      automatic_tax: { enabled: true },
+      allow_promotion_codes: true,
+      billing_address_collection: 'required',
+      success_url: successUrl || `${baseUrl}/admin/billing/manage?success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${baseUrl}/admin/billing/manage?canceled=true`,
       metadata: {
         organization_id: targetOrgId,
         organization_slug: organization.slug,
         user_id: user.id,
-        plan_name: planName || 'starter',
+        plan_name: planName || '',
       },
       ...(checkoutMode === 'subscription' ? {
         subscription_data: {
           metadata: {
             organization_id: targetOrgId,
             organization_slug: organization.slug,
-            plan_name: planName || 'starter',
+            plan_name: planName || '',
           },
         },
       } : {}),
     });
 
-    console.log(`[STRIPE] Created checkout session ${session.id} for org ${targetOrgId}`);
+    console.log(`[STRIPE] Created checkout session ${session.id} for org ${targetOrgId} (plan: ${planName || 'credit_pack'})`);
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         url: session.url,
         sessionId: session.id,
       }),

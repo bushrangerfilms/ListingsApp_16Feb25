@@ -154,21 +154,34 @@ export type FeatureType =
   | 'property_extraction'
   | 'email_send';
 
-export type PlanName = 'starter' | 'pro';
+export type PlanName = 'free' | 'essentials' | 'growth' | 'professional' | 'multi_branch_s' | 'multi_branch_m' | 'multi_branch_l';
+
+export type PlanTier = 'free' | 'standard' | 'professional' | 'multi_branch';
 
 export interface PlanDefinition {
   id: string;
-  name: PlanName;
+  name: string;
   display_name: string;
   description?: string;
-  price_cents: number;
-  currency: string;
-  billing_interval: 'month' | 'year';
+  monthly_price_cents: number;
+  annual_price_cents?: number;
+  billing_interval: 'week' | 'month' | 'year';
+  plan_tier: PlanTier;
   monthly_credits: number;
+  included_credits?: number;
   max_users: number;
-  stripe_product_id?: string;
-  stripe_price_id?: string;
+  max_listings?: number;
+  max_social_hubs?: number;
+  max_posts_per_listing_per_week?: number;
+  max_lead_magnets_per_week?: number;
+  max_crm_contacts?: number;
+  max_email_campaigns_per_month?: number;
+  has_watermark?: boolean;
+  allowed_video_styles?: string[];
+  stripe_monthly_price_id?: string;
+  stripe_annual_price_id?: string;
   features: string[];
+  limits?: Record<string, any>;
   is_active: boolean;
   display_order: number;
   metadata?: Record<string, any>;
