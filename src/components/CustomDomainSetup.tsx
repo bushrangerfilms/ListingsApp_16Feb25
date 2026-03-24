@@ -16,7 +16,9 @@ interface CustomDomainSetupProps {
   onDomainChange: (domain: string) => void;
 }
 
-const REPLIT_IP = "34.111.179.208";
+// Railway CNAME target is stored per-org in custom_domain_cname_target column
+// This is a fallback for display purposes only
+const RAILWAY_CNAME_EXAMPLE = "xxxxx.up.railway.app";
 
 export function CustomDomainSetup({ 
   organizationId, 
@@ -111,16 +113,17 @@ export function CustomDomainSetup({
             <hr />
             <h3>Admin Instructions:</h3>
             <ol>
-              <li>Go to Replit Deployments → Settings → Link a domain</li>
-              <li>Enter: <strong>${currentDomain}</strong></li>
-              <li>Copy the TXT verification record that Replit generates</li>
-              <li>Reply to the client with the DNS records:
+              <li>Add domain in Railway dashboard for the Listings service</li>
+              <li>Copy the CNAME target Railway provides</li>
+              <li>Store the CNAME target in organizations.custom_domain_cname_target</li>
+              <li>Store the verification token in organizations.custom_domain_verification_token</li>
+              <li>Reply to the client with DNS records:
                 <ul>
-                  <li>A record: @ → ${REPLIT_IP}</li>
-                  <li>TXT record: @ → [paste verification code]</li>
+                  <li>CNAME record: @ → [CNAME from Railway]</li>
+                  <li>TXT record: _railway-verify → [verification token]</li>
                 </ul>
               </li>
-              <li>Once client confirms DNS is set up, click "Link" in Replit to verify</li>
+              <li>Once DNS propagates, Railway auto-issues SSL cert</li>
             </ol>
           `,
         },
@@ -327,26 +330,15 @@ export function CustomDomainSetup({
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-4 p-3 bg-background rounded-md">
                   <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">A Record</p>
-                    <p className="font-mono text-sm">@ → {REPLIT_IP}</p>
+                    <p className="text-xs text-muted-foreground">CNAME Record</p>
+                    <p className="font-mono text-sm">@ → <span className="text-muted-foreground">[check email for Railway CNAME target]</span></p>
                   </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleCopy(REPLIT_IP, 'IP Address')}
-                  >
-                    {copiedField === 'IP Address' ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
                 </div>
 
                 <div className="flex items-center justify-between gap-4 p-3 bg-background rounded-md">
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">TXT Record (from email)</p>
-                    <p className="font-mono text-sm">@ → replit-verify=<span className="text-muted-foreground">[check email]</span></p>
+                    <p className="font-mono text-sm">_railway-verify → <span className="text-muted-foreground">[check email]</span></p>
                   </div>
                 </div>
               </div>
@@ -354,9 +346,10 @@ export function CustomDomainSetup({
               <div className="text-sm space-y-2 pt-2 border-t">
                 <p className="font-medium">Important:</p>
                 <ul className="text-muted-foreground space-y-1 list-disc pl-5">
-                  <li>Set proxy status to "DNS only" (gray cloud) in Cloudflare</li>
                   <li>Remove any existing A or AAAA records for this domain</li>
+                  <li>If using Cloudflare, set proxy to "DNS only" (gray cloud)</li>
                   <li>DNS changes can take up to 48 hours to propagate</li>
+                  <li>SSL certificate is auto-provisioned by Railway once DNS is verified</li>
                 </ul>
               </div>
             </div>
