@@ -1,19 +1,16 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MarketingLayout } from '@/components/marketing/MarketingLayout';
 import { SEO } from '@/components/SEO';
-import { Check, ArrowRight, Building2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, ArrowRight } from 'lucide-react';
 import { getSignupUrl } from '@/lib/appUrls';
 import { useQuery } from '@tanstack/react-query';
 import { getPlanDefinitions } from '@/lib/billing/billingClient';
 import { formatPrice, getCurrencyForLocale, estimatePrice } from '@/lib/billing/pricing';
 
 export default function PricingPage() {
-  const [showMultiBranch, setShowMultiBranch] = useState(false);
-
   const browserLocale = typeof navigator !== 'undefined' ? navigator.language : 'en-IE';
   const currency = getCurrencyForLocale(browserLocale);
 
@@ -26,8 +23,7 @@ export default function PricingPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const standardPlans = plans?.filter(p => p.is_active && ['free', 'standard', 'professional'].includes(p.plan_tier)) || [];
-  const multiBranchPlans = plans?.filter(p => p.is_active && p.plan_tier === 'multi_branch') || [];
+  const allPlans = plans?.filter(p => p.is_active && ['free', 'standard', 'professional', 'multi_branch'].includes(p.plan_tier)) || [];
 
   return (
     <MarketingLayout>
@@ -50,7 +46,7 @@ export default function PricingPage() {
       <section className="pb-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {standardPlans.map((plan) => {
+            {allPlans.map((plan) => {
               const isFree = plan.plan_tier === 'free';
               const isPopular = plan.name === 'professional';
 
@@ -98,63 +94,6 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
-
-      {/* Multi-Branch Plans */}
-      {multiBranchPlans.length > 0 && (
-        <section className="pb-20">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="max-w-6xl mx-auto">
-              <button
-                onClick={() => setShowMultiBranch(!showMultiBranch)}
-                className="flex items-center gap-2 mx-auto text-base font-semibold hover:text-primary transition-colors mb-4"
-              >
-                <Building2 className="h-5 w-5" />
-                Multi-Branch Plans for Agencies
-                {showMultiBranch ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
-
-              {!showMultiBranch && (
-                <p className="text-center text-sm text-muted-foreground">
-                  For agencies with multiple offices — each branch gets its own social accounts and posting schedules
-                </p>
-              )}
-
-              {showMultiBranch && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6">
-                  {multiBranchPlans.map((plan) => (
-                    <Card key={plan.name} className="flex flex-col">
-                      <CardHeader className="text-center pb-2">
-                        <CardTitle className="text-lg">{plan.display_name}</CardTitle>
-                        <p className="text-sm text-muted-foreground">{plan.description}</p>
-                        <div className="mt-4">
-                          <span className="text-4xl font-bold">{formatLocalPrice(plan.monthly_price_cents)}</span>
-                          <span className="text-muted-foreground">/{plan.billing_interval}</span>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="flex-1 flex flex-col">
-                        <ul className="space-y-2 flex-1">
-                          {(plan.features as string[]).map((f, i) => (
-                            <li key={i} className="flex items-start gap-2 text-sm">
-                              <Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                              <span>{f}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <a href={getSignupUrl()} className="mt-6 block">
-                          <Button className="w-full" variant="outline">
-                            Get {plan.display_name}
-                            <ArrowRight className="w-4 h-4 ml-2" />
-                          </Button>
-                        </a>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* FAQ */}
       <section className="py-20 bg-muted/50">
