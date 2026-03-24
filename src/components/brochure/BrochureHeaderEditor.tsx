@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Upload, X, Loader2, Save } from 'lucide-react';
+import { Upload, X, Loader2, Save, RotateCcw } from 'lucide-react';
 import type { BrochureBranding } from '@/lib/brochure/types';
 import { uploadOrganizationLogo } from '@/lib/organizationHelpers';
 
@@ -13,6 +13,7 @@ interface BrochureHeaderEditorProps {
   onSaveAsDefaults: () => void;
   isSavingDefaults?: boolean;
   orgId: string;
+  orgLogoUrl?: string | null;
 }
 
 export function BrochureHeaderEditor({
@@ -21,6 +22,7 @@ export function BrochureHeaderEditor({
   onSaveAsDefaults,
   isSavingDefaults = false,
   orgId,
+  orgLogoUrl,
 }: BrochureHeaderEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -150,6 +152,18 @@ export function BrochureHeaderEditor({
             onChange={handleLogoUpload}
           />
         </div>
+        {orgLogoUrl && branding.logoUrl !== orgLogoUrl && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground mt-1"
+            onClick={() => update('logoUrl', orgLogoUrl)}
+          >
+            <RotateCcw className="h-3 w-3 mr-1" />
+            Revert to org logo
+          </Button>
+        )}
       </div>
 
       {/* Save as org defaults */}

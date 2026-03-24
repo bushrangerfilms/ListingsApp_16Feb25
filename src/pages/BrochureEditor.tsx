@@ -501,6 +501,7 @@ export default function BrochureEditor() {
             isSavingCertDefaults={isSavingCertDefaults}
             onSaveStyleDefaults={handleSaveStyleDefaults}
             isSavingStyleDefaults={isSavingStyleDefaults}
+            orgLogoUrl={organization?.logo_url}
           />
         </div>
 
