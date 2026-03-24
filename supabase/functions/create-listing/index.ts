@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { reportToSentry } from '../_shared/sentry-report.ts';
+import { checkPlanLimit } from '../_shared/check-plan-limits.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -131,6 +132,22 @@ serve(async (req) => {
     }
 
     console.log('[ORG] Using organization ID:', organizationId);
+
+    // Check plan limits before creating listing
+    const planCheck = await checkPlanLimit(supabase, organizationId, 'listing');
+    if (!planCheck.allowed) {
+      console.log('[PLAN] Listing limit exceeded:', planCheck);
+      return new Response(
+        JSON.stringify({
+          error: 'plan_limit_exceeded',
+          message: `You've reached your plan's listing limit (${planCheck.currentCount}/${planCheck.maxAllowed})`,
+          currentCount: planCheck.currentCount,
+          maxAllowed: planCheck.maxAllowed,
+          planName: planCheck.planName,
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const today = new Date().toISOString().split('T')[0];
     const status = listingData.markAsNew ? 'New' : 'Published';

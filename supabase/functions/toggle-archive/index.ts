@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { checkPlanLimit } from '../_shared/check-plan-limits.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -72,6 +73,24 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Listing not found or access denied' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check plan limits when unarchiving (archived === false means "set to not archived")
+    if (!archived) {
+      const planCheck = await checkPlanLimit(supabase, orgData.id, 'listing');
+      if (!planCheck.allowed) {
+        console.log('[PLAN] Listing limit exceeded on unarchive:', planCheck);
+        return new Response(
+          JSON.stringify({
+            error: 'plan_limit_exceeded',
+            message: `You've reached your plan's listing limit (${planCheck.currentCount}/${planCheck.maxAllowed})`,
+            currentCount: planCheck.currentCount,
+            maxAllowed: planCheck.maxAllowed,
+            planName: planCheck.planName,
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Update using the same identifier that was used to find the record
