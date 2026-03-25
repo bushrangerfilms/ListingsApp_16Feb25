@@ -174,11 +174,15 @@ RLS policies enforce org isolation. All queries scoped by `organization_id`.
 - 90+ migration files — historical, many superseded by later migrations
 - No test files — project relies on manual/E2E testing
 
-## Git Workflow
+## Git & Deploy Workflow
 
 - `main` — always deployable, synced to Railway. **Never commit directly to main.**
 - Every task gets its own branch: `feature/description`, `fix/description`, `chore/description`
-- Push branch → open PR on GitHub → review → merge to main → Railway auto-deploys
+- **Full deploy flow (automate all steps):**
+  1. Push branch → open PR → squash-merge to `main`
+  2. Check Railway deploy status via GraphQL API (auto-deploy webhook is unreliable)
+  3. If no new deploy triggered, fire `serviceInstanceRedeploy` mutation (see `memory/railway-deployment.md` for IDs)
+  4. Poll deployment status until `SUCCESS` or report failure
 - **To roll back:** Go to GitHub → Pull requests → Closed → find the PR → click Revert → merge the revert PR. Every merged PR is a restore point.
 
 ## Coding Conventions
