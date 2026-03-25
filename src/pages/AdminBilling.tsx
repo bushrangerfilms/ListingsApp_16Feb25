@@ -12,48 +12,37 @@ import { PurchaseCreditsModal } from '@/components/billing/PurchaseCreditsModal'
 import { BillingHistoryTable } from '@/components/billing/BillingHistoryTable';
 import { UsageAnalyticsDashboard } from '@/components/billing/UsageAnalyticsDashboard';
 import { AccountStatusBanner } from '@/components/billing/AccountStatusBanner';
-import { getCreditBalance, getUsageRates, getBillingProfile } from '@/lib/billing/billingClient';
+import { getCreditBalance, getUsageRates, getBillingProfile, getPlanDefinitions } from '@/lib/billing/billingClient';
 import { getBalanceStatus, getBalanceColor, getTrialDaysRemaining, type AccountStatus } from '@/lib/billing/types';
+import { formatPrice, estimatePrice, type SupportedCurrency } from '@/lib/billing/pricing';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useLocale } from '@/hooks/useLocale';
 import { supabase } from '@/integrations/supabase/client';
 
-interface PlanConfig {
-  name: string;
-  priceEur: number;
-  monthlyCredits: number;
-  maxUsers: number;
-  features: string[];
-  popular?: boolean;
-}
-
-const PLAN_CONFIGS: PlanConfig[] = [
-  {
-    name: 'starter',
-    priceEur: 29,
-    monthlyCredits: 200,
-    maxUsers: 1,
-    features: ['All platform features', '200 credits/month', '1 user'],
-  },
-  {
-    name: 'pro',
-    priceEur: 79,
-    monthlyCredits: 500,
-    maxUsers: 10,
-    features: ['All platform features', '500 credits/month', 'Up to 10 users', 'Priority support'],
-    popular: true,
-  },
-];
-
 export default function AdminBilling() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { organization } = useOrganization();
-  const { t, formatCurrency } = useLocale();
+  const { t, formatCurrency, currency: detectedCurrency } = useLocale();
+  const currency = detectedCurrency as SupportedCurrency;
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [isLoadingCheckout, setIsLoadingCheckout] = useState<string | null>(null);
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
+
+  const formatLocalPrice = (eurCents: number) =>
+    formatPrice(currency === 'EUR' ? eurCents : estimatePrice(eurCents, currency), currency);
+
+  const { data: planDefinitions } = useQuery({
+    queryKey: ['plan-definitions-billing'],
+    queryFn: getPlanDefinitions,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Filter to active paid plans (exclude free), matching the marketing page tiers
+  const availablePlans = planDefinitions?.filter(p =>
+    p.is_active && ['standard', 'professional'].includes(p.plan_tier)
+  ) || [];
 
   const { data: balance, isLoading: balanceLoading } = useQuery({
     queryKey: ['/api/billing/balance', organization?.id],
@@ -240,56 +229,57 @@ export default function AdminBilling() {
             )}
           </div>
           
-          <div className="grid md:grid-cols-2 gap-4">
-            {PLAN_CONFIGS.map((planConfig) => (
-              <Card 
-                key={planConfig.name}
-                className={`relative ${planConfig.popular ? 'border-primary' : ''}`}
-                data-testid={`card-plan-${planConfig.name}`}
-              >
-                {planConfig.popular && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    Most Popular
-                  </Badge>
-                )}
-                <CardHeader>
-                  <CardTitle className="capitalize">{planConfig.name}</CardTitle>
-                  <CardDescription>
-                    {planConfig.name === 'starter' ? 'Perfect for solo agents' : 'For growing teams'}
-                  </CardDescription>
-                  <div className="mt-2">
-                    <span className="text-3xl font-bold">{formatCurrency(planConfig.priceEur)}</span>
-                    <span className="text-muted-foreground">/month</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2">
-                    {planConfig.features.map((feature, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm">
-                        <Check className="w-4 h-4 text-green-500 shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className="w-full"
-                    variant={planConfig.popular ? 'default' : 'outline'}
-                    onClick={() => handleSubscribe(planConfig.name)}
-                    disabled={isLoadingCheckout !== null}
-                    data-testid={`button-subscribe-${planConfig.name}`}
-                  >
-                    {isLoadingCheckout === planConfig.name ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        Subscribe to {planConfig.name.charAt(0).toUpperCase() + planConfig.name.slice(1)}
-                        <Sparkles className="w-4 h-4 ml-2" />
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+          <div className={`grid gap-4 ${availablePlans.length <= 2 ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-' + Math.min(availablePlans.length, 4)}`}>
+            {availablePlans.map((plan) => {
+              const isPopular = plan.name === 'professional';
+              return (
+                <Card
+                  key={plan.name}
+                  className={`relative ${isPopular ? 'border-primary' : ''}`}
+                  data-testid={`card-plan-${plan.name}`}
+                >
+                  {isPopular && (
+                    <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      Most Popular
+                    </Badge>
+                  )}
+                  <CardHeader>
+                    <CardTitle>{plan.display_name}</CardTitle>
+                    <CardDescription>{plan.description}</CardDescription>
+                    <div className="mt-2">
+                      <span className="text-3xl font-bold">{formatLocalPrice(plan.monthly_price_cents)}</span>
+                      <span className="text-muted-foreground">/{plan.billing_interval}</span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <ul className="space-y-2">
+                      {(plan.features as string[]).map((feature, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm">
+                          <Check className="w-4 h-4 text-green-500 shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      className="w-full"
+                      variant={isPopular ? 'default' : 'outline'}
+                      onClick={() => handleSubscribe(plan.name)}
+                      disabled={isLoadingCheckout !== null}
+                      data-testid={`button-subscribe-${plan.name}`}
+                    >
+                      {isLoadingCheckout === plan.name ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          Subscribe to {plan.display_name}
+                          <Sparkles className="w-4 h-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}
@@ -302,11 +292,16 @@ export default function AdminBilling() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold capitalize">
-              {hasActiveSubscription ? currentPlan : isOnTrial ? 'Free Trial' : 'No Plan'}
+              {hasActiveSubscription
+                ? (planDefinitions?.find(p => p.name === currentPlan)?.display_name || currentPlan)
+                : isOnTrial ? 'Free Trial' : 'No Plan'}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {hasActiveSubscription 
-                ? `${formatCurrency(currentPlan === 'pro' ? 79 : 29)}/month`
+              {hasActiveSubscription
+                ? (() => {
+                    const plan = planDefinitions?.find(p => p.name === currentPlan);
+                    return plan ? `${formatLocalPrice(plan.monthly_price_cents)}/${plan.billing_interval}` : '';
+                  })()
                 : isOnTrial && organization?.trial_ends_at
                   ? `${getTrialDaysRemaining(organization.trial_ends_at) || 0} days remaining`
                   : 'Subscribe to get started'}
