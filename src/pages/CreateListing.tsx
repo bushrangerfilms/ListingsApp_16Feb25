@@ -113,15 +113,6 @@ const CreateListing = () => {
   }, [location.state, form]);
 
   const onSubmit = async (data: ListingFormData) => {
-    if (photos.length === 0) {
-      toast({
-        title: t('listings.toast.photosRequired'),
-        description: t('listings.toast.pleaseUploadPhoto'),
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Store form data and navigate to review page
     const formDataToStore = {
       ...data,
@@ -1005,7 +996,7 @@ const CreateListing = () => {
                   return (
                     <FormItem>
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <FormLabel>{t('listings.create.details.description')}</FormLabel>
+                        <FormLabel className="text-base font-semibold">{t('listings.create.details.description')}</FormLabel>
                         <Button
                           type="button"
                           variant="outline"

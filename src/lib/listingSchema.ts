@@ -96,7 +96,6 @@ export const listingSchema = z.object({
     .or(z.literal("")),
   
   photos: z.array(z.instanceof(File))
-    .min(1, "At least 1 photo is required")
     .max(70, "Maximum 70 photos allowed"),
   
   heroPhotoIndex: z.number()

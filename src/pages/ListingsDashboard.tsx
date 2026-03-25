@@ -617,6 +617,11 @@ const ListingsDashboard = () => {
               <TabsTrigger value="Sold" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
                 {t('listings.status.sold')} <span className="ml-1">({getFilterCount("Sold")})</span>
               </TabsTrigger>
+              {getFilterCount("Draft") > 0 && (
+                <TabsTrigger value="Draft" className="text-xs sm:text-sm px-2 sm:px-3 py-1.5 whitespace-nowrap">
+                  Draft <span className="ml-1">({getFilterCount("Draft")})</span>
+                </TabsTrigger>
+              )}
             </TabsList>
           </Tabs>
         ) : (

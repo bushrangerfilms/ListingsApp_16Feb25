@@ -150,7 +150,7 @@ serve(async (req) => {
     }
 
     const today = new Date().toISOString().split('T')[0];
-    const status = listingData.markAsNew ? 'New' : 'Published';
+    const status = listingData.isDraft ? 'Draft' : (listingData.markAsNew ? 'New' : 'Published');
 
     // STEP 1: Write to Supabase FIRST (primary source of truth)
     console.log('[SUPABASE] Inserting listing into Supabase...');
@@ -185,7 +185,7 @@ serve(async (req) => {
         status,
         status_changed_date: today,
         new_status_set_date: listingData.markAsNew ? today : null,
-        date_posted: new Date().toISOString(),
+        date_posted: listingData.isDraft ? null : new Date().toISOString(),
         archived: false,
       })
       .select()
