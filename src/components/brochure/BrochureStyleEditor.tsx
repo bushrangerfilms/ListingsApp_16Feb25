@@ -136,7 +136,7 @@ export function BrochureStyleEditor({ branding, onChange, onSaveAsDefaults, isSa
         <div>
           <Label className="text-xs font-medium">Page Format</Label>
           <p className="text-[10px] text-muted-foreground">
-            {opts.pageFormat === 'a5' ? 'Booklet (folds from a single sheet)' : 'A4 full page (standard)'}
+            {opts.pageFormat === 'a5' ? 'Standard — print on A3, fold to A4 booklet' : '4 separate A4 pages'}
           </p>
         </div>
         <div className="flex gap-1">
@@ -144,13 +144,13 @@ export function BrochureStyleEditor({ branding, onChange, onSaveAsDefaults, isSa
             className={`text-xs px-2.5 py-1 rounded ${opts.pageFormat !== 'a5' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
             onClick={() => update({ pageFormat: 'a4' })}
           >
-            A4
+            Full Page
           </button>
           <button
             className={`text-xs px-2.5 py-1 rounded ${opts.pageFormat === 'a5' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
             onClick={() => update({ pageFormat: 'a5' })}
           >
-            Booklet
+            Folded Booklet
           </button>
         </div>
       </div>
