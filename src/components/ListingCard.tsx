@@ -78,6 +78,8 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
         return 'bg-orange-500/10 text-orange-700 border-orange-500/20';
       case 'Sold':
         return 'bg-red-500/10 text-red-700 border-red-500/20';
+      case 'Draft':
+        return 'bg-gray-500/10 text-gray-700 border-gray-500/20';
       default:
         return 'bg-muted text-muted-foreground';
     }

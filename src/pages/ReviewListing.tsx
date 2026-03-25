@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +24,7 @@ const ReviewListing = () => {
   const { config } = useLocale();
   const currencySymbol = new Intl.NumberFormat(config.currencyLocale, { style: 'currency', currency: config.currency }).formatToParts(0).find(p => p.type === 'currency')?.value || config.currency;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [planLimitError, setPlanLimitError] = useState<PlanLimitError | null>(null);
   
   const [formData, setFormData] = useState<ListingFormData | null>(null);
@@ -123,6 +124,156 @@ const ReviewListing = () => {
     return missing;
   };
 
+  const handleSaveAsDraft = async () => {
+    if (!formData || !organization) {
+      toast({
+        title: "Organization not found",
+        description: "Please refresh the page and try again",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingDraft(true);
+
+    try {
+      // Upload photos if any were provided
+      let allPhotoUrls: string[] = [];
+      let heroPhotoUrl = '';
+
+      if (photos.length > 0) {
+        toast({
+          title: "Processing photos",
+          description: `Uploading ${photos.length} images...`,
+        });
+
+        const BATCH_SIZE = 20;
+        const batches = [];
+        for (let i = 0; i < photos.length; i += BATCH_SIZE) {
+          batches.push(photos.slice(i, i + BATCH_SIZE));
+        }
+
+        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+          const batch = batches[batchIndex];
+          const batchStartIndex = batchIndex * BATCH_SIZE;
+
+          const imageFormData = new FormData();
+          batch.forEach((photo) => {
+            imageFormData.append("images", photo);
+          });
+
+          const batchHeroIndex = (heroPhotoIndex >= batchStartIndex && heroPhotoIndex < batchStartIndex + batch.length)
+            ? heroPhotoIndex - batchStartIndex
+            : -1;
+
+          imageFormData.append("heroIndex", batchHeroIndex.toString());
+          imageFormData.append("clientSlug", organization.slug);
+
+          const { data: imageData, error: imageError } = await supabase.functions.invoke(
+            "process-images",
+            { body: imageFormData }
+          );
+
+          if (imageError || !imageData?.photoUrls) {
+            throw new Error(`Failed to upload photo batch ${batchIndex + 1}: ${imageError?.message || 'Unknown error'}`);
+          }
+
+          allPhotoUrls = allPhotoUrls.concat(imageData.photoUrls);
+
+          if (batchHeroIndex >= 0 && imageData.heroPhotoUrl) {
+            heroPhotoUrl = imageData.heroPhotoUrl;
+          }
+        }
+
+        if (!heroPhotoUrl && allPhotoUrls.length > 0) {
+          heroPhotoUrl = allPhotoUrls[heroPhotoIndex] || allPhotoUrls[0];
+        }
+      }
+
+      toast({
+        title: "Saving draft",
+        description: "Saving listing as draft...",
+      });
+
+      const socialMediaPhotoUrls = photos.length > 0 && socialMediaPhotoIndices.length > 0
+        ? [
+            heroPhotoUrl,
+            ...socialMediaPhotoIndices
+              .filter(index => index !== heroPhotoIndex)
+              .map(index => allPhotoUrls[index])
+              .filter(url => url)
+          ]
+        : heroPhotoUrl ? [heroPhotoUrl] : [];
+
+      const listingData = {
+        clientSlug: organization.slug,
+        organizationId: organization.id,
+        title: propertyTitle,
+        description: formData.description,
+        buildingType: formData.buildingType,
+        isPOA: formData.isPOA || false,
+        price: (formData.isPOA || !formData.price) ? 0 : parseFloat(formData.price),
+        bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : undefined,
+        bathrooms: formData.bathrooms ? parseFloat(formData.bathrooms) : undefined,
+        buildingSize: formData.buildingSize ? parseFloat(formData.buildingSize) : undefined,
+        landSize: formData.landSize ? parseFloat(formData.landSize) : undefined,
+        addressLine1: formData.addressLine1 || "",
+        addressTown: formData.addressTown,
+        county: formData.county,
+        eircode: formData.eircode,
+        berRating: formData.berRating || "",
+        specs: formData.specs || "",
+        category: formData.category || "Listing",
+        furnishingStatus: formData.furnishingStatus,
+        bookingPlatformLink: formData.bookingPlatformLink,
+        folioNumber: formData.folioNumber || undefined,
+        photoUrls: allPhotoUrls,
+        heroPhotoUrl: heroPhotoUrl,
+        socialMediaPhotoUrls,
+        markAsNew: markAsNew,
+        excludeAiMotion: excludeAiMotion,
+        isDraft: true,
+      };
+
+      const { data: createData, error: createError } = await supabase.functions.invoke(
+        "create-listing",
+        { body: listingData }
+      );
+
+      if (createError || !createData?.success) {
+        const planLimit = extractPlanLimitError(createData, createError);
+        if (planLimit) {
+          setPlanLimitError(planLimit);
+          return;
+        }
+
+        let errorMessage = "Failed to save draft";
+        if (createData?.error) {
+          errorMessage = createData.error;
+        } else if (createError?.message) {
+          errorMessage = createError.message;
+        }
+        throw new Error(errorMessage);
+      }
+
+      toast({
+        title: "Draft saved!",
+        description: "Listing saved as draft. You can add photos and publish later.",
+      });
+
+      navigate(`/admin/listings`);
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save draft",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   const handleConfirmAndPost = async () => {
     if (!formData || !organization) {
       toast({
@@ -146,7 +297,7 @@ const ReviewListing = () => {
     if (photos.length === 0) {
       toast({
         title: "Missing photos",
-        description: "Please add at least one photo",
+        description: "Please add at least one photo to publish",
         variant: "destructive",
       });
       return;
@@ -376,6 +527,16 @@ const ReviewListing = () => {
               Review and edit your listing details before posting
             </p>
           </div>
+
+          {/* No photos notice */}
+          {photos.length === 0 && (
+            <Alert className="bg-amber-50 border-amber-200">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                No photos added yet. You can save this listing as a draft and add photos later, or go back to upload photos before publishing.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Photo Display */}
           {photos.length > 0 && (
@@ -767,21 +928,30 @@ const ReviewListing = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate(`/admin/create`, { 
-                state: { 
-                  formData, 
-                  photos, 
-                  heroPhotoIndex, 
-                  socialMediaPhotoIndices 
-                } 
+              onClick={() => navigate(`/admin/create`, {
+                state: {
+                  formData,
+                  photos,
+                  heroPhotoIndex,
+                  socialMediaPhotoIndices
+                }
               })}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isSavingDraft}
             >
               Back to Edit
             </Button>
             <Button
+              variant="secondary"
+              onClick={handleSaveAsDraft}
+              disabled={isSubmitting || isSavingDraft}
+            >
+              {isSavingDraft && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {!isSavingDraft && <Save className="mr-2 h-4 w-4" />}
+              {isSavingDraft ? "Saving..." : "Save as Draft"}
+            </Button>
+            <Button
               onClick={handleConfirmAndPost}
-              disabled={isSubmitting || missingFields.length > 0}
+              disabled={isSubmitting || isSavingDraft || missingFields.length > 0 || photos.length === 0}
             >
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isSubmitting ? "Posting..." : "Confirm and Post"}
