@@ -79,13 +79,14 @@ export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEd
       </div>
       <div>
         <Label className="text-xs">Hero Photo (Front Cover)</Label>
-        <div className="flex gap-2 flex-wrap mt-1">
+        <p className="text-[10px] text-muted-foreground mb-1">{photos.length} photos available</p>
+        <div className="flex gap-2 flex-wrap mt-1 max-h-40 overflow-y-auto">
           {photos.map((photo, i) => (
             <button
               key={i}
               type="button"
               onClick={() => update('heroPhotoUrl', photo)}
-              className={`w-16 h-12 rounded border-2 overflow-hidden ${
+              className={`w-16 h-12 rounded border-2 overflow-hidden shrink-0 ${
                 cover.heroPhotoUrl === photo ? 'border-primary' : 'border-transparent'
               }`}
             >
@@ -99,11 +100,11 @@ export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEd
         <p className="text-[10px] text-muted-foreground mb-1">
           Large feature photo for the back page. Defaults to a gallery photo if not set.
         </p>
-        <div className="flex gap-2 flex-wrap mt-1">
+        <div className="flex gap-2 flex-wrap mt-1 max-h-40 overflow-y-auto">
           <button
             type="button"
             onClick={() => update('backCoverPhotoUrl', '')}
-            className={`w-16 h-12 rounded border-2 flex items-center justify-center text-[10px] text-muted-foreground ${
+            className={`w-16 h-12 rounded border-2 flex items-center justify-center text-[10px] text-muted-foreground shrink-0 ${
               !cover.backCoverPhotoUrl ? 'border-primary bg-muted' : 'border-muted'
             }`}
           >
@@ -114,7 +115,7 @@ export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEd
               key={i}
               type="button"
               onClick={() => update('backCoverPhotoUrl', photo)}
-              className={`w-16 h-12 rounded border-2 overflow-hidden ${
+              className={`w-16 h-12 rounded border-2 overflow-hidden shrink-0 ${
                 cover.backCoverPhotoUrl === photo ? 'border-primary' : 'border-transparent'
               }`}
             >
