@@ -43,17 +43,18 @@ function countryToCurrency(countryCode: string): SupportedCurrency | null {
 
 /**
  * Fetches country via free IP geolocation API.
- * Uses ipapi.co (1,000 req/day free, no key needed).
+ * Uses api.country.is (free, HTTPS, no key needed).
+ * ipapi.co was blocked by Cloudflare bot protection.
  */
 async function fetchCountryFromIP(): Promise<string | null> {
   try {
-    const res = await fetch('https://ipapi.co/country/', {
+    const res = await fetch('https://api.country.is', {
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) return null;
-    const country = (await res.text()).trim();
-    // ipapi returns 2-letter ISO country code
-    return country.length === 2 ? country : null;
+    const data = await res.json();
+    const country = data?.country;
+    return typeof country === 'string' && country.length === 2 ? country : null;
   } catch {
     return null;
   }
