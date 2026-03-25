@@ -75,14 +75,13 @@ export function TaskItem({
 
   if (external) {
     return (
-      <a 
-        href={href} 
-        target="_blank" 
-        rel="noopener noreferrer" 
-        className="block"
+      <button
+        type="button"
+        onClick={() => window.open(href, '_blank', 'noopener,noreferrer')}
+        className="block w-full text-left"
       >
         {content}
-      </a>
+      </button>
     );
   }
 
