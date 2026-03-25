@@ -45,7 +45,8 @@ export function serviceToCategory(service: PropertyService): 'Listing' | 'Rental
 }
 
 // Phase 2.5: Account Lifecycle Types
-export type AccountStatus = 
+export type AccountStatus =
+  | 'free'
   | 'trial'
   | 'active'
   | 'trial_expired'
@@ -109,7 +110,7 @@ export function getGraceDaysRemaining(grace_period_ends_at: string | null): numb
 }
 
 export function isAccountActive(org: { account_status: AccountStatus; credit_spending_enabled: boolean }): boolean {
-  return org.account_status === 'active' && org.credit_spending_enabled;
+  return (org.account_status === 'active' || org.account_status === 'free') && org.credit_spending_enabled;
 }
 
 export function canSpendCredits(org: { credit_spending_enabled: boolean }): boolean {
@@ -118,6 +119,7 @@ export function canSpendCredits(org: { credit_spending_enabled: boolean }): bool
 
 export function getAccountStatusLabel(status: AccountStatus): string {
   switch (status) {
+    case 'free': return 'Free';
     case 'trial': return 'Trial';
     case 'active': return 'Active';
     case 'trial_expired': return 'Trial Expired';
@@ -129,6 +131,7 @@ export function getAccountStatusLabel(status: AccountStatus): string {
 
 export function getAccountStatusColor(status: AccountStatus): string {
   switch (status) {
+    case 'free': return 'text-green-600 dark:text-green-400';
     case 'trial': return 'text-blue-600 dark:text-blue-400';
     case 'active': return 'text-green-600 dark:text-green-400';
     case 'trial_expired': return 'text-orange-600 dark:text-orange-400';

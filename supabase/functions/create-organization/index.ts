@@ -139,9 +139,8 @@ serve(async (req) => {
     const uniqueSlug = await generateUniqueSlug(supabase, baseSlug);
     console.log('✅ Generated unique slug:', uniqueSlug);
 
-    // Step 2: Create organization with trial lifecycle setup
+    // Step 2: Create organization
     const now = new Date();
-    const trialEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days from now
     
     const { data: organization, error: orgError } = await supabase
       .from('organizations')
@@ -154,10 +153,9 @@ serve(async (req) => {
         domain: website?.trim() || null,
         logo_url: logoUrl?.trim() || null,
         is_active: true,
-        // Phase 2.5: Trial Lifecycle fields
-        account_status: isComped ? 'active' : 'trial',
-        trial_started_at: isComped ? null : now.toISOString(),
-        trial_ends_at: isComped ? null : trialEndsAt.toISOString(),
+        account_status: isComped ? 'active' : 'free',
+        trial_started_at: null,
+        trial_ends_at: null,
         credit_spending_enabled: true,
         is_comped: isComped || false,
       })
@@ -176,7 +174,7 @@ serve(async (req) => {
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: trimmedUserEmail,
       password,
-      email_confirm: isComped, // Pilot users get auto-confirmed, others need to verify
+      email_confirm: true, // Auto-confirm all users for immediate login
       user_metadata: {
         first_name: trimmedFirstName || '',
         last_name: trimmedLastName || '',
@@ -272,29 +270,31 @@ serve(async (req) => {
       console.log('✅ AI Training metrics created');
     }
 
-    // Step 8: Grant trial credits (100 credits for new organizations)
-    const TRIAL_CREDITS = 100;
-    const { error: creditLedgerError } = await supabase
-      .from('credit_ledger')
-      .insert({
-        organization_id: organization.id,
-        amount: TRIAL_CREDITS,
-        action: 'grant',
-        description: 'Trial credits on signup',
-        feature_type: null,
-        metadata: {
-          type: 'trial_signup',
-          plan_name: planName || 'starter',
-          utm_source: utmSource || null,
-          utm_medium: utmMedium || null,
-          utm_campaign: utmCampaign || null,
-        },
-      });
+    // Step 8: Grant credits for comped/pilot organizations only
+    if (isComped) {
+      const COMPED_CREDITS = 100;
+      const { error: creditLedgerError } = await supabase
+        .from('credit_ledger')
+        .insert({
+          organization_id: organization.id,
+          amount: COMPED_CREDITS,
+          action: 'grant',
+          description: 'Comped credits on signup',
+          feature_type: null,
+          metadata: {
+            type: 'comped_signup',
+            plan_name: planName || 'free',
+            utm_source: utmSource || null,
+            utm_medium: utmMedium || null,
+            utm_campaign: utmCampaign || null,
+          },
+        });
 
-    if (creditLedgerError) {
-      console.warn('⚠️ Warning: Failed to grant trial credits (non-fatal):', creditLedgerError);
-    } else {
-      console.log('✅ Trial credits granted:', TRIAL_CREDITS);
+      if (creditLedgerError) {
+        console.warn('⚠️ Warning: Failed to grant comped credits (non-fatal):', creditLedgerError);
+      } else {
+        console.log('✅ Comped credits granted:', COMPED_CREDITS);
+      }
     }
 
     // Step 9: Create signup request record for tracking
@@ -323,12 +323,11 @@ serve(async (req) => {
       .insert({
         organization_id: organization.id,
         previous_status: null,
-        new_status: 'trial',
-        reason: 'New organization signup - 14-day trial started',
+        new_status: isComped ? 'active' : 'free',
+        reason: isComped ? 'New comped organization created' : 'New organization signup - Free plan',
         triggered_by: 'signup',
         metadata: {
-          trial_credits: TRIAL_CREDITS,
-          trial_ends_at: trialEndsAt.toISOString(),
+          plan: isComped ? 'comped' : 'free',
           utm_source: utmSource || null,
           utm_medium: utmMedium || null,
           utm_campaign: utmCampaign || null,
@@ -373,8 +372,7 @@ serve(async (req) => {
               business_name: trimmedBusinessName,
               user_name: fullName,
               user_email: trimmedUserEmail,
-              plan_name: planName || 'Free Trial',
-              trial_ends_at: trialEndsAt.toLocaleDateString('en-IE', { day: 'numeric', month: 'long', year: 'numeric' }),
+              plan_name: isComped ? 'Comped' : (planName || 'Free'),
               utm_source: utmSource || 'Direct',
               admin_url: `https://app.autolisting.io/internal/organizations`,
             },
@@ -398,12 +396,10 @@ serve(async (req) => {
           id: authData.user.id,
           email: authData.user.email,
         },
-        trial: {
-          credits: TRIAL_CREDITS,
-          durationDays: 14,
-          endsAt: trialEndsAt.toISOString(),
+        plan: {
+          name: isComped ? 'comped' : 'free',
         },
-        message: "Organization created successfully! Your 14-day free trial has started. Please check your email to verify your account.",
+        message: "Organization created successfully! Welcome to AutoListing.",
       }),
       {
         status: 200,
