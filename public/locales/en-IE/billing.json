@@ -108,6 +108,7 @@
     }
   },
   "accountStatus": {
+    "free": "Free Plan",
     "active": "Active",
     "trial": "Trial",
     "trialExpired": "Trial Expired",
@@ -234,6 +235,9 @@
     "planDetails": "{{plan}} Plan - {{price}}/month",
     "freeTrial": "Free Trial",
     "noActiveSubscription": "No active subscription",
+    "freePlanDescription": "Free plan — 3 listings included",
+    "listingsIncluded": "{{count}} listings",
+    "upgradePlan": "Upgrade Plan",
     "user": "{{count}} user",
     "users": "{{count}} users",
     "creditsPerMonth": "{{count}} credits/mo",
