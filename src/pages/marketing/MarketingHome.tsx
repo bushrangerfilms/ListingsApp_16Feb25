@@ -9,6 +9,7 @@ import { getSignupUrl } from '@/lib/appUrls';
 import { useQuery } from '@tanstack/react-query';
 import { getPlanDefinitions } from '@/lib/billing/billingClient';
 import { formatPrice, getCurrencyForLocale, estimatePrice, type SupportedCurrency } from '@/lib/billing/pricing';
+import { i18n } from '@/lib/i18n';
 import {
   ArrowRight,
   Check,
@@ -78,8 +79,7 @@ export default function MarketingHome() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const browserLocale = typeof navigator !== 'undefined' ? navigator.language : 'en-IE';
-  const currency = getCurrencyForLocale(browserLocale);
+  const currency = getCurrencyForLocale(i18n.language || 'en-IE');
 
   const { data: plans } = useQuery({
     queryKey: ['plan-definitions-marketing'],

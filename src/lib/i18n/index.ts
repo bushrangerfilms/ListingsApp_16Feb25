@@ -4,6 +4,10 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import Backend from 'i18next-http-backend';
 
 import { MARKET_LOCALES, LOCALE_NAMES as MARKET_LOCALE_NAMES } from '@/lib/locale/markets';
+import { timezoneDetector } from './timezoneDetector';
+
+// Register custom timezone detector so it can be used in the detection order
+LanguageDetector.addDetector(timezoneDetector);
 import type { MarketLocale } from '@/lib/locale/markets';
 
 export const SUPPORTED_LOCALES = MARKET_LOCALES;
@@ -93,7 +97,7 @@ export function initI18n(loadTranslations = true): Promise<typeof i18n> {
       interpolation: { escapeValue: false },
       backend: { loadPath: '/locales/{{lng}}/{{ns}}.json' },
       detection: {
-        order: ['localStorage', 'navigator'],
+        order: ['localStorage', 'timezone', 'navigator'],
         caches: ['localStorage'],
         lookupLocalStorage: 'autolisting_locale',
       },
@@ -103,7 +107,7 @@ export function initI18n(loadTranslations = true): Promise<typeof i18n> {
       return i18n;
     });
   }
-  
+
   i18n.use(initReactI18next);
   
   if (loadTranslations) {
@@ -119,7 +123,7 @@ export function initI18n(loadTranslations = true): Promise<typeof i18n> {
     interpolation: { escapeValue: false },
     backend: { loadPath: '/locales/{{lng}}/{{ns}}.json' },
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage', 'timezone', 'navigator'],
       caches: ['localStorage'],
       lookupLocalStorage: 'autolisting_locale',
     },
