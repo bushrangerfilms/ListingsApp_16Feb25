@@ -5,6 +5,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# Bust Docker cache for source files on every deploy
+ARG RAILWAY_GIT_COMMIT_SHA
 COPY . .
 
 # Vite inlines VITE_* env vars at build time
