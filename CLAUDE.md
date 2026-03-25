@@ -197,6 +197,18 @@ RLS policies enforce org isolation. All queries scoped by `organization_id`.
 
 **6 markets supported:** IE, GB, US, CA, AU, NZ. Locale type: `MarketLocale` from `src/lib/locale/markets.ts`.
 
+### Locale Detection (IP Geolocation)
+Locale is detected via IP geolocation (same approach as Stripe/Netflix) and applied app-wide:
+1. `seedLocaleFromGeo()` in `src/main.tsx` runs **before** React mounts
+2. Writes detected locale to `localStorage('autolisting_locale')` which i18n reads first
+3. Detection chain: sessionStorage cache → IANA timezone (sync) → `api.country.is` (async)
+4. Org locale from DB overrides after login (`OrgLocaleSync` in `App.tsx`)
+5. **DO NOT modify `src/lib/i18n/index.ts`** — previous attempt (custom i18next detector) caused white screen in production
+
+### Key geo files:
+- `src/lib/geo/detectCountry.ts` — IP geolocation + timezone fallback + sessionStorage cache
+- `src/lib/geo/seedLocale.ts` — seeds localStorage before React/i18n initialize
+
 ### Never hardcode:
 - Currency symbols (`€`, `£`, `$`) — use `formatCurrency()` from `useLocale()` or `formatPrice()` from billing
 - Locale strings in `Intl.NumberFormat` / `toLocaleDateString` — use org locale with `|| 'en-IE'` fallback
