@@ -51,11 +51,11 @@ export function BrochureEditPanel({
   const templateId = branding?.styleOptions?.templateId || 'classic-1';
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    style: false,
+    style: true,
     header: false,
-    cover: true,
-    description: true,
-    rooms: true,
+    cover: false,
+    description: false,
+    rooms: false,
     features: false,
     location: false,
     gallery: false,

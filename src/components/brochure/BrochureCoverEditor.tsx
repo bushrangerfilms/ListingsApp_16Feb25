@@ -80,7 +80,7 @@ export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEd
       <div>
         <Label className="text-xs">Hero Photo (Front Cover)</Label>
         <div className="flex gap-2 flex-wrap mt-1">
-          {photos.slice(0, 8).map((photo, i) => (
+          {photos.map((photo, i) => (
             <button
               key={i}
               type="button"
@@ -109,7 +109,7 @@ export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEd
           >
             Auto
           </button>
-          {photos.slice(0, 8).map((photo, i) => (
+          {photos.map((photo, i) => (
             <button
               key={i}
               type="button"
