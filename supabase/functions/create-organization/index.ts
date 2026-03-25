@@ -341,8 +341,50 @@ serve(async (req) => {
       console.log('✅ Account lifecycle log created');
     }
 
-    // Step 11: Send email verification (optional - Supabase handles this automatically)
-    // The email_confirm: false above ensures user gets verification email
+    // Step 11: Send welcome email to new user (non-blocking)
+    const fullName = [trimmedFirstName, trimmedLastName].filter(Boolean).join(' ') || trimmedBusinessName;
+    try {
+      await supabase.functions.invoke('send-email', {
+        body: {
+          templateKey: 'welcome_signup',
+          to: trimmedUserEmail,
+          organizationId: organization.id,
+          variables: {
+            first_name: trimmedFirstName || trimmedBusinessName,
+            business_name: trimmedBusinessName,
+            login_url: 'https://app.autolisting.io/admin/listings',
+          },
+        },
+      });
+      console.log('✅ Welcome email sent to:', trimmedUserEmail);
+    } catch (emailErr) {
+      console.warn('⚠️ Failed to send welcome email (non-fatal):', emailErr);
+    }
+
+    // Step 12: Notify admin of new signup (non-blocking)
+    const adminEmail = Deno.env.get('ADMIN_EMAIL');
+    if (adminEmail) {
+      try {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            templateKey: 'admin_new_signup_notification',
+            to: adminEmail,
+            variables: {
+              business_name: trimmedBusinessName,
+              user_name: fullName,
+              user_email: trimmedUserEmail,
+              plan_name: planName || 'Free Trial',
+              trial_ends_at: trialEndsAt.toLocaleDateString('en-IE', { day: 'numeric', month: 'long', year: 'numeric' }),
+              utm_source: utmSource || 'Direct',
+              admin_url: `https://app.autolisting.io/internal/organizations`,
+            },
+          },
+        });
+        console.log('✅ Admin notification sent to:', adminEmail);
+      } catch (emailErr) {
+        console.warn('⚠️ Failed to send admin notification (non-fatal):', emailErr);
+      }
+    }
 
     return new Response(
       JSON.stringify({
