@@ -8,11 +8,11 @@ import { Check, ArrowRight } from 'lucide-react';
 import { getSignupUrl } from '@/lib/appUrls';
 import { useQuery } from '@tanstack/react-query';
 import { getPlanDefinitions } from '@/lib/billing/billingClient';
-import { formatPrice, getCurrencyForLocale, estimatePrice } from '@/lib/billing/pricing';
-import { i18n } from '@/lib/i18n';
+import { formatPrice, estimatePrice } from '@/lib/billing/pricing';
+import { useGeolocatedCurrency } from '@/hooks/useGeolocatedCurrency';
 
 export default function PricingPage() {
-  const currency = getCurrencyForLocale(i18n.language || 'en-IE');
+  const { currency } = useGeolocatedCurrency();
 
   const formatLocalPrice = (eurCents: number) =>
     formatPrice(currency === 'EUR' ? eurCents : estimatePrice(eurCents, currency), currency);
