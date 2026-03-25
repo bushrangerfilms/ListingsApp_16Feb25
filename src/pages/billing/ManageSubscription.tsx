@@ -35,6 +35,7 @@ import {
 
 function getAccountStatusLabelTranslated(status: AccountStatus, t: (key: string) => string): string {
   const labels: Record<AccountStatus, string> = {
+    free: t('billing.accountStatus.free'),
     active: t('billing.accountStatus.active'),
     trial: t('billing.accountStatus.trial'),
     trial_expired: t('billing.accountStatus.trialExpired'),
@@ -203,11 +204,12 @@ export default function ManageSubscription() {
   const plan = getCurrentPlanDetails(billingProfile?.subscription_plan);
   const balance = creditBalance || 0;
 
-  const accountStatus = (currentOrganization?.account_status || 'trial') as AccountStatus;
+  const accountStatus = (currentOrganization?.account_status || 'free') as AccountStatus;
+  const isOnFreePlan = accountStatus === 'free';
   const isOnTrial = accountStatus === 'trial';
   const isTrialExpired = accountStatus === 'trial_expired';
   const hasActiveSubscription = billingProfile?.subscription_status === 'active';
-  const needsPlanSelection = isOnTrial || isTrialExpired || !hasActiveSubscription;
+  const needsPlanSelection = isOnFreePlan || isOnTrial || isTrialExpired || !hasActiveSubscription;
 
   if (isLoading) {
     return (
@@ -236,7 +238,9 @@ export default function ManageSubscription() {
       {needsPlanSelection && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold">{t('billing.manage.choosePlan')}</h2>
+            <h2 className="text-xl font-semibold">
+              {isOnFreePlan ? t('billing.manage.upgradePlan') : t('billing.manage.choosePlan')}
+            </h2>
             {isOnTrial && currentOrganization?.trial_ends_at && (
               <Badge variant="secondary">
                 {t('billing.manage.daysLeftInTrial', { days: getTrialDaysRemaining(currentOrganization.trial_ends_at) })}
@@ -307,11 +311,13 @@ export default function ManageSubscription() {
             <div>
               <CardTitle className="text-lg">{t('billing.manage.currentPlan')}</CardTitle>
               <CardDescription>
-                {hasActiveSubscription 
+                {hasActiveSubscription
                   ? t('billing.manage.planDetails', { plan: plan.name, price: formatCurrency(plan.price) })
-                  : isOnTrial 
+                  : isOnTrial
                     ? t('billing.manage.freeTrial')
-                    : t('billing.manage.noActiveSubscription')}
+                    : isOnFreePlan
+                      ? t('billing.manage.freePlanDescription')
+                      : t('billing.manage.noActiveSubscription')}
               </CardDescription>
             </div>
             <Badge variant={hasActiveSubscription ? 'default' : 'secondary'}>
@@ -379,6 +385,29 @@ export default function ManageSubscription() {
                 trialEndsAt={currentOrganization?.trial_ends_at || null}
                 trialStartedAt={currentOrganization?.trial_started_at || null}
               />
+            )}
+
+            {isOnFreePlan && !hasActiveSubscription && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    <span>{t('billing.manage.user', { count: 1 })}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Zap className="w-4 h-4" />
+                    <span>{t('billing.manage.listingsIncluded', { count: 3 })}</span>
+                  </div>
+                </div>
+                <Separator />
+                <Button
+                  onClick={() => navigate('/admin/billing/upgrade')}
+                  className="gap-2"
+                >
+                  <ArrowUpRight className="w-4 h-4" />
+                  {t('billing.manage.upgradePlan')}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

@@ -57,9 +57,10 @@ export function usePlanInfo() {
       const billingProfile = await getBillingProfile(organization.id);
 
       if (!billingProfile?.subscription_plan) {
+        const isFree = organization.account_status === 'free';
         return {
-          planName: null,
-          displayName: 'No Plan',
+          planName: isFree ? 'free' : null,
+          displayName: isFree ? 'Free' : 'No Plan',
           maxUsers: FREE_DEFAULTS.maxUsers,
           maxListings: FREE_DEFAULTS.maxListings,
           maxSocialHubs: FREE_DEFAULTS.maxSocialHubs,
