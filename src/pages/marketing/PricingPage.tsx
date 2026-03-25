@@ -8,11 +8,12 @@ import { Check, ArrowRight } from 'lucide-react';
 import { getSignupUrl } from '@/lib/appUrls';
 import { useQuery } from '@tanstack/react-query';
 import { getPlanDefinitions } from '@/lib/billing/billingClient';
-import { formatPrice, getCurrencyForLocale, estimatePrice } from '@/lib/billing/pricing';
+import { formatPrice, estimatePrice, type SupportedCurrency } from '@/lib/billing/pricing';
+import { useLocale } from '@/hooks/useLocale';
 
 export default function PricingPage() {
-  const browserLocale = typeof navigator !== 'undefined' ? navigator.language : 'en-IE';
-  const currency = getCurrencyForLocale(browserLocale);
+  const { currency: detectedCurrency } = useLocale();
+  const currency = detectedCurrency as SupportedCurrency;
 
   const formatLocalPrice = (eurCents: number) =>
     formatPrice(currency === 'EUR' ? eurCents : estimatePrice(eurCents, currency), currency);
