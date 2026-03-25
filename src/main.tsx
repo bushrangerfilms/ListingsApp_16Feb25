@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/react";
 import { createRoot } from "react-dom/client";
+import { seedLocaleFromGeo } from "./lib/geo/seedLocale";
 import App from "./App.tsx";
 import "./index.css";
 
@@ -29,4 +30,5 @@ Sentry.init({
   ],
 });
 
+seedLocaleFromGeo();
 createRoot(document.getElementById("root")!).render(<App />);
