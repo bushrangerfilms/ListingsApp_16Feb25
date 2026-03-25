@@ -166,8 +166,15 @@ export function getCurrencyForLocale(locale: string): SupportedCurrency {
   const direct = (LOCALE_TO_CURRENCY as Record<string, SupportedCurrency>)[locale];
   if (direct) return direct;
 
-  // Timezone-based detection — more reliable than browser language since most users
-  // don't change their OS timezone, but many have en-US as default browser language
+  // Check all browser languages (navigator.languages) for a match
+  if (typeof navigator !== 'undefined' && navigator.languages) {
+    for (const lang of navigator.languages) {
+      const match = (LOCALE_TO_CURRENCY as Record<string, SupportedCurrency>)[lang];
+      if (match) return match;
+    }
+  }
+
+  // Timezone-based fallback
   if (typeof Intl !== 'undefined') {
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -175,14 +182,6 @@ export function getCurrencyForLocale(locale: string): SupportedCurrency {
       if (tzMatch) return tzMatch;
     } catch {
       // ignore
-    }
-  }
-
-  // Browser languages fallback
-  if (typeof navigator !== 'undefined' && navigator.languages) {
-    for (const lang of navigator.languages) {
-      const match = (LOCALE_TO_CURRENCY as Record<string, SupportedCurrency>)[lang];
-      if (match) return match;
     }
   }
 
