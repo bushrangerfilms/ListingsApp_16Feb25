@@ -69,23 +69,25 @@ export default function TermsConditions() {
             </p>
 
             <h2>4. Subscription and Billing</h2>
-            <h3>4.1 Free Trial</h3>
+            <h3>4.1 Free Plan</h3>
             <p>
-              New users receive a 14-day free trial with 100 complimentary credits. 
-              Trial credits do not carry over to paid subscriptions.
+              New users start on a free plan that includes up to 3 listings with automated
+              social posting, CRM, and email features. No credit card is required.
+              The free plan remains available indefinitely.
             </p>
 
             <h3>4.2 Paid Plans</h3>
             <p>
-              Subscription fees are charged in advance on a monthly basis. 
+              Subscription fees are charged in advance on a weekly basis.
               All prices are displayed in {isMarketingSite ? 'Euros (EUR)' : `${legalConfig.currency} (${legalConfig.currencySymbol})`} and are inclusive of {legalConfig.vatLabel} at the applicable rate{isMarketingSite ? ' for consumers within Ireland and the EU' : ''}. Business customers with a valid {legalConfig.vatLabel} number may be
               eligible for reverse-charge treatment.
             </p>
 
-            <h3>4.3 Credits</h3>
+            <h3>4.3 Usage Limits</h3>
             <p>
-              Certain features consume credits. Credit costs are displayed before use. 
-              Unused monthly credits do not roll over. Additional credit packs may be purchased separately.
+              Each plan includes defined limits on listings, posting frequency, and available
+              video styles. Current plan limits are displayed on the billing page.
+              Upgrading your plan increases these limits immediately.
             </p>
 
             <h3>4.4 Cancellation</h3>
