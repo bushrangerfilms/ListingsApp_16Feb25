@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowRight, Gift, Zap, Users, Palette } from 'lucide-react';
+import { Sparkles, ArrowRight, Rocket, Video, Users, Palette } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -77,24 +77,24 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
         <div className="space-y-3 py-4">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted">
             <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-              <Gift className="w-4 h-4 text-green-600 dark:text-green-400" />
+              <Rocket className="w-4 h-4 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">14-Day Free Trial</p>
+              <p className="text-sm font-medium text-foreground">Free Forever Plan</p>
               <p className="text-xs text-muted-foreground">
-                Full access to all features, no credit card required
+                3 listings, automated social posting, CRM & email — no credit card required
               </p>
             </div>
           </div>
 
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted">
             <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-              <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <Video className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">100 Free Credits</p>
+              <p className="text-sm font-medium text-foreground">AI-Generated Videos</p>
               <p className="text-xs text-muted-foreground">
-                Use AI features, generate content, and more
+                Access to 3 video styles, posted to all your social platforms
               </p>
             </div>
           </div>
