@@ -144,15 +144,6 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section className="py-8 border-y bg-muted/30">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-muted-foreground">
-            Trusted by estate agents worldwide
-          </p>
-        </div>
-      </section>
-
       {/* Demo Video */}
       <section id="demo-video" className="py-20 scroll-mt-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">

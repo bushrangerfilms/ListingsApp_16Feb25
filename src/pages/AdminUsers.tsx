@@ -625,9 +625,9 @@ export default function AdminUsers() {
                 {users.map((orgUser) => (
                   <TableRow key={orgUser.id} data-testid={`row-user-${orgUser.user_id}`}>
                     <TableCell className="font-medium" data-testid={`text-name-${orgUser.user_id}`}>
-                      {orgUser.first_name && orgUser.last_name 
-                        ? `${orgUser.first_name} ${orgUser.last_name}`
-                        : 'Unknown'}
+                      {orgUser.first_name || orgUser.last_name
+                        ? [orgUser.first_name, orgUser.last_name].filter(Boolean).join(' ')
+                        : orgUser.email || 'Unknown'}
                       {orgUser.user_id === user?.id && (
                         <Badge variant="outline" className="ml-2">You</Badge>
                       )}
