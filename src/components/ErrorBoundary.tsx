@@ -1,11 +1,13 @@
 import * as Sentry from '@sentry/react';
 import { Component, ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  resetKey?: string;
 }
 
 interface State {
@@ -28,6 +30,12 @@ export class ErrorBoundary extends Component<Props, State> {
     Sentry.captureException(error, {
       contexts: { react: { componentStack: errorInfo.componentStack } },
     });
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null });
+    }
   }
 
   handleReset = () => {
@@ -84,4 +92,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
+}
+
+/** Wrapper that resets the ErrorBoundary on route changes */
+export function RouteErrorBoundary({ children, fallback }: { children: ReactNode; fallback?: ReactNode }) {
+  const location = useLocation();
+  return (
+    <ErrorBoundary resetKey={location.pathname} fallback={fallback}>
+      {children}
+    </ErrorBoundary>
+  );
 }
