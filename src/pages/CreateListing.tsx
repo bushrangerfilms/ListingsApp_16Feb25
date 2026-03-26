@@ -801,7 +801,7 @@ const CreateListing = () => {
                     name="eircode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{addressConfig.postalCodeLabel}</FormLabel>
+                        <FormLabel>{addressConfig.postalCodeLabel} (Optional)</FormLabel>
                         <FormControl>
                           <Input placeholder={addressConfig.postalCodePlaceholder} {...field} />
                         </FormControl>

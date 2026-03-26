@@ -15,10 +15,6 @@ import { useOrganizationView } from "@/contexts/OrganizationViewContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocale } from "@/hooks/useLocale";
 import { usePropertyServices } from "@/hooks/usePropertyServices";
-import { useEndCardSetupCheck } from "@/hooks/useEndCardSetupCheck";
-import { EndCardSetupBanner } from "@/components/EndCardSetupBanner";
-import { useSocialConnectionCheck } from "@/hooks/useSocialConnectionCheck";
-import { SocialConnectionBanner } from "@/components/SocialConnectionBanner";
 import { matchesListingSearch } from "@/lib/listingSearch";
 import { extractPlanLimitError, type PlanLimitError } from "@/lib/planLimitError";
 import { UpgradePlanDialog } from "@/components/billing/UpgradePlanDialog";
@@ -52,8 +48,6 @@ const ListingsDashboard = () => {
   const navigate = useNavigate();
   const { t } = useLocale();
   const { enabledCategories, salesEnabled, rentalsEnabled, holidayRentalsEnabled } = usePropertyServices();
-  const { needsSetup: needsEndCardSetup, isLoading: endCardCheckLoading } = useEndCardSetupCheck();
-  const { needsConnection: needsSocialConnection, isLoading: socialCheckLoading } = useSocialConnectionCheck();
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -472,18 +466,8 @@ const ListingsDashboard = () => {
         </div>
       </div>
 
-      {/* Onboarding Progress Banner - shown for new orgs with incomplete setup */}
+      {/* Onboarding Progress Banner - includes branding warning when needed */}
       <OnboardingProgressBanner className="mb-6" />
-
-      {/* End Card Setup Banner - shown for new orgs without video branding */}
-      {!endCardCheckLoading && needsEndCardSetup && (
-        <EndCardSetupBanner className="mb-6" />
-      )}
-
-      {/* Social Connection Banner - shown for orgs without connected social accounts */}
-      {!socialCheckLoading && needsSocialConnection && (
-        <SocialConnectionBanner className="mb-6" />
-      )}
 
       {/* Advanced Search & Filters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

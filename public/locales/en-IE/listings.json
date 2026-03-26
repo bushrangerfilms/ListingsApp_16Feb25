@@ -302,7 +302,7 @@
     },
     "markAsNew": {
       "label": "Mark as New",
-      "description": "Auto expires after 2 weeks. Marks the listing with a NEW badge on the listing on your public website and adds a 'New to Market' banner on your social media videos for the duration set in your settings in the Socials Hub (default 2 weeks)."
+      "description": "Adds a NEW badge on your website and a New to Market banner on social media videos. Auto-expires after 2 weeks (configurable in Socials Hub settings)."
     },
     "address": {
       "line1": "Address Line 1",

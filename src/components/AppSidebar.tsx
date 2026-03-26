@@ -40,7 +40,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Shield } from "lucide-react";
-import { OnboardingChecklist } from "@/components/onboarding";
+
 import { useLocale } from "@/hooks/useLocale";
 import { toast } from "sonner";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
@@ -342,10 +342,6 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-2 pb-20">
-        {open && (
-          <OnboardingChecklist className="mb-2" />
-        )}
-        
         {open && (
           <div className="space-y-2 mb-2">
             {isSuperAdmin && !impersonationState && (

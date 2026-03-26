@@ -1,10 +1,11 @@
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TaskItem } from './TaskItem';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { usePlanInfo } from '@/hooks/usePlanInfo';
+import { useEndCardSetupCheck } from '@/hooks/useEndCardSetupCheck';
 
 interface OnboardingProgressBannerProps {
   className?: string;
@@ -25,6 +26,7 @@ export function OnboardingProgressBanner({ className }: OnboardingProgressBanner
 
   const { planName, isLoading: planLoading } = usePlanInfo();
   const isPro = planName === 'pro';
+  const { needsSetup: needsEndCardSetup } = useEndCardSetupCheck();
 
   if (isLoading || planLoading || isDismissed || isComplete) {
     return null;
@@ -66,6 +68,13 @@ export function OnboardingProgressBanner({ className }: OnboardingProgressBanner
           value={(visibleCompleted / visibleTotal) * 100}
           className="h-2 mb-4"
         />
+
+        {needsEndCardSetup && (
+          <div className="flex items-center gap-2 mb-3 p-2 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <span>Videos won't generate until you complete your branding setup in the Socials Hub.</span>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
           {incompleteTasks.map((task) => (
