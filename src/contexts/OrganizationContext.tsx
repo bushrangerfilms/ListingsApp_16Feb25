@@ -49,6 +49,7 @@ interface OrganizationContextType {
   setOrganizationBySlug: (slug: string) => Promise<Organization | null>;
   userOrganizations: UserOrganization[];
   switchOrganization: (orgId: string) => Promise<void>;
+  refreshOrganization: () => Promise<void>;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
@@ -222,6 +223,25 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
+  // Refresh the current organization data from DB
+  const refreshOrganization = useCallback(async () => {
+    if (!organization?.id) return;
+    try {
+      const { data: org, error } = await supabase
+        .schema('public')
+        .from('organizations')
+        .select('*')
+        .eq('id', organization.id)
+        .single();
+
+      if (!error && org) {
+        setOrganization(org);
+      }
+    } catch (error) {
+      console.error('[OrganizationContext] Error refreshing organization:', error);
+    }
+  }, [organization?.id]);
+
   // Set organization by slug (for public pages)
   const setOrganizationBySlug = useCallback(async (slug: string): Promise<Organization | null> => {
     try {
@@ -266,7 +286,8 @@ export const OrganizationProvider = ({ children }: { children: ReactNode }) => {
     setOrganizationBySlug,
     userOrganizations,
     switchOrganization,
-  }), [organization, loading, setOrganizationBySlug, userOrganizations, switchOrganization]);
+    refreshOrganization,
+  }), [organization, loading, setOrganizationBySlug, userOrganizations, switchOrganization, refreshOrganization]);
 
   return (
     <OrganizationContext.Provider value={contextValue}>
