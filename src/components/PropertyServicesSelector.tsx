@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { Loader2, Home, Key, Palmtree } from "lucide-react";
 import type { PropertyService } from "@/lib/billing/types";
 import { PROPERTY_SERVICES, DEFAULT_PROPERTY_SERVICES } from "@/hooks/usePropertyServices";
@@ -26,6 +28,8 @@ export function PropertyServicesSelector({
   currentServices,
   onServicesUpdate,
 }: PropertyServicesSelectorProps) {
+  const { refreshOrganization } = useOrganization();
+  const queryClient = useQueryClient();
   const [services, setServices] = useState<PropertyService[]>(
     currentServices ?? DEFAULT_PROPERTY_SERVICES
   );
@@ -70,6 +74,9 @@ export function PropertyServicesSelector({
         .eq("id", organizationId);
 
       if (error) throw error;
+
+      await refreshOrganization();
+      queryClient.invalidateQueries({ queryKey: ['onboarding-detection'] });
 
       toast({
         title: "Services updated",

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useOrganizationView } from "@/contexts/OrganizationViewContext";
 import { OrganizationLogoUploader } from "@/components/OrganizationLogoUploader";
@@ -32,7 +33,8 @@ const organizationSchema = z.object({
 type OrganizationFormData = z.infer<typeof organizationSchema>;
 
 export default function AdminOrganizationSettings() {
-  const { organization, loading } = useOrganization();
+  const { organization, loading, refreshOrganization } = useOrganization();
+  const queryClient = useQueryClient();
   const { viewAsOrganizationId, selectedOrganization, isOrganizationView, isSuperAdmin } = useOrganizationView();
   const [isSaving, setIsSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -86,6 +88,10 @@ export default function AdminOrganizationSettings() {
         logo_url: logoUrl,
         favicon_url: faviconUrl,
       });
+
+      // Refresh org context so onboarding auto-detection sees updated data
+      await refreshOrganization();
+      queryClient.invalidateQueries({ queryKey: ['onboarding-detection'] });
 
       toast({
         title: "Organization updated",
