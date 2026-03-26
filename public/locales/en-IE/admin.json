@@ -9,9 +9,15 @@
     "edit": "Edit Organisation",
     "details": "Organisation Details",
     "settings": "Organisation Settings",
+    "settingsSubtitle": "Manage your organisation profile and contact information",
+    "logo": "Organisation Logo",
+    "logoAlt": "Organisation logo",
+    "logoUploadHint": "Upload your organisation logo. Max file size: 2MB. Accepted formats: JPG, PNG",
     "billing": "Billing",
     "users": "Users",
-    "plan": "Plan"
+    "plan": "Plan",
+    "grantCredits": "Grant Credits to {{count}} Organisations",
+    "deleteConfirm": "Delete {{count}} Organisation{{plural}}?"
   },
   
   "users": {
