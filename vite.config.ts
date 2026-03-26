@@ -21,8 +21,7 @@ export default defineConfig(() => ({
       project: process.env.SENTRY_PROJECT,
       authToken: process.env.SENTRY_AUTH_TOKEN,
       sourcemaps: {
-        // Temporarily keeping source maps for debugging {} toast issue
-        // filesToDeleteAfterUpload: ["./dist/**/*.map"],
+        filesToDeleteAfterUpload: ["./dist/**/*.map"],
       },
       disable: !process.env.SENTRY_AUTH_TOKEN,
     }),
