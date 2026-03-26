@@ -30,22 +30,21 @@ Sentry.init({
   ],
 });
 
-// DEBUG: Intercept sonner toast calls to find {} toast source
+// DEBUG: Intercept ALL sonner toast calls to find {} toast source
 import { toast as _debugToast } from 'sonner';
-const _origError = _debugToast.error;
-const _origDefault = _debugToast;
-_debugToast.error = (...args: unknown[]) => {
-  console.trace('[TOAST DEBUG] toast.error called with:', args);
-  return (_origError as Function).apply(_debugToast, args);
-};
-// Also intercept default toast()
-const _origCall = Function.prototype.apply.bind(_debugToast);
-// Monkey-patch via prototype — log all toast variants
-(['success', 'warning', 'info', 'message'] as const).forEach((method) => {
+(['error', 'success', 'warning', 'info', 'message', 'loading'] as const).forEach((method) => {
   const orig = (_debugToast as Record<string, Function>)[method];
   if (orig) {
     (_debugToast as Record<string, Function>)[method] = (...args: unknown[]) => {
-      console.trace(`[TOAST DEBUG] toast.${method} called with:`, args);
+      const argStr = args.map(a => {
+        try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch { return String(a); }
+      }).join(', ');
+      console.warn(`\n🔴 TOAST.${method.toUpperCase()} CALLED 🔴\nArgs: ${argStr}\nType of arg[0]: ${typeof args[0]}\nArg[0] constructor: ${args[0]?.constructor?.name}\nStack:\n${new Error().stack}`);
+      // Suppress empty/broken toasts
+      if (!args[0] || argStr === '{}' || argStr === '""') {
+        console.warn('🔴 SUPPRESSED empty toast');
+        return;
+      }
       return orig.apply(_debugToast, args);
     };
   }
