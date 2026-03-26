@@ -18,7 +18,7 @@ import { OrganizationRoute } from "./components/OrganizationRoute";
 import { PilotModeRouteGuard } from "./components/admin/PilotModeRouteGuard";
 import { ImpersonationBanner } from "./components/ImpersonationBanner";
 import { AdminLayout } from "./components/AdminLayout";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { RouteErrorBoundary } from "./components/ErrorBoundary";
 import { getDomainType, type DomainType } from "./lib/domainDetection";
 import { useMarketingVisibleFlag, usePublicSignupFlag } from "./hooks/useFeatureFlag";
 
@@ -335,10 +335,10 @@ function AuthAwareRoutes({ domainType }: { domainType: DomainType }) {
   }
   
   return (
-    <ErrorBoundary>
+    <RouteErrorBoundary>
       {domainType === 'admin' && <ImpersonationBanner />}
       <AppRoutes domainType={domainType} />
-    </ErrorBoundary>
+    </RouteErrorBoundary>
   );
 }
 
