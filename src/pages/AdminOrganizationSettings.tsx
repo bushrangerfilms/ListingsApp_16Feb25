@@ -18,6 +18,7 @@ import { updateOrganizationProfile } from "@/lib/organizationHelpers";
 import { Loader2 } from "lucide-react";
 import { getRegionConfig } from "@/lib/regionConfig";
 import type { SupportedLocale } from "@/lib/i18n";
+import { useTranslation } from "react-i18next";
 
 const organizationSchema = z.object({
   business_name: z.string().min(1, "Business name is required").max(100),
@@ -32,6 +33,7 @@ const organizationSchema = z.object({
 type OrganizationFormData = z.infer<typeof organizationSchema>;
 
 export default function AdminOrganizationSettings() {
+  const { t } = useTranslation('admin');
   const { organization, loading } = useOrganization();
   const { viewAsOrganizationId, selectedOrganization, isOrganizationView, isSuperAdmin } = useOrganizationView();
   const [isSaving, setIsSaving] = useState(false);
@@ -125,8 +127,8 @@ export default function AdminOrganizationSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Organization Settings</h2>
-        <p className="text-muted-foreground">Manage your organization profile and contact information</p>
+        <h2 className="text-2xl font-bold">{t('organisations.settings')}</h2>
+        <p className="text-muted-foreground">{t('organisations.settingsSubtitle')}</p>
       </div>
 
       <OrganizationLogoUploader
