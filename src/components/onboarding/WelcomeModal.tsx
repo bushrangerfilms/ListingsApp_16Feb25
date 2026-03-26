@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, ArrowRight, Gift, Zap, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Sparkles, ArrowRight, Gift, Zap, Users, Palette } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ interface WelcomeModalProps {
 export function WelcomeModal({ onClose }: WelcomeModalProps) {
   const { organization } = useOrganization();
   const { hasSeenWelcome, markWelcomeSeen, isLoading } = useOnboarding();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
   // Check if organization is in pilot/comped mode - skip welcome modal for pilot users
@@ -35,6 +37,7 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
     await markWelcomeSeen();
     setIsOpen(false);
     onClose?.();
+    navigate('/admin/settings');
   };
 
   const handleDismiss = () => {
@@ -97,13 +100,25 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
           </div>
 
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted">
+            <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+              <Palette className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Your Brand on Every Video</p>
+              <p className="text-xs text-muted-foreground">
+                Custom end cards with your logo, colours, and contact info
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted">
             <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
               <Users className="w-4 h-4 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">Guided Setup</p>
               <p className="text-xs text-muted-foreground">
-                We'll help you get everything configured
+                We'll take you to your profile settings first
               </p>
             </div>
           </div>
@@ -114,7 +129,7 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
           className="w-full"
           data-testid="button-get-started"
         >
-          Let's Get Started
+          Set Up Your Profile
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </DialogContent>

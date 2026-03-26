@@ -713,7 +713,7 @@ const CreateListing = () => {
                         Exclude AI Motion Videos
                       </FormLabel>
                       <FormDescription>
-                        Some images are more prone to glitching and hallucinating with AI motion. If your listing has flat images like drone photos with land border graphics, floor plans and tight shots of stone wall you may want to exclude this listing from video styles that use AI motion.
+                        Some photo types (drone shots, floor plans, etc.) may not work well with AI motion effects. Enable this to use static slideshows only for this listing.
                       </FormDescription>
                     </div>
                   </FormItem>

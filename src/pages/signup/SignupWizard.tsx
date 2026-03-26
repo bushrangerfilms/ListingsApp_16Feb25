@@ -59,8 +59,8 @@ export default function SignupWizard() {
       toast.error('Please enter your email');
       return;
     }
-    if (!password || password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (!password || password.length < 8) {
+      toast.error('Password must be at least 8 characters');
       return;
     }
     if (!gdprConsent) {
@@ -214,7 +214,7 @@ export default function SignupWizard() {
                     onChange={(e) => setPassword(e.target.value)}
                     autoComplete="new-password"
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
 

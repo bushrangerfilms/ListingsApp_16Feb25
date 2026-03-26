@@ -22,6 +22,13 @@ export function useEndCardSetupCheck(): EndCardSetupStatus {
       }
 
       try {
+        // If org already has logo and primary color, branding basics are done
+        if (organization.logo_url && organization.primary_color) {
+          setNeedsSetup(false);
+          setIsLoading(false);
+          return;
+        }
+
         // Check org_end_card_settings table (used by Socials app)
         // Using type assertion since this table is managed by Socials app
         const { data, error: queryError } = await supabase
