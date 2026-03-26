@@ -7,7 +7,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useOrganizationView } from "@/contexts/OrganizationViewContext";
@@ -93,17 +93,10 @@ export default function AdminOrganizationSettings() {
       await refreshOrganization();
       queryClient.invalidateQueries({ queryKey: ['onboarding-detection'] });
 
-      toast({
-        title: "Organization updated",
-        description: "Your organization details have been saved successfully",
-      });
+      toast.success("Organization details saved successfully");
     } catch (error) {
       console.error('Save error:', error);
-      toast({
-        title: "Update failed",
-        description: error instanceof Error ? error.message : "Failed to update organization",
-        variant: "destructive",
-      });
+      toast.error(error instanceof Error ? error.message : "Failed to update organization");
     } finally {
       setIsSaving(false);
     }

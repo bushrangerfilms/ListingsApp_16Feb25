@@ -996,7 +996,7 @@ const CreateListing = () => {
                   return (
                     <FormItem>
                       <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <FormLabel className="text-base font-semibold">{t('listings.create.details.description')}</FormLabel>
+                        <FormLabel className="text-base font-semibold">Description</FormLabel>
                         <Button
                           type="button"
                           variant="outline"

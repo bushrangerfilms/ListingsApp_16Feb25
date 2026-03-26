@@ -77,7 +77,8 @@ export function useOnboardingAutoDetect() {
       };
     },
     enabled: !!organization?.id && !onboardingLoading && !isDismissed && !isComplete,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
   });
 

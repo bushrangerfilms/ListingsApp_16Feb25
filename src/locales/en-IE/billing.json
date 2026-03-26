@@ -70,5 +70,16 @@
     "processing": "Processing payment...",
     "success": "Payment successful",
     "failed": "Payment failed"
+  },
+  "team": {
+    "limitReachedTitle": "Team Limit Reached",
+    "limitReachedDescription": "Your plan supports {{max}} team member and you currently have {{current}}.",
+    "limitReachedDescriptionPlural": "Your plan supports {{max}} team members and you currently have {{current}}.",
+    "upgradePrompt": "Upgrade your plan to add more team members.",
+    "upgradeToPro": "Upgrade Plan",
+    "approachingLimitTitle": "Approaching Team Limit",
+    "approachingLimitDescription": "You have {{current}} of {{max}} team members.",
+    "considerUpgrade": "Consider upgrading to add more team members.",
+    "viewProPlan": "View Plans"
   }
 }

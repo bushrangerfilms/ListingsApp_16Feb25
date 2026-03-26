@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useLocale } from "@/hooks/useLocale";
@@ -20,6 +21,7 @@ import { UpgradePlanDialog } from "@/components/billing/UpgradePlanDialog";
 const ReviewListing = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { organization } = useOrganization();
   const { config } = useLocale();
   const currencySymbol = new Intl.NumberFormat(config.currencyLocale, { style: 'currency', currency: config.currency }).formatToParts(0).find(p => p.type === 'currency')?.value || config.currency;
@@ -261,6 +263,7 @@ const ReviewListing = () => {
         description: "Listing saved as draft. You can add photos and publish later.",
       });
 
+      queryClient.invalidateQueries({ queryKey: ['onboarding-detection'] });
       navigate(`/admin/listings`);
     } catch (error) {
       console.error("Error saving draft:", error);
@@ -480,6 +483,7 @@ const ReviewListing = () => {
         description: "Listing created successfully",
       });
 
+      queryClient.invalidateQueries({ queryKey: ['onboarding-detection'] });
       navigate(`/admin/listings`);
     } catch (error) {
       console.error("Error creating listing:", error);

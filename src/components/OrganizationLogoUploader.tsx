@@ -61,7 +61,7 @@ export function OrganizationLogoUploader({
 
       toast({
         title: "Logo uploaded",
-        description: "Your organisation logo has been updated",
+        description: "Your organization logo has been updated",
       });
     } catch (error) {
       console.error('Upload error:', error);
@@ -88,7 +88,7 @@ export function OrganizationLogoUploader({
 
       toast({
         title: "Logo deleted",
-        description: "Your organisation logo has been removed",
+        description: "Your organization logo has been removed",
       });
     } catch (error) {
       console.error('Delete error:', error);

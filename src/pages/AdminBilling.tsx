@@ -78,7 +78,7 @@ export default function AdminBilling() {
 
   const handleSubscribe = async (planName: string) => {
     if (!organization?.id) {
-      toast.error('Organisation not found');
+      toast.error('Organization not found');
       return;
     }
 
@@ -180,18 +180,10 @@ export default function AdminBilling() {
         <div>
           <h1 className="text-3xl font-bold">Billing & Subscription</h1>
           <p className="text-muted-foreground mt-1">
-            Manage your plan, credits, and billing details
+            Manage your plan and billing details
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button 
-            onClick={() => setShowPurchaseModal(true)}
-            variant="outline"
-            data-testid="button-purchase-credits"
-          >
-            <Coins className="h-4 w-4 mr-2" />
-            Buy Credits
-          </Button>
           {hasActiveSubscription && (
             <Button 
               onClick={handleManageSubscription}
@@ -294,7 +286,7 @@ export default function AdminBilling() {
             <div className="text-2xl font-bold capitalize">
               {hasActiveSubscription
                 ? (planDefinitions?.find(p => p.name === currentPlan)?.display_name || currentPlan)
-                : isOnTrial ? 'Free Trial' : 'No Plan'}
+                : isOnTrial ? 'Free Trial' : 'Free Plan'}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {hasActiveSubscription
@@ -304,34 +296,8 @@ export default function AdminBilling() {
                   })()
                 : isOnTrial && organization?.trial_ends_at
                   ? `${getTrialDaysRemaining(organization.trial_ends_at) || 0} days remaining`
-                  : 'Subscribe to get started'}
+                  : '3 listings included'}
             </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Credit Balance</CardTitle>
-            <Coins className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {balanceLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                <div className={`text-2xl font-bold ${colorClass}`}>
-                  {currentBalance}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  credits available
-                </p>
-                {(status === 'low' || status === 'critical') && (
-                  <Badge variant="destructive" className="mt-2">
-                    {status === 'critical' ? 'Critical - Top up now' : 'Low balance'}
-                  </Badge>
-                )}
-              </>
-            )}
           </CardContent>
         </Card>
 
@@ -341,14 +307,9 @@ export default function AdminBilling() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {usageRates?.find(r => r.feature_type === 'post_generation')?.credits_per_use || 7}
-            </div>
+            <div className="text-2xl font-bold text-green-600">Unlimited</div>
             <p className="text-xs text-muted-foreground mt-1">
-              credits per platform
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              ≈ {Math.floor(currentBalance / 7)} posts remaining
+              included with your plan
             </p>
           </CardContent>
         </Card>
@@ -359,14 +320,9 @@ export default function AdminBilling() {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {usageRates?.find(r => r.feature_type === 'video_generation')?.credits_per_use || 14}
-            </div>
+            <div className="text-2xl font-bold text-green-600">Unlimited</div>
             <p className="text-xs text-muted-foreground mt-1">
-              credits (both 16:9 + 9:16)
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              ≈ {Math.floor(currentBalance / 14)} video sets remaining
+              included with your plan
             </p>
           </CardContent>
         </Card>
@@ -393,12 +349,6 @@ export default function AdminBilling() {
         </TabsContent>
       </Tabs>
 
-      <PurchaseCreditsModal
-        open={showPurchaseModal}
-        onOpenChange={setShowPurchaseModal}
-        organizationId={organization.id}
-        currentBalance={currentBalance}
-      />
     </div>
   );
 }

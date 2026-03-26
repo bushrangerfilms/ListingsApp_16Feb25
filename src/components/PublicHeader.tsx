@@ -25,9 +25,31 @@ export const PublicHeader = () => {
   const navigate = useNavigate();
   const orgSlug = organization?.slug;
 
-  const businessName = organization?.business_name;
-  const psrLicence = organization?.psr_licence_number;
-  const regulatory = getRegionConfig((organization?.locale || 'en-IE') as SupportedLocale).legal.regulatory;
+  // Marketing site context — no org, render a simple branded header
+  if (!organization) {
+    return (
+      <header className="border-b bg-card sticky top-0 z-50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+              <Home className="h-5 w-5 text-primary" />
+              <span className="text-lg font-bold">AutoListing</span>
+            </Link>
+            <Link to="/">
+              <Button variant="outline" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  const businessName = organization.business_name;
+  const psrLicence = organization.psr_licence_number;
+  const regulatory = getRegionConfig((organization.locale || 'en-IE') as SupportedLocale).legal.regulatory;
   const homeLink = orgSlug ? `/${orgSlug}` : '/';
   const valuationLink = orgSlug ? `/${orgSlug}/request-valuation` : '/request-valuation';
 
@@ -37,7 +59,7 @@ export const PublicHeader = () => {
         <div className="flex items-center justify-between gap-4">
           <Link to={homeLink} className="flex items-center gap-3 flex-shrink-0">
             <OrganizationLogo
-              logoUrl={organization?.logo_url}
+              logoUrl={organization.logo_url}
               businessName={businessName}
               className="h-10 sm:h-12 w-auto"
             />
@@ -63,8 +85,8 @@ export const PublicHeader = () => {
                     <OrganizationViewSelector />
                   </div>
                 )}
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   className="gap-2"
                   onClick={() => navigate('/admin/listings')}
