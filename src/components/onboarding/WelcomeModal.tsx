@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, ArrowRight, Gift, Zap, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Sparkles, ArrowRight, Rocket, Video, Users, Palette } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ interface WelcomeModalProps {
 export function WelcomeModal({ onClose }: WelcomeModalProps) {
   const { organization } = useOrganization();
   const { hasSeenWelcome, markWelcomeSeen, isLoading } = useOnboarding();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
   // Check if organization is in pilot/comped mode - skip welcome modal for pilot users
@@ -35,6 +37,7 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
     await markWelcomeSeen();
     setIsOpen(false);
     onClose?.();
+    navigate('/admin/settings');
   };
 
   const handleDismiss = () => {
@@ -50,7 +53,7 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
     <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) handleDismiss();
     }}>
-      <DialogContent 
+      <DialogContent
         className="sm:max-w-md"
         data-testid="welcome-modal"
       >
@@ -74,24 +77,36 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
         <div className="space-y-3 py-4">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted">
             <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-              <Gift className="w-4 h-4 text-green-600 dark:text-green-400" />
+              <Rocket className="w-4 h-4 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">14-Day Free Trial</p>
+              <p className="text-sm font-medium text-foreground">Free Forever Plan</p>
               <p className="text-xs text-muted-foreground">
-                Full access to all features, no credit card required
+                3 listings, automated social posting, CRM & email — no credit card required
               </p>
             </div>
           </div>
 
           <div className="flex items-start gap-3 p-3 rounded-lg bg-muted">
             <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-              <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <Video className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">100 Free Credits</p>
+              <p className="text-sm font-medium text-foreground">AI-Generated Videos</p>
               <p className="text-xs text-muted-foreground">
-                Use AI features, generate content, and more
+                Access to 3 video styles, posted to all your social platforms
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted">
+            <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+              <Palette className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Your Brand on Every Video</p>
+              <p className="text-xs text-muted-foreground">
+                Custom end cards with your logo, colours, and contact info
               </p>
             </div>
           </div>
@@ -103,18 +118,18 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
             <div>
               <p className="text-sm font-medium text-foreground">Guided Setup</p>
               <p className="text-xs text-muted-foreground">
-                We'll help you get everything configured
+                We'll take you to your profile settings first
               </p>
             </div>
           </div>
         </div>
 
-        <Button 
-          onClick={handleGetStarted} 
+        <Button
+          onClick={handleGetStarted}
           className="w-full"
           data-testid="button-get-started"
         >
-          Let's Get Started
+          Set Up Your Profile
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </DialogContent>
