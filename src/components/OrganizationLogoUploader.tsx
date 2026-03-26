@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Upload, X, ImageIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { uploadOrganizationLogo, deleteOrganizationLogo } from "@/lib/organizationHelpers";
+import { useTranslation } from "react-i18next";
 
 interface OrganizationLogoUploaderProps {
   currentLogoUrl: string | null;
@@ -16,6 +17,7 @@ export function OrganizationLogoUploader({
   organizationId,
   onLogoUpdate,
 }: OrganizationLogoUploaderProps) {
+  const { t } = useTranslation('admin');
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentLogoUrl);
 
@@ -109,7 +111,7 @@ export function OrganizationLogoUploader({
               <>
                 <img
                   src={previewUrl}
-                  alt="Organisation logo"
+                  alt={t('organisations.logoAlt')}
                   className="max-w-full max-h-24 object-contain"
                 />
                 {!isUploading && (
@@ -129,9 +131,9 @@ export function OrganizationLogoUploader({
           </div>
 
           <div className="flex-1 space-y-2">
-            <h3 className="font-medium">Organisation Logo</h3>
+            <h3 className="font-medium">{t('organisations.logo')}</h3>
             <p className="text-sm text-muted-foreground">
-              Upload your organisation logo. Max file size: 2MB. Accepted formats: JPG, PNG
+              {t('organisations.logoUploadHint')}
             </p>
             <div className="flex gap-2">
               <Button

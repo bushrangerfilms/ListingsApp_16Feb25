@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, OrganizationWithCounts } from '@/lib/admin/adminApi';
 import { useSuperAdminPermissions } from '@/hooks/useSuperAdminPermissions';
@@ -40,6 +41,7 @@ import { OrganizationDetailDrawer } from '@/components/admin/OrganizationDetailD
 const PAGE_SIZE = 20;
 
 export default function OrganizationsPage() {
+  const { t } = useTranslation('admin');
   const { isSuperAdmin, hasSuperAdminAccess, loading: authLoading } = useSuperAdminPermissions();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -172,7 +174,7 @@ export default function OrganizationsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Organisations</h1>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">{t('organisations.title')}</h1>
           <p className="text-muted-foreground">Manage all tenant organisations</p>
         </div>
         <Badge variant="secondary" className="text-sm">
@@ -277,7 +279,7 @@ export default function OrganizationsPage() {
                         className={someSelected && !allSelected ? 'opacity-50' : ''}
                       />
                     </TableHead>
-                    <TableHead>Organisation</TableHead>
+                    <TableHead>{t('common:labels.organisation')}</TableHead>
                     <TableHead>Slug</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead className="text-center">Users</TableHead>
@@ -422,7 +424,7 @@ export default function OrganizationsPage() {
       <Dialog open={bulkCreditsOpen} onOpenChange={setBulkCreditsOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Grant Credits to {selectedIds.size} Organisations</DialogTitle>
+            <DialogTitle>{t('organisations.grantCredits', { count: selectedIds.size })}</DialogTitle>
             <DialogDescription>
               This will grant the same amount of credits to all selected organisations.
             </DialogDescription>
@@ -470,7 +472,7 @@ export default function OrganizationsPage() {
       <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete {selectedIds.size} Organisation{selectedIds.size > 1 ? 's' : ''}?</DialogTitle>
+            <DialogTitle>{t('organisations.deleteConfirm', { count: selectedIds.size, plural: selectedIds.size > 1 ? 's' : '' })}</DialogTitle>
             <DialogDescription>
               This action cannot be undone. This will permanently delete the selected organisation{selectedIds.size > 1 ? 's' : ''} and all associated data including listings, users, billing history, and CRM data.
             </DialogDescription>
@@ -486,7 +488,7 @@ export default function OrganizationsPage() {
               data-testid="button-confirm-delete"
             >
               {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Delete {selectedIds.size} Organisation{selectedIds.size > 1 ? 's' : ''}
+              {t('organisations.deleteConfirm', { count: selectedIds.size, plural: selectedIds.size > 1 ? 's' : '' })}
             </Button>
           </DialogFooter>
         </DialogContent>
