@@ -39,16 +39,19 @@ export default function AdminLogin() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        if (error.message.includes('Invalid login credentials')) {
+        console.error('Login error:', error, 'message:', error.message, 'status:', error.status);
+        const msg = typeof error.message === 'string' ? error.message : '';
+        if (msg.includes('Invalid login credentials')) {
           toast.error('Invalid email or password');
-        } else if (error.message.includes('Email not confirmed')) {
+        } else if (msg.includes('Email not confirmed')) {
           toast.error('Please check your email to verify your account');
         } else {
-          toast.error(error.message);
+          toast.error(msg || 'Login failed. Please try again.');
         }
       }
     } catch (err) {
-      toast.error('An unexpected error occurred');
+      console.error('Login exception:', err);
+      toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -69,7 +72,8 @@ export default function AdminLogin() {
         options: { emailRedirectTo: redirectTo },
       });
       if (error) {
-        toast.error(error.message);
+        console.error('Magic link error:', error, 'message:', error.message);
+        toast.error(error.message || 'Failed to send login link. Please try again.');
       } else {
         setEmailSent(true);
       }
