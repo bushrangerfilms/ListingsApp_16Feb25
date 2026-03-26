@@ -30,5 +30,26 @@ Sentry.init({
   ],
 });
 
+// DEBUG: Intercept sonner toast calls to find {} toast source
+import { toast as _debugToast } from 'sonner';
+const _origError = _debugToast.error;
+const _origDefault = _debugToast;
+_debugToast.error = (...args: unknown[]) => {
+  console.trace('[TOAST DEBUG] toast.error called with:', args);
+  return (_origError as Function).apply(_debugToast, args);
+};
+// Also intercept default toast()
+const _origCall = Function.prototype.apply.bind(_debugToast);
+// Monkey-patch via prototype — log all toast variants
+(['success', 'warning', 'info', 'message'] as const).forEach((method) => {
+  const orig = (_debugToast as Record<string, Function>)[method];
+  if (orig) {
+    (_debugToast as Record<string, Function>)[method] = (...args: unknown[]) => {
+      console.trace(`[TOAST DEBUG] toast.${method} called with:`, args);
+      return orig.apply(_debugToast, args);
+    };
+  }
+});
+
 seedLocaleFromGeo();
 createRoot(document.getElementById("root")!).render(<App />);
