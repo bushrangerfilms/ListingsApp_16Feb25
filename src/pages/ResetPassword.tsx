@@ -56,10 +56,10 @@ export default function ResetPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       toast({
         title: "Password too short",
-        description: "Password must be at least 6 characters",
+        description: "Password must be at least 8 characters",
         variant: "destructive",
       });
       return;
@@ -180,7 +180,7 @@ export default function ResetPassword() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter new password"
                   required
-                  minLength={6}
+                  minLength={8}
                   data-testid="input-new-password"
                 />
                 <Button
@@ -206,7 +206,7 @@ export default function ResetPassword() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
                   required
-                  minLength={6}
+                  minLength={8}
                   data-testid="input-confirm-password"
                 />
                 <Button

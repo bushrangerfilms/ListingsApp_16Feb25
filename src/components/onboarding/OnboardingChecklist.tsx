@@ -111,7 +111,7 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
       </div>
       
       <CollapsibleContent>
-        <div className="px-2 pb-3 space-y-0.5 max-h-[160px] overflow-y-auto">
+        <div className="px-2 pb-3 space-y-0.5 max-h-[280px] overflow-y-auto">
           {visibleTasks.map((task) => (
             <TaskItem
               key={task.id}

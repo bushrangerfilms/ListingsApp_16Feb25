@@ -307,7 +307,7 @@ export function EditListingDialog({
             <div className="space-y-0.5">
               <Label htmlFor="exclude-ai-motion">Exclude AI Motion Videos</Label>
               <p className="text-xs text-muted-foreground">
-                Some images are more prone to glitching and hallucinating with AI motion. If your listing has flat images like drone photos with land border graphics, floor plans and tight shots of stone wall you may want to exclude this listing from video styles that use AI motion.
+                Some photo types (drone shots, floor plans, etc.) may not work well with AI motion effects. Enable this to use static slideshows only for this listing.
               </p>
             </div>
             <Switch

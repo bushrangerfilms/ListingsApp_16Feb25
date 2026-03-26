@@ -2,6 +2,7 @@ import { AlertTriangle, ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useState } from 'react';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 const SOCIALS_HUB_SETUP_URL = 'https://socials.autolisting.io/organization/settings/branding';
 
@@ -10,7 +11,11 @@ interface EndCardSetupBannerProps {
 }
 
 export function EndCardSetupBanner({ className }: EndCardSetupBannerProps) {
-  const [isDismissed, setIsDismissed] = useState(false);
+  const { organization } = useOrganization();
+  const storageKey = `endcard-banner-dismissed-${organization?.id ?? 'unknown'}`;
+  const [isDismissed, setIsDismissed] = useState(() => {
+    try { return localStorage.getItem(storageKey) === 'true'; } catch { return false; }
+  });
 
   if (isDismissed) {
     return null;
@@ -51,7 +56,10 @@ export function EndCardSetupBanner({ className }: EndCardSetupBannerProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setIsDismissed(true)}
+              onClick={() => {
+                try { localStorage.setItem(storageKey, 'true'); } catch {}
+                setIsDismissed(true);
+              }}
               aria-label="Dismiss"
               className="text-amber-700 hover:text-amber-800 hover:bg-amber-500/20 dark:text-amber-300 dark:hover:text-amber-200"
               data-testid="button-dismiss-endcard-banner"

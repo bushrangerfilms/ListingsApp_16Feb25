@@ -83,8 +83,8 @@ export default function OrganizationSignup() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters long');
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters long');
       return;
     }
 
@@ -347,7 +347,7 @@ export default function OrganizationSignup() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="new-password"
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
 
@@ -362,7 +362,7 @@ export default function OrganizationSignup() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     autoComplete="new-password"
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
 

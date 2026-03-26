@@ -22,6 +22,7 @@ import { SocialConnectionBanner } from "@/components/SocialConnectionBanner";
 import { matchesListingSearch } from "@/lib/listingSearch";
 import { extractPlanLimitError, type PlanLimitError } from "@/lib/planLimitError";
 import { UpgradePlanDialog } from "@/components/billing/UpgradePlanDialog";
+import { OnboardingProgressBanner } from "@/components/onboarding/OnboardingProgressBanner";
 
 interface Listing {
   id: string;
@@ -470,6 +471,9 @@ const ListingsDashboard = () => {
           </Button>
         </div>
       </div>
+
+      {/* Onboarding Progress Banner - shown for new orgs with incomplete setup */}
+      <OnboardingProgressBanner className="mb-6" />
 
       {/* End Card Setup Banner - shown for new orgs without video branding */}
       {!endCardCheckLoading && needsEndCardSetup && (
