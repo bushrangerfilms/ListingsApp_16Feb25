@@ -9,9 +9,9 @@
       "title": "The complete platform for",
       "titleHighlight": "real estate professionals",
       "subtitle": "Manage listings, automate marketing, capture leads with AI, and grow your business. Everything you need in one powerful platform.",
-      "cta": "Start Free Trial",
+      "cta": "Start Free",
       "ctaSecondary": "Explore Features",
-      "trialNote": "100 free credits on signup. No credit card required."
+      "note": "3 free listings with automated posting. No credit card required."
     },
     "features": {
       "title": "Everything you need to succeed",
@@ -84,9 +84,9 @@
     "cta": {
       "title": "Ready to transform your business?",
       "subtitle": "Join real estate professionals who are saving time and closing more deals with AutoListing.io.",
-      "button": "Start Free Trial",
+      "button": "Start Free",
       "viewPricing": "View Pricing",
-      "trialNote": "100 free credits included. No credit card required to start."
+      "note": "Start free with 3 listings. No credit card required."
     }
   },
 
@@ -104,11 +104,11 @@
       "user": "user",
       "users": "users",
       "creditsPerMonth": "credits/mo",
-      "trialNote": "Start with 100 free trial credits. No credit card required.",
+      "note": "Start free with 3 listings. No credit card required.",
       "starter": {
         "name": "Starter",
         "description": "Perfect for solo agents getting started",
-        "cta": "Start Free Trial",
+        "cta": "Start Free",
         "features": {
           "listings": "Unlimited property listings",
           "crm": "Full CRM access",
@@ -122,7 +122,7 @@
       "pro": {
         "name": "Pro",
         "description": "For growing teams and agencies",
-        "cta": "Start Free Trial",
+        "cta": "Start Free",
         "features": {
           "everything": "Everything in Starter",
           "team": "Up to 10 team members",
@@ -176,8 +176,8 @@
     },
     "cta": {
       "title": "Ready to get started?",
-      "subtitle": "Start your free trial today with 100 credits included. No credit card required.",
-      "button": "Start Free Trial"
+      "subtitle": "Start free today with 3 listings and automated posting. No credit card required.",
+      "button": "Start Free"
     }
   },
 
@@ -349,8 +349,8 @@
     },
     "cta": {
       "title": "Ready to see it in action?",
-      "subtitle": "Start your free trial today and experience all these features with 100 credits included.",
-      "button": "Start Free Trial",
+      "subtitle": "Start free today and experience all these features. No credit card required.",
+      "button": "Start Free",
       "viewPricing": "View Pricing"
     }
   },
@@ -447,7 +447,7 @@
   },
 
   "common": {
-    "startFreeTrial": "Start Free Trial",
+    "startFree": "Start Free",
     "viewPricing": "View Pricing",
     "viewFeatures": "Explore Features",
     "comingSoon": "Coming Soon",
