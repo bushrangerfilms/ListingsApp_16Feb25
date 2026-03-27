@@ -52,7 +52,7 @@ export function MarketingFooter() {
             <h3 className="text-sm font-semibold">Get Started</h3>
             <nav className="flex flex-col space-y-2">
               <a href={getSignupUrl()} className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-signup">
-                Start Free Trial
+                Start for Free
               </a>
               <a href={getLoginUrl()} className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-login">
                 Log in

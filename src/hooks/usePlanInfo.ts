@@ -41,7 +41,7 @@ export function usePlanInfo() {
       if (isTrialActive || organization.account_status === 'trial') {
         return {
           planName: 'free',
-          displayName: 'Free Trial',
+          displayName: 'Free Tier',
           maxUsers: FREE_DEFAULTS.maxUsers,
           maxListings: FREE_DEFAULTS.maxListings,
           maxSocialHubs: FREE_DEFAULTS.maxSocialHubs,

@@ -286,7 +286,7 @@ export default function AdminBilling() {
             <div className="text-2xl font-bold capitalize">
               {hasActiveSubscription
                 ? (planDefinitions?.find(p => p.name === currentPlan)?.display_name || currentPlan)
-                : isOnTrial ? 'Free Trial' : 'Free Plan'}
+                : isOnTrial ? 'Free Tier' : 'Free Plan'}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               {hasActiveSubscription

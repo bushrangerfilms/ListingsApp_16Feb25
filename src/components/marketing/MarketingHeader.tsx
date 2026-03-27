@@ -75,18 +75,18 @@ export function MarketingHeader() {
               </Button>
             ) : (
               <>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="outline"
                   onClick={handleLogin}
                   data-testid="button-login"
                 >
-                  Log in
+                  Sign In
                 </Button>
                 <Button 
                   onClick={handleSignup}
                   data-testid="button-signup"
                 >
-                  Start Free Trial
+                  Start for Free
                 </Button>
               </>
             )}
@@ -130,15 +130,15 @@ export function MarketingHeader() {
                   </Button>
                 ) : (
                   <>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => {
                         handleLogin();
                         setMobileMenuOpen(false);
                       }}
                       data-testid="button-mobile-login"
                     >
-                      Log in
+                      Sign In
                     </Button>
                     <Button 
                       onClick={() => {
@@ -147,7 +147,7 @@ export function MarketingHeader() {
                       }}
                       data-testid="button-mobile-signup"
                     >
-                      Start Free Trial
+                      Start for Free
                     </Button>
                   </>
                 )}

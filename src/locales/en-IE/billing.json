@@ -21,7 +21,7 @@
     "cancel": "Cancel Subscription",
     "renews": "Renews on {{date}}",
     "expires": "Expires on {{date}}",
-    "trial": "Free Trial",
+    "trial": "Free Tier",
     "trialEnds": "Trial ends in {{days}} days",
     "trialExpired": "Trial Expired"
   },

@@ -2,7 +2,7 @@
   "hero": {
     "title": "Property Management Made Simple",
     "subtitle": "The all-in-one platform for estate agents and property professionals",
-    "cta": "Start Your Free Trial"
+    "cta": "Start for Free"
   },
   
   "features": {
@@ -41,7 +41,7 @@
     "annual": "Annual",
     "save": "Save {{percent}}%",
     "popular": "Most Popular",
-    "startTrial": "Start Free Trial",
+    "startTrial": "Start for Free",
     "contactSales": "Contact Sales",
     "features": "Features",
     "included": "Included",
@@ -56,7 +56,7 @@
   "cta": {
     "title": "Ready to Get Started?",
     "subtitle": "Join thousands of property professionals using AutoListing",
-    "button": "Start Your Free Trial",
+    "button": "Start for Free",
     "noCard": "No credit card required"
   },
   
