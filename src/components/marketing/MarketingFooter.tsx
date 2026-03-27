@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Building2 } from 'lucide-react';
 import { COMPANY_INFO, getFormattedAddress } from '@/config/company';
+import { getLoginUrl, getSignupUrl } from '@/lib/appUrls';
 
 export function MarketingFooter() {
   return (
@@ -50,12 +51,12 @@ export function MarketingFooter() {
           <div className="space-y-4">
             <h3 className="text-sm font-semibold">Get Started</h3>
             <nav className="flex flex-col space-y-2">
-              <Link to="/signup" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-signup">
+              <a href={getSignupUrl()} className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-signup">
                 Start Free Trial
-              </Link>
-              <Link to="/admin/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-login">
+              </a>
+              <a href={getLoginUrl()} className="text-sm text-muted-foreground hover:text-foreground transition-colors" data-testid="link-footer-login">
                 Log in
-              </Link>
+              </a>
             </nav>
           </div>
         </div>
