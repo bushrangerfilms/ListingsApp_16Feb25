@@ -60,7 +60,7 @@ export function BillingHistoryTable({ organizationId }: BillingHistoryTableProps
         <div>
           <CardTitle>Transaction History</CardTitle>
           <CardDescription>
-            View your credit purchases and usage
+            View your transaction history
           </CardDescription>
         </div>
         <Button 

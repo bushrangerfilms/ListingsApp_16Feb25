@@ -528,18 +528,29 @@ export default function PublicListings() {
           </div> : loading ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-96" />)}
           </div> : filteredListings.length === 0 ? <div className="text-center py-16">
-            <h3 className="text-2xl font-semibold mb-2">{t('listings.public.noPropertiesFound')}</h3>
-            <p className="text-lg text-muted-foreground mb-6">
-              {t('listings.public.tryAdjustingSearch')}
-            </p>
-            <Button onClick={() => {
-          setSearchQuery('');
-          setPriceRange('all');
-          setBedroomFilter('all');
-          setCategoryFilter('all');
-        }}>
-              {t('listings.filters.clear')}
-            </Button>
+            {listings.length === 0 ? (
+              <>
+                <h3 className="text-2xl font-semibold mb-2">No Properties Listed Yet</h3>
+                <p className="text-lg text-muted-foreground mb-6">
+                  Check back soon for new listings.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-2xl font-semibold mb-2">{t('listings.public.noPropertiesFound')}</h3>
+                <p className="text-lg text-muted-foreground mb-6">
+                  {t('listings.public.tryAdjustingSearch')}
+                </p>
+                <Button onClick={() => {
+                  setSearchQuery('');
+                  setPriceRange('all');
+                  setBedroomFilter('all');
+                  setCategoryFilter('all');
+                }}>
+                  {t('listings.filters.clear')}
+                </Button>
+              </>
+            )}
           </div> : <>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
               <p className="text-base sm:text-lg text-muted-foreground">

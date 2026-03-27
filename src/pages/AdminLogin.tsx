@@ -183,6 +183,15 @@ export default function AdminLogin() {
                     autoComplete="current-password"
                     required
                   />
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setMode('magic')}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Log in'}
@@ -190,6 +199,9 @@ export default function AdminLogin() {
               </form>
             ) : (
               <form onSubmit={handleMagicLink} className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Enter your email to receive a login link — no password needed.
+                </p>
                 <div className="space-y-2">
                   <Label htmlFor="magic-email">Email</Label>
                   <Input

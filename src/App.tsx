@@ -214,6 +214,7 @@ function AdminRoutes() {
         <Route path="/" element={<Navigate to="/admin/login" replace />} />
         <Route path="/marketing" element={<MarketingHome />} />
 
+        <Route path="/login" element={<Navigate to="/admin/login" replace />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dev-login" element={<AdminDevLogin />} />
         <Route path="/signup" element={<SignupGate><SignupWizard /></SignupGate>} />
