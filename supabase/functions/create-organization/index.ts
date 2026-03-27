@@ -158,6 +158,7 @@ serve(async (req) => {
         trial_ends_at: null,
         credit_spending_enabled: true,
         is_comped: isComped || false,
+        hide_public_site: true,
       })
       .select()
       .single();

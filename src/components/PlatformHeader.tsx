@@ -9,8 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { OrganizationViewSelector } from "@/components/OrganizationViewSelector";
-import { CreditBalanceBadge } from "@/components/billing/CreditBalanceBadge";
-import { PurchaseCreditsModal } from "@/components/billing/PurchaseCreditsModal";
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -37,7 +36,6 @@ export const PlatformHeader = () => {
   const { isSuperAdmin } = useOrganizationView();
   const [open, setOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [recentEnquiries, setRecentEnquiries] = useState<Enquiry[]>([]);
   const [recentValuations, setRecentValuations] = useState<ValuationRequest[]>([]);
@@ -210,14 +208,6 @@ export const PlatformHeader = () => {
               {isSuperAdmin && <OrganizationViewSelector />}
             </div>
             
-            {/* Credit Balance Badge - hidden for pilot/comped organizations */}
-            {organization && !organization.is_comped && (
-              <CreditBalanceBadge 
-                organizationId={organization.id}
-                onClick={() => setShowPurchaseModal(true)}
-                variant="compact"
-              />
-            )}
             
             {/* Notification Bell */}
             <Popover open={notificationOpen} onOpenChange={setNotificationOpen}>
@@ -424,14 +414,6 @@ export const PlatformHeader = () => {
         </div>
       </div>
 
-      {/* Purchase Credits Modal */}
-      {organization && (
-        <PurchaseCreditsModal
-          open={showPurchaseModal}
-          onOpenChange={setShowPurchaseModal}
-          organizationId={organization.id}
-        />
-      )}
     </header>
   );
 };

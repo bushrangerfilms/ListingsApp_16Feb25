@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -36,6 +37,8 @@ export default function AdminOrganizationSettings() {
   const { organization, loading, refreshOrganization } = useOrganization();
   const queryClient = useQueryClient();
   const { viewAsOrganizationId, selectedOrganization, isOrganizationView, isSuperAdmin } = useOrganizationView();
+  const [searchParams] = useSearchParams();
+  const logoRef = useRef<HTMLDivElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
@@ -76,6 +79,12 @@ export default function AdminOrganizationSettings() {
       setCustomDomain(targetOrg.custom_domain);
     }
   }, [targetOrg, viewAsOrganizationId]);
+
+  useEffect(() => {
+    if (searchParams.get('section') === 'logo' && logoRef.current) {
+      logoRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [searchParams, loading]);
 
   const onSubmit = async (data: OrganizationFormData) => {
     if (!targetOrg) return;
@@ -128,11 +137,13 @@ export default function AdminOrganizationSettings() {
         <p className="text-muted-foreground">Manage your organization profile and contact information</p>
       </div>
 
-      <OrganizationLogoUploader
-        currentLogoUrl={logoUrl}
-        organizationId={organization.id}
-        onLogoUpdate={(newUrl) => setLogoUrl(newUrl)}
-      />
+      <div ref={logoRef}>
+        <OrganizationLogoUploader
+          currentLogoUrl={logoUrl}
+          organizationId={organization.id}
+          onLogoUpdate={(newUrl) => setLogoUrl(newUrl)}
+        />
+      </div>
 
       <OrganizationFaviconUploader
         currentFaviconUrl={faviconUrl}

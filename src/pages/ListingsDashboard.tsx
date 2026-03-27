@@ -459,10 +459,12 @@ const ListingsDashboard = () => {
             <Plus className="mr-2 h-4 w-4" />
             {t('listings.newListing')}
           </Button>
-          <Button onClick={handleExportCSV} variant="outline" size="lg" className="w-full sm:w-auto">
-            <Download className="mr-2 h-4 w-4" />
-            {t('listings.exportCsv')}
-          </Button>
+          {listings.length > 0 && (
+            <Button onClick={handleExportCSV} variant="outline" size="lg" className="w-full sm:w-auto">
+              <Download className="mr-2 h-4 w-4" />
+              {t('listings.exportCsv')}
+            </Button>
+          )}
         </div>
       </div>
 

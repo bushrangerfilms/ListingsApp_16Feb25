@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Activity, BarChart3, PieChart, Mail, Users, Target } from "lucide-react";
+import { Activity, BarChart3, PieChart, Mail, Users, Target, Plus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from "@/contexts/OrganizationContext";
 
 import OverviewSection from "@/components/analytics/sections/OverviewSection";
 import ListingsSection from "@/components/analytics/sections/ListingsSection";
@@ -14,6 +17,20 @@ import MatchingSection from "@/components/analytics/sections/MatchingSection";
 export default function AdminAnalyticsHub() {
   const location = useLocation();
   const [activeSection, setActiveSection] = useState("overview");
+  const { organization } = useOrganization();
+
+  const { data: listingCount = 0 } = useQuery({
+    queryKey: ['listing-count', organization?.id],
+    queryFn: async () => {
+      if (!organization?.id) return 0;
+      const { count } = await supabase
+        .from('listings')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organization.id);
+      return count ?? 0;
+    },
+    enabled: !!organization?.id,
+  });
 
   useEffect(() => {
     const path = location.pathname;
@@ -49,53 +66,69 @@ export default function AdminAnalyticsHub() {
         </Button>
       </div>
 
-      <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
-        <TabsList className="w-full h-auto flex-wrap gap-1 justify-start p-1 mb-6">
-          <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden sm:inline">Overview</span>
-          </TabsTrigger>
-          <TabsTrigger value="listings" className="gap-2" data-testid="tab-listings">
-            <PieChart className="h-4 w-4" />
-            <span className="hidden sm:inline">Listings</span>
-          </TabsTrigger>
-          <TabsTrigger value="attribution" className="gap-2" data-testid="tab-attribution">
-            <Target className="h-4 w-4" />
-            <span className="hidden sm:inline">Attribution</span>
-          </TabsTrigger>
-          <TabsTrigger value="email" className="gap-2" data-testid="tab-email">
-            <Mail className="h-4 w-4" />
-            <span className="hidden sm:inline">Email</span>
-          </TabsTrigger>
-          <TabsTrigger value="team" className="gap-2" data-testid="tab-team">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Team</span>
-          </TabsTrigger>
-          <TabsTrigger value="matching" className="gap-2" data-testid="tab-matching">
-            <Target className="h-4 w-4" />
-            <span className="hidden sm:inline">Matching</span>
-          </TabsTrigger>
-        </TabsList>
+      {listingCount === 0 ? (
+        <div className="text-center py-20">
+          <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-xl font-semibold mb-2">No Analytics Yet</h3>
+          <p className="text-muted-foreground mb-6">
+            Add your first listing to start seeing analytics.
+          </p>
+          <Button asChild>
+            <Link to="/admin/create">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Listing
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
+          <TabsList className="w-full h-auto flex-wrap gap-1 justify-start p-1 mb-6">
+            <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Overview</span>
+            </TabsTrigger>
+            <TabsTrigger value="listings" className="gap-2" data-testid="tab-listings">
+              <PieChart className="h-4 w-4" />
+              <span className="hidden sm:inline">Listings</span>
+            </TabsTrigger>
+            <TabsTrigger value="attribution" className="gap-2" data-testid="tab-attribution">
+              <Target className="h-4 w-4" />
+              <span className="hidden sm:inline">Attribution</span>
+            </TabsTrigger>
+            <TabsTrigger value="email" className="gap-2" data-testid="tab-email">
+              <Mail className="h-4 w-4" />
+              <span className="hidden sm:inline">Email</span>
+            </TabsTrigger>
+            <TabsTrigger value="team" className="gap-2" data-testid="tab-team">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Team</span>
+            </TabsTrigger>
+            <TabsTrigger value="matching" className="gap-2" data-testid="tab-matching">
+              <Target className="h-4 w-4" />
+              <span className="hidden sm:inline">Matching</span>
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="overview" className="mt-0">
-          <OverviewSection />
-        </TabsContent>
-        <TabsContent value="listings" className="mt-0">
-          <ListingsSection />
-        </TabsContent>
-        <TabsContent value="attribution" className="mt-0">
-          <AttributionSection />
-        </TabsContent>
-        <TabsContent value="email" className="mt-0">
-          <EmailSection />
-        </TabsContent>
-        <TabsContent value="team" className="mt-0">
-          <TeamSection />
-        </TabsContent>
-        <TabsContent value="matching" className="mt-0">
-          <MatchingSection />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="overview" className="mt-0">
+            <OverviewSection />
+          </TabsContent>
+          <TabsContent value="listings" className="mt-0">
+            <ListingsSection />
+          </TabsContent>
+          <TabsContent value="attribution" className="mt-0">
+            <AttributionSection />
+          </TabsContent>
+          <TabsContent value="email" className="mt-0">
+            <EmailSection />
+          </TabsContent>
+          <TabsContent value="team" className="mt-0">
+            <TeamSection />
+          </TabsContent>
+          <TabsContent value="matching" className="mt-0">
+            <MatchingSection />
+          </TabsContent>
+        </Tabs>
+      )}
     </div>
   );
 }

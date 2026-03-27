@@ -40,7 +40,8 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
     navigate('/admin/settings');
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = async () => {
+    await markWelcomeSeen();
     setIsOpen(false);
     onClose?.();
   };

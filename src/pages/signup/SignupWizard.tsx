@@ -13,6 +13,8 @@ import {
   ArrowRight,
   Loader2,
   Sparkles,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { MarketingLayout } from '@/components/marketing/MarketingLayout';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,6 +42,8 @@ export default function SignupWizard() {
   const [password, setPassword] = useState('');
   const [gdprConsent, setGdprConsent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const isCompletingSignupRef = useRef(false);
 
   useEffect(() => {
@@ -48,23 +52,30 @@ export default function SignupWizard() {
     }
   }, [user, navigate]);
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!businessName.trim()) {
+      newErrors.businessName = 'Please enter your business name';
+    }
+    if (!email.trim()) {
+      newErrors.email = 'Please enter your email';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    if (!password || password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    }
+    if (!gdprConsent) {
+      newErrors.gdpr = 'You must accept the privacy policy and terms';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!businessName.trim()) {
-      toast.error('Please enter your business name');
-      return;
-    }
-    if (!email.trim()) {
-      toast.error('Please enter your email');
-      return;
-    }
-    if (!password || password.length < 8) {
-      toast.error('Password must be at least 8 characters');
-      return;
-    }
-    if (!gdprConsent) {
-      toast.error('You must accept the privacy policy and terms');
+    if (!validateForm()) {
       return;
     }
 
@@ -178,17 +189,18 @@ export default function SignupWizard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div className="space-y-2">
                   <Label htmlFor="businessName">Business Name</Label>
                   <Input
                     id="businessName"
                     placeholder="e.g. Smith & Co Auctioneers"
                     value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    required
+                    onChange={(e) => { setBusinessName(e.target.value); setErrors(prev => ({ ...prev, businessName: '' })); }}
                     autoFocus
+                    className={errors.businessName ? 'border-red-500' : ''}
                   />
+                  {errors.businessName && <p className="text-xs text-red-500">{errors.businessName}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -198,42 +210,59 @@ export default function SignupWizard() {
                     type="email"
                     placeholder="you@agency.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: '' })); }}
                     autoComplete="email"
-                    required
+                    className={errors.email ? 'border-red-500' : ''}
                   />
+                  {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="At least 8 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete="new-password"
-                    required
-                    minLength={8}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="At least 8 characters"
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: '' })); }}
+                      autoComplete="new-password"
+                      className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-xs text-red-500">{errors.password}</p>}
+                  {!errors.password && password.length > 0 && password.length < 8 && (
+                    <p className="text-xs text-muted-foreground">{password.length}/8 characters</p>
+                  )}
                 </div>
 
-                <div className="flex items-start gap-2 pt-2">
-                  <Checkbox
-                    id="gdpr"
-                    checked={gdprConsent}
-                    onCheckedChange={(checked) => setGdprConsent(checked === true)}
-                  />
-                  <label htmlFor="gdpr" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
-                    I agree to the{' '}
-                    <Link to="/privacy-policy" target="_blank" className="text-primary hover:underline">
-                      Privacy Policy
-                    </Link>{' '}
-                    and{' '}
-                    <Link to="/terms-conditions" target="_blank" className="text-primary hover:underline">
-                      Terms & Conditions
-                    </Link>
-                  </label>
+                <div className="space-y-1">
+                  <div className="flex items-start gap-2 pt-2">
+                    <Checkbox
+                      id="gdpr"
+                      checked={gdprConsent}
+                      onCheckedChange={(checked) => { setGdprConsent(checked === true); setErrors(prev => ({ ...prev, gdpr: '' })); }}
+                    />
+                    <label htmlFor="gdpr" className="text-xs text-muted-foreground leading-relaxed cursor-pointer">
+                      I agree to the{' '}
+                      <Link to="/privacy-policy" target="_blank" className="text-primary hover:underline">
+                        Privacy Policy
+                      </Link>{' '}
+                      and{' '}
+                      <Link to="/terms-conditions" target="_blank" className="text-primary hover:underline">
+                        Terms & Conditions
+                      </Link>
+                    </label>
+                  </div>
+                  {errors.gdpr && <p className="text-xs text-red-500 pl-6">{errors.gdpr}</p>}
                 </div>
 
                 <Button

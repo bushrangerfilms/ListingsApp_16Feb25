@@ -33,7 +33,7 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     id: 'upload_logo',
     title: 'Upload your logo',
     description: 'Used in videos and your website',
-    href: '/admin/settings',
+    href: '/admin/settings?section=logo',
     icon: ImageIcon,
   },
   {

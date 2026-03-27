@@ -33,11 +33,10 @@ export function OnboardingProgressBanner({ className }: OnboardingProgressBanner
   }
 
   const visibleTasks = tasks.filter(task => !task.proOnly || isPro);
-  const incompleteTasks = visibleTasks.filter(t => !tasksCompleted[t.id]);
   const visibleCompleted = visibleTasks.filter(t => tasksCompleted[t.id]).length;
   const visibleTotal = visibleTasks.length;
 
-  if (incompleteTasks.length === 0) {
+  if (visibleCompleted >= visibleTotal) {
     return null;
   }
 
@@ -70,19 +69,24 @@ export function OnboardingProgressBanner({ className }: OnboardingProgressBanner
         />
 
         {needsEndCardSetup && (
-          <div className="flex items-center gap-2 mb-3 p-2 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm">
+          <a
+            href="https://socials.autolisting.io/organization/settings/branding"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 mb-3 p-2 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 text-sm hover:bg-amber-500/20 transition-colors"
+          >
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-            <span>Videos won't generate until you complete your branding setup in the Socials Hub.</span>
-          </div>
+            <span className="underline">Videos won't generate until you complete your branding setup in the Socials Hub.</span>
+          </a>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
-          {incompleteTasks.map((task) => (
+          {visibleTasks.map((task) => (
             <TaskItem
               key={task.id}
               title={task.title}
               description={task.description}
-              isComplete={false}
+              isComplete={!!tasksCompleted[task.id]}
               href={task.href}
               icon={task.icon}
               external={task.external}
