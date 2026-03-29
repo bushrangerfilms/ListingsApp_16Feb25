@@ -344,11 +344,11 @@ serve(async (req) => {
     // Step 11: Send welcome email to new user (non-blocking)
     const fullName = [trimmedFirstName, trimmedLastName].filter(Boolean).join(' ') || trimmedBusinessName;
     try {
+      // No organizationId — platform welcome email should always come from AutoListing, not the org
       await supabase.functions.invoke('send-email', {
         body: {
           templateKey: 'welcome_signup',
           to: trimmedUserEmail,
-          organizationId: organization.id,
           variables: {
             first_name: trimmedFirstName || trimmedBusinessName,
             business_name: trimmedBusinessName,
