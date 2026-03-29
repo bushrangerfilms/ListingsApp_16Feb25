@@ -2,198 +2,178 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Globe, Copy, CheckCircle2, Clock, Mail, ExternalLink, ArrowRight } from "lucide-react";
+import { Globe, CheckCircle2, ArrowRight, Lock, ExternalLink, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { DnsProviderGuide } from "@/components/DnsProviderGuide";
+import { DnsAiPromptButton } from "@/components/DnsAiPromptButton";
+import { useDomainVerification, type DomainStatus } from "@/hooks/useDomainVerification";
+import { usePlanInfo } from "@/hooks/usePlanInfo";
+import { useNavigate } from "react-router-dom";
 
 interface CustomDomainSetupProps {
   organizationId: string;
   organizationName: string;
   organizationSlug?: string;
   currentDomain: string | null;
+  cnameTarget?: string | null;
+  domainStatus?: DomainStatus;
   onDomainChange: (domain: string) => void;
 }
 
-// Railway CNAME target is stored per-org in custom_domain_cname_target column
-// This is a fallback for display purposes only
-const RAILWAY_CNAME_EXAMPLE = "xxxxx.up.railway.app";
-
-export function CustomDomainSetup({ 
-  organizationId, 
+export function CustomDomainSetup({
+  organizationId,
   organizationName,
   organizationSlug,
   currentDomain,
-  onDomainChange
+  cnameTarget,
+  domainStatus: initialDomainStatus,
+  onDomainChange,
 }: CustomDomainSetupProps) {
   const [domain, setDomain] = useState(currentDomain || "");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSendingRequest, setIsSendingRequest] = useState(false);
-  const [activationRequested, setActivationRequested] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [localCnameTarget, setLocalCnameTarget] = useState(cnameTarget || "");
+  const [localStatus, setLocalStatus] = useState<DomainStatus>(initialDomainStatus || null);
+  const navigate = useNavigate();
+
+  const { planInfo } = usePlanInfo();
+  const isPaidPlan = planInfo?.accountStatus === 'active';
+
+  const { status: verificationStatus, isChecking, checkNow, isVerified } = useDomainVerification(
+    organizationId,
+    localStatus,
+    !!currentDomain && localStatus !== 'verified',
+  );
+
+  // Sync verification status back to local state
+  useEffect(() => {
+    if (verificationStatus && verificationStatus !== localStatus) {
+      setLocalStatus(verificationStatus);
+    }
+  }, [verificationStatus]);
 
   useEffect(() => {
     setDomain(currentDomain || "");
-  }, [currentDomain]);
+    setLocalCnameTarget(cnameTarget || "");
+    setLocalStatus(initialDomainStatus || null);
+  }, [currentDomain, cnameTarget, initialDomainStatus]);
 
   const hasDomain = !!currentDomain && currentDomain.trim() !== "";
 
-  const getCurrentStep = (): 1 | 2 | 3 | 4 => {
+  const getCurrentStep = (): 1 | 2 | 3 => {
     if (!hasDomain) return 1;
-    if (!activationRequested) return 2;
-    return 3;
+    if (isVerified || localStatus === 'verified') return 3;
+    return 2;
   };
 
   const currentStep = getCurrentStep();
 
-  const handleSaveDomain = async () => {
-    if (!domain.trim()) {
-      toast({
-        title: "Domain required",
-        description: "Please enter a domain name",
-        variant: "destructive",
-      });
+  const handleCreateDomain = async () => {
+    const cleanDomain = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!cleanDomain) {
+      toast({ title: "Domain required", description: "Please enter a domain name.", variant: "destructive" });
       return;
     }
 
-    const cleanDomain = domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/$/, "");
-    
-    setIsSaving(true);
+    setIsCreating(true);
     try {
-      const { error } = await supabase
-        .from('organizations')
-        .update({ custom_domain: cleanDomain })
-        .eq('id', organizationId);
+      const { data, error } = await supabase.functions.invoke('manage-custom-domain', {
+        body: { action: 'create', organizationId, domain: cleanDomain },
+      });
 
-      if (error) throw error;
+      if (error) throw new Error(error.message || 'Failed to register domain');
+      if (data?.error) throw new Error(data.error);
 
+      setLocalCnameTarget(data.cnameTarget || '');
+      setLocalStatus('pending');
       onDomainChange(cleanDomain);
-      setActivationRequested(false);
-      toast({
-        title: "Domain saved",
-        description: "Proceed to Step 2 to request activation.",
-      });
+
+      toast({ title: "Domain registered!", description: "Now follow the steps below to connect it." });
     } catch (error) {
-      console.error('Save domain error:', error);
+      console.error('Create domain error:', error);
       toast({
-        title: "Save failed",
-        description: error instanceof Error ? error.message : "Failed to save domain",
+        title: "Could not register domain",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsSaving(false);
+      setIsCreating(false);
     }
   };
 
-  const handleCopy = (text: string, field: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-    toast({
-      title: "Copied",
-      description: `${field} copied to clipboard`,
-    });
-  };
-
-  const handleRequestActivation = async () => {
-    if (!currentDomain) return;
-
-    setIsSendingRequest(true);
+  const handleDeleteDomain = async () => {
+    setIsDeleting(true);
     try {
-      const { error } = await supabase.functions.invoke('send-email', {
-        body: {
-          to: 'support@autolisting.io',
-          subject: `Custom Domain Activation Request: ${currentDomain}`,
-          html: `
-            <h2>Custom Domain Activation Request</h2>
-            <p><strong>Organization:</strong> ${organizationName}</p>
-            <p><strong>Organization ID:</strong> ${organizationId}</p>
-            <p><strong>Requested Domain:</strong> ${currentDomain}</p>
-            <hr />
-            <h3>Admin Instructions:</h3>
-            <ol>
-              <li>Add domain in Railway dashboard for the Listings service</li>
-              <li>Copy the CNAME target Railway provides</li>
-              <li>Store the CNAME target in organizations.custom_domain_cname_target</li>
-              <li>Store the verification token in organizations.custom_domain_verification_token</li>
-              <li>Reply to the client with DNS records:
-                <ul>
-                  <li>CNAME record: @ → [CNAME from Railway]</li>
-                  <li>TXT record: _railway-verify → [verification token]</li>
-                </ul>
-              </li>
-              <li>Once DNS propagates, Railway auto-issues SSL cert</li>
-            </ol>
-          `,
-        },
+      const { data, error } = await supabase.functions.invoke('manage-custom-domain', {
+        body: { action: 'delete', organizationId },
       });
 
-      if (error) throw error;
-
-      setActivationRequested(true);
-      toast({
-        title: "Activation requested",
-        description: "We'll email you the DNS records within 24 hours.",
-      });
-    } catch (error) {
-      console.error('Request activation error:', error);
-      toast({
-        title: "Request failed",
-        description: error instanceof Error ? error.message : "Failed to send activation request. Please try again or contact support@autolisting.io directly.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSendingRequest(false);
-    }
-  };
-
-  const handleRemoveDomain = async () => {
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from('organizations')
-        .update({ custom_domain: null })
-        .eq('id', organizationId);
-
-      if (error) throw error;
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
 
       setDomain("");
-      setActivationRequested(false);
+      setLocalCnameTarget("");
+      setLocalStatus(null);
       onDomainChange("");
-      toast({
-        title: "Domain removed",
-        description: "Your custom domain has been removed.",
-      });
+
+      toast({ title: "Domain removed", description: "Your custom domain has been disconnected." });
     } catch (error) {
-      console.error('Remove domain error:', error);
+      console.error('Delete domain error:', error);
       toast({
-        title: "Remove failed",
-        description: error instanceof Error ? error.message : "Failed to remove domain",
+        title: "Could not remove domain",
+        description: error instanceof Error ? error.message : "Something went wrong.",
         variant: "destructive",
       });
     } finally {
-      setIsSaving(false);
+      setIsDeleting(false);
     }
   };
 
   const StepIndicator = ({ step, title, isActive, isCompleted }: { step: number; title: string; isActive: boolean; isCompleted: boolean }) => (
-    <div className="flex items-center gap-3">
-      <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-        isCompleted 
-          ? 'bg-green-500/20 text-green-600 dark:text-green-400' 
-          : isActive 
-            ? 'bg-primary text-primary-foreground' 
+    <div className="flex items-center gap-2">
+      <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-medium transition-colors ${
+        isCompleted
+          ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+          : isActive
+            ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-muted-foreground'
       }`}>
-        {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : step}
+        {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : step}
       </div>
-      <span className={`text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+      <span className={`text-xs font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
         {title}
       </span>
     </div>
   );
 
+  // --- Free tier: locked state ---
+  if (!isPaidPlan) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Lock className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <CardTitle>Connect Your Own Domain</CardTitle>
+              <CardDescription>
+                Use your own web address like <strong>youragency.com</strong> instead of app.autolisting.io/{organizationSlug || 'your-name'}.
+                Available on paid plans.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => navigate('/admin/billing')} className="gap-2">
+            Upgrade to Unlock
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // --- Paid tier: self-service flow ---
   return (
     <Card>
       <CardHeader>
@@ -203,58 +183,68 @@ export function CustomDomainSetup({
             <div>
               <CardTitle>Custom Domain</CardTitle>
               <CardDescription>
-                Use your own domain for your public property listings
+                Use your own web address for your public property listings
               </CardDescription>
             </div>
           </div>
           {hasDomain && (
             <Badge variant="outline" className="gap-1.5">
-              <Clock className="h-3 w-3" />
-              Step {currentStep} of 4
+              {currentStep === 3 ? (
+                <><CheckCircle2 className="h-3 w-3 text-green-500" /> Connected</>
+              ) : (
+                <>Step {currentStep} of 3</>
+              )}
             </Badge>
           )}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex items-center gap-2 pb-4 border-b overflow-x-auto">
-          <StepIndicator step={1} title="Enter Domain" isActive={currentStep === 1} isCompleted={currentStep > 1} />
-          <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          <StepIndicator step={2} title="Request Activation" isActive={currentStep === 2} isCompleted={currentStep > 2} />
-          <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          <StepIndicator step={3} title="Configure DNS" isActive={currentStep === 3} isCompleted={currentStep > 3} />
-          <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          <StepIndicator step={4} title="Go Live" isActive={currentStep === 4} isCompleted={false} />
-        </div>
+        {/* Progress bar */}
+        {hasDomain && (
+          <div className="flex items-center gap-2 pb-4 border-b overflow-x-auto">
+            <StepIndicator step={1} title="Enter Domain" isActive={currentStep === 1} isCompleted={currentStep > 1} />
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <StepIndicator step={2} title="Update DNS" isActive={currentStep === 2} isCompleted={currentStep > 2} />
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <StepIndicator step={3} title="You're Live" isActive={currentStep === 3} isCompleted={false} />
+          </div>
+        )}
 
+        {/* STEP 1: Enter domain */}
         {currentStep === 1 && (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="custom-domain" className="text-base font-medium">Step 1: Enter Your Domain</Label>
+            <div className="space-y-1">
+              <p className="text-base font-medium">What domain do you want to use?</p>
               <p className="text-sm text-muted-foreground">
-                Enter the domain you want to use for your public listings site.
+                This is the web address your clients will visit to see your property listings.
+                For example: youragency.com or listings.youragency.com
               </p>
-              <div className="flex gap-2 mt-3">
-                <Input
-                  id="custom-domain"
-                  placeholder="yourdomain.com or listings.yourdomain.com"
-                  value={domain}
-                  onChange={(e) => setDomain(e.target.value)}
-                  className="flex-1"
-                  data-testid="input-custom-domain"
-                />
-                <Button
-                  onClick={handleSaveDomain}
-                  disabled={isSaving || !domain.trim()}
-                  data-testid="button-save-domain"
-                >
-                  {isSaving ? "Saving..." : "Continue"}
-                </Button>
-              </div>
             </div>
-            <div className="bg-muted/50 rounded-md p-4">
-              <p className="text-sm text-muted-foreground">
+
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g. youragency.com"
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+                className="flex-1"
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateDomain()}
+              />
+              <Button
+                onClick={handleCreateDomain}
+                disabled={isCreating || !domain.trim()}
+              >
+                {isCreating ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Setting up...</> : "Continue"}
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Don't have a domain? You can buy one from providers like Namecheap, GoDaddy, or Cloudflare for around $10-15/year.
+            </p>
+
+            <div className="bg-muted/50 rounded-md p-3">
+              <p className="text-xs text-muted-foreground">
                 Your public listings are currently available at:{" "}
-                <a 
+                <a
                   href={`https://app.autolisting.io/${organizationSlug || organizationId}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -268,115 +258,70 @@ export function CustomDomainSetup({
           </div>
         )}
 
-        {currentStep === 2 && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-base font-medium">Step 2: Request Activation</Label>
+        {/* STEP 2: Configure DNS */}
+        {currentStep === 2 && localCnameTarget && (
+          <div className="space-y-6">
+            <div className="space-y-1">
+              <p className="text-base font-medium">Point your domain to AutoListing</p>
               <p className="text-sm text-muted-foreground">
-                We'll set up <span className="font-mono font-medium text-foreground">{currentDomain}</span> and 
-                email you the DNS records you need to add.
+                You need to update a setting with your domain provider (where you bought your domain).
+                This tells the internet to send visitors to your AutoListing site.
+                It sounds technical but it's just copying and pasting one value.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                This usually takes about 5 minutes to set up.
               </p>
             </div>
 
-            <div className="bg-muted/50 rounded-md p-4 space-y-3">
-              <p className="text-sm font-medium">What happens next:</p>
-              <ol className="text-sm text-muted-foreground space-y-2 list-decimal pl-5">
-                <li>We receive your request and configure the domain</li>
-                <li>We email you with the exact DNS records to add</li>
-                <li>You add the records to your domain registrar (e.g., Cloudflare, GoDaddy)</li>
-                <li>We verify and activate your domain</li>
-              </ol>
-            </div>
+            {/* Provider guide with DNS records */}
+            <DnsProviderGuide
+              cnameTarget={localCnameTarget}
+              domain={currentDomain || domain}
+            />
 
-            <div className="flex items-center gap-3 pt-2">
+            {/* Verification status */}
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                {isChecking ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : localStatus === 'dns_configured' ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                <div>
+                  <p className="text-sm font-medium">
+                    {localStatus === 'dns_configured'
+                      ? "We can see your changes — waiting for your security certificate..."
+                      : "Waiting for your changes to take effect..."
+                    }
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    This can take anywhere from a few minutes to a couple of hours. You can close this page and come back — we'll keep checking automatically.
+                  </p>
+                </div>
+              </div>
+
               <Button
-                onClick={handleRequestActivation}
-                disabled={isSendingRequest}
+                variant="outline"
+                size="sm"
                 className="gap-2"
-                data-testid="button-request-activation"
+                onClick={checkNow}
+                disabled={isChecking}
               >
-                <Mail className="h-4 w-4" />
-                {isSendingRequest ? "Sending..." : "Request Activation"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setDomain("");
-                  onDomainChange("");
-                  handleRemoveDomain();
-                }}
-                disabled={isSaving}
-                className="text-muted-foreground"
-              >
-                Change Domain
+                <RefreshCw className={`h-3.5 w-3.5 ${isChecking ? 'animate-spin' : ''}`} />
+                Check Now
               </Button>
             </div>
-          </div>
-        )}
 
-        {currentStep === 3 && (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-base font-medium">Step 3: Configure DNS</Label>
-              <p className="text-sm text-muted-foreground">
-                Check your email for the DNS records. You'll need to add these to your domain registrar.
-              </p>
-            </div>
+            {/* LLM help */}
+            <DnsAiPromptButton
+              domain={currentDomain || domain}
+              cnameTarget={localCnameTarget}
+            />
 
-            <div className="bg-muted/50 rounded-md p-4 space-y-4">
-              <p className="text-sm font-medium">Expected DNS Records:</p>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-4 p-3 bg-background rounded-md">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">CNAME Record</p>
-                    <p className="font-mono text-sm">@ → <span className="text-muted-foreground">[check email for Railway CNAME target]</span></p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-4 p-3 bg-background rounded-md">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">TXT Record (from email)</p>
-                    <p className="font-mono text-sm">_railway-verify → <span className="text-muted-foreground">[check email]</span></p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-sm space-y-2 pt-2 border-t">
-                <p className="font-medium">Important:</p>
-                <ul className="text-muted-foreground space-y-1 list-disc pl-5">
-                  <li>Remove any existing A or AAAA records for this domain</li>
-                  <li>If using Cloudflare, set proxy to "DNS only" (gray cloud)</li>
-                  <li>DNS changes can take up to 48 hours to propagate</li>
-                  <li>SSL certificate is auto-provisioned by Railway once DNS is verified</li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <Button variant="outline" asChild>
-                <a href="mailto:support@autolisting.io" className="gap-2">
-                  <Mail className="h-4 w-4" />
-                  Contact Support
-                </a>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRemoveDomain}
-                disabled={isSaving}
-                className="text-muted-foreground"
-              >
-                Cancel Setup
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {hasDomain && (
-          <div className="pt-4 border-t">
-            <div className="flex items-center justify-between gap-4 text-sm">
+            {/* Change/remove domain */}
+            <div className="pt-2 border-t flex items-center justify-between text-sm">
               <div>
                 <span className="text-muted-foreground">Domain: </span>
                 <span className="font-mono font-medium">{currentDomain}</span>
@@ -384,12 +329,60 @@ export function CustomDomainSetup({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleRemoveDomain}
-                disabled={isSaving}
-                className="text-muted-foreground"
-                data-testid="button-remove-domain"
+                onClick={handleDeleteDomain}
+                disabled={isDeleting}
+                className="text-muted-foreground gap-1.5"
               >
-                Remove
+                <Trash2 className="h-3.5 w-3.5" />
+                {isDeleting ? "Removing..." : "Remove"}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: Live! */}
+        {currentStep === 3 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+              <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400 shrink-0" />
+              <div>
+                <p className="text-base font-medium text-green-800 dark:text-green-300">
+                  Your domain is connected!
+                </p>
+                <p className="text-sm text-green-700 dark:text-green-400">
+                  Your property listings are now live at <strong>{currentDomain}</strong>.
+                  Your clients can visit this address to browse your properties.
+                </p>
+              </div>
+            </div>
+
+            <a
+              href={`https://${currentDomain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+            >
+              Visit {currentDomain} <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+
+            <p className="text-xs text-muted-foreground">
+              Your SSL certificate (the padlock icon in the browser) was set up automatically.
+            </p>
+
+            <div className="pt-4 border-t flex items-center justify-between text-sm">
+              <div>
+                <span className="text-muted-foreground">Domain: </span>
+                <span className="font-mono font-medium">{currentDomain}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDeleteDomain}
+                disabled={isDeleting}
+                className="text-muted-foreground gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {isDeleting ? "Removing..." : "Remove Domain"}
               </Button>
             </div>
           </div>
