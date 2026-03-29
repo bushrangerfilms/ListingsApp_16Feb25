@@ -298,6 +298,8 @@ export default function AdminOrganizationSettings() {
         organizationName={targetOrg?.business_name || ""}
         organizationSlug={targetOrg?.slug || ""}
         currentDomain={customDomain}
+        cnameTarget={targetOrg?.custom_domain_cname_target}
+        domainStatus={targetOrg?.custom_domain_status as any}
         onDomainChange={(domain) => {
           setCustomDomain(domain || null);
         }}

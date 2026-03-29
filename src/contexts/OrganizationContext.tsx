@@ -11,6 +11,9 @@ interface Organization {
   favicon_url: string | null;
   domain: string | null;
   custom_domain: string | null;
+  custom_domain_cname_target?: string | null;
+  custom_domain_verification_token?: string | null;
+  custom_domain_status?: string | null;
   contact_name: string | null;
   contact_email: string | null;
   contact_phone: string | null;
