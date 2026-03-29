@@ -293,11 +293,12 @@ export default function MarketingHome() {
               </div>
               <h3 className="text-2xl font-bold">CRM, Website & Lead Capture</h3>
               <p className="text-muted-foreground text-lg">
-                Property listings website, built-in CRM, and email automation.
-                Capture leads from social media and nurture them automatically.
+                Property listings website with your own custom domain, built-in CRM,
+                and email automation. Capture leads from social media and nurture them automatically.
               </p>
               <ul className="space-y-2">
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Your own property listings website</li>
+                <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Custom domain — use youragency.com (paid plans)</li>
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> CRM with buyer and seller pipelines</li>
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Email sequences and automation</li>
               </ul>
@@ -356,6 +357,10 @@ export default function MarketingHome() {
                 {
                   q: 'How are the videos created?',
                   a: 'Upload your listing photos and our AI generates professional property videos in multiple styles — from cinematic slideshows to AI motion clips. Captions and hashtags are generated automatically.',
+                },
+                {
+                  q: 'Can I use my own domain?',
+                  a: 'Yes! On any paid plan you can connect your own domain (like youragency.com) to your property listings website. We guide you through the setup step by step — it takes about 5 minutes.',
                 },
                 {
                   q: 'What is a Social Hub?',

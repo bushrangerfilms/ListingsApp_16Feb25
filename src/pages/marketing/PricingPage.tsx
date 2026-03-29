@@ -107,6 +107,7 @@ export default function PricingPage() {
                 { q: 'Is the free plan really free?', a: 'Yes. No credit card required. You get 3 listings with automated posting and a property website. Use it as long as you like.' },
                 { q: 'What happens if I exceed my listing limit?', a: 'You won\'t be able to add new listings until you upgrade or remove existing ones. Your current listings continue to post normally.' },
                 { q: 'Can I switch plans?', a: 'Yes. Upgrade instantly to a higher plan. Downgrade takes effect at the end of your current billing period.' },
+                { q: 'Can I use my own domain for my listings website?', a: 'Yes — on any paid plan you can connect your own domain (like youragency.com). We guide you through the DNS setup step by step with instructions for Cloudflare, GoDaddy, Namecheap and more. Free plans use an AutoListing subdomain.' },
                 { q: 'What is a Social Hub?', a: 'Multi-Branch plans let agencies run separate social media operations per branch. Each hub has its own social accounts, posting schedules, and up to 40 listings.' },
               ].map((faq) => (
                 <div key={faq.q} className="space-y-2">
