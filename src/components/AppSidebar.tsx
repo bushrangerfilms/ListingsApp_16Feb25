@@ -64,11 +64,7 @@ const navItems: NavItem[] = [
   { path: '/admin/settings', labelKey: 'nav.settings', icon: Settings, adminOnly: true },
 ];
 
-interface AppSidebarProps {
-  onOpenWelcomeModal?: () => void;
-}
-
-export function AppSidebar({ onOpenWelcomeModal }: AppSidebarProps = {}) {
+export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { open, toggleSidebar } = useSidebar();
@@ -348,7 +344,7 @@ export function AppSidebar({ onOpenWelcomeModal }: AppSidebarProps = {}) {
 
       <SidebarFooter className="p-2 pb-20">
         {open && (
-          <OnboardingChecklist compact onClick={onOpenWelcomeModal} className="mb-2" />
+          <OnboardingChecklist compact className="mb-2" />
         )}
         {open && (
           <div className="space-y-2 mb-2">
