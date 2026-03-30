@@ -1,7 +1,6 @@
 {
   "_note": "en-US overrides for admin namespace - inherits from en-IE",
   "_fallback": "en-IE",
-
   "organisations": {
     "title": "Organizations",
     "manage": "Manage Organizations",
@@ -14,14 +13,15 @@
     "logoAlt": "Organization logo",
     "logoUploadHint": "Upload your organization logo. Max file size: 2MB. Accepted formats: JPG, PNG",
     "grantCredits": "Grant Credits to {{count}} Organizations",
-    "deleteConfirm": "Delete {{count}} Organization{{plural}}?"
+    "deleteConfirm": "Delete {{count}} Organization{{plural}}?",
+    "basicDetails": "Your organization's basic details",
+    "contactDetails": "Primary contact details for your organization",
+    "users": "Organization Users"
   },
-
   "organization": {
     "vatNumber": "Tax ID (EIN)",
     "postcode": "Zip Code"
   },
-
   "region": {
     "us": "United States",
     "currency": "USD - US Dollar"

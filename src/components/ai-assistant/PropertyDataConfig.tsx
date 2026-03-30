@@ -154,7 +154,7 @@ export const PropertyDataConfig = () => {
         <CardHeader>
           <CardTitle>Buyer & Seller Profile Data</CardTitle>
           <CardDescription>
-            Include anonymized profile data to improve recommendations
+            Include anonymised profile data to improve recommendations
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -175,7 +175,7 @@ export const PropertyDataConfig = () => {
           <div className="p-4 bg-muted/50 rounded-lg">
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Privacy Notice:</span> All personal
-              information is anonymized before being used for training. Only aggregated patterns
+              information is anonymised before being used for training. Only aggregated patterns
               and preferences are included.
             </p>
           </div>

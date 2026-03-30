@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import { useLocale } from "@/hooks/useLocale";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Building2, Mail, Globe, AlertTriangle } from "lucide-react";
@@ -45,6 +46,7 @@ class TabErrorBoundary extends Component<
 }
 
 export default function AdminSettings() {
+  const { t } = useLocale();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab") as SettingsTab | null;
   const activeTab: SettingsTab =
@@ -65,7 +67,7 @@ export default function AdminSettings() {
         <TabsList className="w-full h-auto flex-wrap gap-1 justify-start p-1 mb-6">
           <TabsTrigger value="organization" className="gap-2" data-testid="tab-organization">
             <Building2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Organization</span>
+            <span className="hidden sm:inline">{t('admin:organisations.title', 'Organisation')}</span>
           </TabsTrigger>
           <TabsTrigger value="email" className="gap-2" data-testid="tab-email">
             <Mail className="h-4 w-4" />

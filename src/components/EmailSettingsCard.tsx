@@ -159,7 +159,7 @@ export function EmailSettingsCard({ organizationId }: EmailSettingsCardProps) {
               <CardTitle>Email Settings</CardTitle>
             </div>
             <CardDescription>
-              Configure how emails are sent from your organization
+              Configure how emails are sent from your organisation
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

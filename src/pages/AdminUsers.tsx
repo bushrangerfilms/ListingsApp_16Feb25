@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocale } from "@/hooks/useLocale";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ interface PendingInvitation {
 }
 
 export default function AdminUsers() {
+  const { t } = useLocale();
   const navigate = useNavigate();
   const { organization, loading: orgLoading } = useOrganization();
   const { viewAsOrganizationId, selectedOrganization, isOrganizationView } = useOrganizationView();
@@ -596,7 +598,7 @@ export default function AdminUsers() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Organization Users</CardTitle>
+          <CardTitle>{t('admin:organisations.users', 'Organisation Users')}</CardTitle>
           <CardDescription>
             Users with access to this organization
           </CardDescription>

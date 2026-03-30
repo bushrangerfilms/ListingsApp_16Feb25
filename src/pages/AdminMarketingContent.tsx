@@ -653,7 +653,7 @@ export default function AdminMarketingContent() {
                             data-testid="input-sell-property-headline"
                           />
                         </FormControl>
-                        <FormDescription>Use {'{business_name}'} to insert your organization name</FormDescription>
+                        <FormDescription>Use {'{business_name}'} to insert your organisation name</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -822,7 +822,7 @@ export default function AdminMarketingContent() {
                             data-testid="input-why-choose-headline"
                           />
                         </FormControl>
-                        <FormDescription>Use {'{business_name}'} to insert your organization name</FormDescription>
+                        <FormDescription>Use {'{business_name}'} to insert your organisation name</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
