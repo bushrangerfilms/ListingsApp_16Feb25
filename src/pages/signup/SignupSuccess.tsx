@@ -1,17 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  CheckCircle2,
-  ArrowRight,
-  Building2,
-  LayoutDashboard,
-} from 'lucide-react';
+import { CheckCircle2, LayoutDashboard } from 'lucide-react';
 import { MarketingLayout } from '@/components/marketing/MarketingLayout';
+import { ConfirmBusinessEmail } from '@/components/onboarding/ConfirmBusinessEmail';
+import { supabase } from '@/integrations/supabase/client';
+import { useOrganization } from '@/contexts/OrganizationContext';
+import { toast } from 'sonner';
 
 interface LocationState {
   businessName?: string;
+  email?: string;
   plan?: string;
 }
 
@@ -19,24 +19,30 @@ export default function SignupSuccess() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState | null;
+  const { organization } = useOrganization();
 
-  const [countdown, setCountdown] = useState(10);
-  const businessName = state?.businessName || 'your organisation';
+  const businessName = state?.businessName || organization?.business_name || 'your organisation';
+  const currentEmail = state?.email || (organization as any)?.contact_email || '';
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          navigate('/admin/listings');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+  const [confirmed, setConfirmed] = useState(false);
 
-    return () => clearInterval(timer);
-  }, [navigate]);
+  const handleConfirmEmail = async (email: string) => {
+    const orgId = organization?.id;
+    if (orgId && email !== currentEmail) {
+      const { error } = await (supabase as any)
+        .from('organizations')
+        .update({ contact_email: email })
+        .eq('id', orgId);
+
+      if (error) {
+        console.error('Failed to update contact email:', error);
+        toast.error('Failed to update email. You can change it later in Settings.');
+      } else {
+        toast.success('Business email updated');
+      }
+    }
+    setConfirmed(true);
+  };
 
   return (
     <MarketingLayout hideHeader hideFooter>
@@ -52,36 +58,42 @@ export default function SignupSuccess() {
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <h3 className="font-medium text-sm">What's next:</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">1</div>
-                  <span>Complete your profile (name, logo, contact details)</span>
+            {!confirmed ? (
+              <ConfirmBusinessEmail
+                currentEmail={currentEmail}
+                businessName={businessName}
+                onConfirm={handleConfirmEmail}
+              />
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <h3 className="font-medium text-sm">What's next:</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">1</div>
+                      <span>Complete your profile (name, logo, contact details)</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">2</div>
+                      <span>Add your first property listing</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">3</div>
+                      <span>Connect your social media accounts</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">2</div>
-                  <span>Add your first property listing</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">3</div>
-                  <span>Connect your social media accounts</span>
-                </div>
-              </div>
-            </div>
 
-            <Button
-              className="w-full gap-2"
-              size="lg"
-              onClick={() => navigate('/admin/listings')}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              Go to Dashboard
-            </Button>
-
-            <p className="text-xs text-center text-muted-foreground">
-              Redirecting in {countdown} seconds...
-            </p>
+                <Button
+                  className="w-full gap-2"
+                  size="lg"
+                  onClick={() => navigate('/admin/listings')}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Go to Dashboard
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
