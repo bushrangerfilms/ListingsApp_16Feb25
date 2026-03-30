@@ -39,35 +39,27 @@ function snoozeModal(orgId: string): void {
 
 interface WelcomeModalProps {
   onClose?: () => void;
-  externalOpen?: boolean;
-  onExternalOpenChange?: (open: boolean) => void;
 }
 
-export function WelcomeModal({ onClose, externalOpen, onExternalOpenChange }: WelcomeModalProps) {
+export function WelcomeModal({ onClose }: WelcomeModalProps) {
   const { organization } = useOrganization();
   const { isComplete, isLoading } = useOnboarding();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
 
-  const isControlled = externalOpen !== undefined;
-  const modalOpen = isControlled ? externalOpen : isOpen;
-
   // Check if organization is in pilot/comped mode - skip welcome modal for pilot users
   const isPilot = organization?.is_comped === true;
 
   useEffect(() => {
-    // Skip for pilot users, completed onboarding, or externally controlled
-    if (isControlled) return;
     if (!isLoading && !isComplete && organization && !isPilot && !isSnoozed(organization.id)) {
       const timer = setTimeout(() => setIsOpen(true), 500);
       return () => clearTimeout(timer);
     }
-  }, [isLoading, isComplete, organization, isPilot, isControlled]);
+  }, [isLoading, isComplete, organization, isPilot]);
 
   const handleGetStarted = () => {
     if (organization) snoozeModal(organization.id);
     setIsOpen(false);
-    onExternalOpenChange?.(false);
     onClose?.();
     navigate('/admin/settings');
   };
@@ -75,7 +67,6 @@ export function WelcomeModal({ onClose, externalOpen, onExternalOpenChange }: We
   const handleDismiss = () => {
     if (organization) snoozeModal(organization.id);
     setIsOpen(false);
-    onExternalOpenChange?.(false);
     onClose?.();
   };
 
@@ -84,7 +75,7 @@ export function WelcomeModal({ onClose, externalOpen, onExternalOpenChange }: We
   }
 
   return (
-    <Dialog open={modalOpen} onOpenChange={(open) => {
+    <Dialog open={isOpen} onOpenChange={(open) => {
       if (!open) handleDismiss();
     }}>
       <DialogContent 
