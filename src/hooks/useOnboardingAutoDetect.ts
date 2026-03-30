@@ -44,12 +44,11 @@ export function useOnboardingAutoDetect() {
       
       const [listingsResult, socialConnectionsResult] = await Promise.all([
         supabaseAny
-          .schema('crm')
           .from('listings')
           .select('id', { count: 'exact', head: true })
           .eq('organization_id', organization.id),
         supabaseAny
-          .from('social_connections')
+          .from('organization_connected_socials')
           .select('id', { count: 'exact', head: true })
           .eq('organization_id', organization.id),
       ]);
