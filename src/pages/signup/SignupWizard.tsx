@@ -128,6 +128,7 @@ export default function SignupWizard() {
       navigate('/signup/success', {
         state: {
           businessName: businessName.trim(),
+          email: email.trim(),
           plan: 'free',
         },
       });
