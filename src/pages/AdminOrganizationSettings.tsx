@@ -136,7 +136,7 @@ export default function AdminOrganizationSettings() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">{t('admin:organisations.settings')}</h2>
-        <p className="text-muted-foreground">Manage your organization profile and contact information</p>
+        <p className="text-muted-foreground">{t('admin:organisations.settingsSubtitle')}</p>
       </div>
 
       <div ref={logoRef}>
@@ -159,7 +159,7 @@ export default function AdminOrganizationSettings() {
           <Card>
             <CardHeader>
               <CardTitle>Business Information</CardTitle>
-              <CardDescription>Your organization's basic details</CardDescription>
+              <CardDescription>{t('admin:organisations.basicDetails', "Your organisation's basic details")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField
@@ -215,7 +215,7 @@ export default function AdminOrganizationSettings() {
           <Card>
             <CardHeader>
               <CardTitle>Contact Information</CardTitle>
-              <CardDescription>Primary contact details for your organization</CardDescription>
+              <CardDescription>{t('admin:organisations.contactDetails', 'Primary contact details for your organisation')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField

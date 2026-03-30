@@ -102,7 +102,7 @@ export function PropertyServicesSelector({
       <CardHeader>
         <CardTitle>Property Services</CardTitle>
         <CardDescription>
-          Choose which property services your organization offers. This controls
+          Choose which property services your organisation offers. This controls
           which listing types are available.
         </CardDescription>
       </CardHeader>

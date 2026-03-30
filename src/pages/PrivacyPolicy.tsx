@@ -68,7 +68,7 @@ export default function PrivacyPolicy() {
             
             <h3>3.1 Information You Provide</h3>
             <ul>
-              <li><strong>Account Information:</strong> Name, email address, password, organization name</li>
+              <li><strong>Account Information:</strong> Name, email address, password, organisation name</li>
               <li><strong>Billing Information:</strong> Payment card details (processed by Stripe), billing address, VAT number</li>
               <li><strong>Property Information:</strong> Property addresses, descriptions, images, valuations</li>
               <li><strong>Communications:</strong> Emails, support requests, feedback</li>
