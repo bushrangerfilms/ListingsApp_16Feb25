@@ -24,7 +24,7 @@ const CONTENT_KEY_TO_LOCALE_KEY: Record<string, string> = {
 };
 
 export function useOrgContent(organizationId: string | null) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
@@ -40,7 +40,7 @@ export function useOrgContent(organizationId: string | null) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data, error } = await (supabase.rpc as any)('get_organization_site_copy', {
           org_id: organizationId,
-          loc: DEFAULT_LOCALE,
+          loc: locale || DEFAULT_LOCALE,
         });
 
         if (error) {
@@ -63,7 +63,7 @@ export function useOrgContent(organizationId: string | null) {
     };
 
     fetchContent();
-  }, [organizationId]);
+  }, [organizationId, locale]);
 
   const getCopy = useCallback((contentKey: string): string => {
     if (overrides[contentKey]) {
