@@ -24,9 +24,9 @@ export function useSocialConnectionCheck(): SocialConnectionStatus {
       }
 
       try {
-        // Check social_connections table (used by Socials app)
+        // Check organization_connected_socials table (shared public schema)
         const { count, error: queryError } = await supabase
-          .from('social_connections' as any)
+          .from('organization_connected_socials' as any)
           .select('*', { count: 'exact', head: true })
           .eq('organization_id', organization.id)
           .eq('is_active', true);
