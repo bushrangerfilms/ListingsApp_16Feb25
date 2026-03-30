@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload, X, Image } from "lucide-react";
+import { Upload, X, Image, Info } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { uploadOrganizationFavicon, deleteOrganizationFavicon } from "@/lib/organizationHelpers";
 
@@ -102,7 +102,7 @@ export function OrganizationFaviconUploader({
   };
 
   return (
-    <Card className="p-6">
+    <Card className="p-6 space-y-4">
       <div className="flex items-center gap-6">
         <div className="relative w-16 h-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center bg-muted/20">
           {displayUrl ? (
@@ -132,7 +132,7 @@ export function OrganizationFaviconUploader({
         <div className="flex-1 space-y-2">
           <h3 className="font-medium">Public Site Favicon</h3>
           <p className="text-sm text-muted-foreground">
-            {isUsingFallback 
+            {isUsingFallback
               ? "Currently using your organisation logo. Upload a custom favicon for your public site."
               : "Custom favicon for your public property listings site. Max size: 1MB."
             }
@@ -158,6 +158,39 @@ export function OrganizationFaviconUploader({
             />
           </div>
         </div>
+      </div>
+
+      {/* Favicon explainer */}
+      <div className="rounded-lg bg-muted/40 border border-border p-4 space-y-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Info className="h-4 w-4" />
+          What is a favicon?
+        </div>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          A favicon is the small icon that appears in the browser tab next to your site name.
+          It helps visitors recognise your site at a glance when they have multiple tabs open.
+        </p>
+        {/* Browser tab mockup */}
+        <div className="flex items-center w-fit">
+          <div className="flex items-center gap-2 bg-zinc-700 text-white rounded-t-lg px-4 py-2 text-sm">
+            <div className="w-4 h-4 rounded-sm bg-blue-500 flex items-center justify-center flex-shrink-0">
+              {displayUrl ? (
+                <img src={displayUrl} alt="" className="w-3 h-3 object-contain" />
+              ) : (
+                <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3">
+                  <path d="M8 1L2 5v6c0 2.2 2.5 3.5 6 4 3.5-.5 6-1.8 6-4V5L8 1z" fill="white" fillOpacity="0.9"/>
+                </svg>
+              )}
+            </div>
+            <span className="font-medium truncate max-w-[160px]">Your Business Name</span>
+            <span className="text-zinc-400 ml-1">&mdash;</span>
+            <span className="text-zinc-400 text-xs ml-1 truncate">Properties</span>
+            <X className="h-3 w-3 text-zinc-400 ml-2 flex-shrink-0" />
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          For best results, use a square image (e.g. 128x128 or 256x256 pixels). Your company logo mark or initials work well.
+        </p>
       </div>
     </Card>
   );
