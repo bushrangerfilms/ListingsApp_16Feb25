@@ -12,46 +12,79 @@ import { Button } from '@/components/ui/button';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { useOrganization } from '@/contexts/OrganizationContext';
 
-interface WelcomeModalProps {
-  onClose?: () => void;
+const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function getSnoozeKey(orgId: string): string {
+  return `welcome-modal-snoozed-${orgId}`;
 }
 
-export function WelcomeModal({ onClose }: WelcomeModalProps) {
+function isSnoozed(orgId: string | undefined): boolean {
+  if (!orgId) return false;
+  try {
+    const raw = localStorage.getItem(getSnoozeKey(orgId));
+    if (!raw) return false;
+    return Date.now() - parseInt(raw, 10) < SNOOZE_DURATION_MS;
+  } catch {
+    return false;
+  }
+}
+
+function snoozeModal(orgId: string): void {
+  try {
+    localStorage.setItem(getSnoozeKey(orgId), String(Date.now()));
+  } catch {
+    // localStorage unavailable — modal will show again next load
+  }
+}
+
+interface WelcomeModalProps {
+  onClose?: () => void;
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
+}
+
+export function WelcomeModal({ onClose, externalOpen, onExternalOpenChange }: WelcomeModalProps) {
   const { organization } = useOrganization();
-  const { hasSeenWelcome, markWelcomeSeen, isLoading } = useOnboarding();
+  const { isComplete, isLoading } = useOnboarding();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+
+  const isControlled = externalOpen !== undefined;
+  const modalOpen = isControlled ? externalOpen : isOpen;
 
   // Check if organization is in pilot/comped mode - skip welcome modal for pilot users
   const isPilot = organization?.is_comped === true;
 
   useEffect(() => {
-    // Skip showing welcome modal for pilot users
-    if (!isLoading && !hasSeenWelcome && organization && !isPilot) {
+    // Skip for pilot users, completed onboarding, or externally controlled
+    if (isControlled) return;
+    if (!isLoading && !isComplete && organization && !isPilot && !isSnoozed(organization.id)) {
       const timer = setTimeout(() => setIsOpen(true), 500);
       return () => clearTimeout(timer);
     }
-  }, [isLoading, hasSeenWelcome, organization, isPilot]);
+  }, [isLoading, isComplete, organization, isPilot, isControlled]);
 
-  const handleGetStarted = async () => {
-    await markWelcomeSeen();
+  const handleGetStarted = () => {
+    if (organization) snoozeModal(organization.id);
     setIsOpen(false);
+    onExternalOpenChange?.(false);
     onClose?.();
     navigate('/admin/settings');
   };
 
-  const handleDismiss = async () => {
-    await markWelcomeSeen();
+  const handleDismiss = () => {
+    if (organization) snoozeModal(organization.id);
     setIsOpen(false);
+    onExternalOpenChange?.(false);
     onClose?.();
   };
 
-  if (isLoading || hasSeenWelcome) {
+  if (isLoading || isComplete) {
     return null;
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => {
+    <Dialog open={modalOpen} onOpenChange={(open) => {
       if (!open) handleDismiss();
     }}>
       <DialogContent 
