@@ -614,7 +614,7 @@ export default function AdminMarketingContent() {
               <CardTitle>Sell Your Property Section</CardTitle>
               <CardDescription>
                 This section appears on your public listings page to encourage property owners to list with you.
-                The organization name will be automatically inserted where you use {'{business_name}'}.
+                The organisation name will be automatically inserted where you use {'{business_name}'}.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1020,8 +1020,8 @@ export default function AdminMarketingContent() {
                   <div className="space-y-4 rounded-lg border p-4">
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label className="text-base font-medium">Custom Color</Label>
-                        <p className="text-sm text-muted-foreground">Use your own colors with the color picker</p>
+                        <Label className="text-base font-medium">Custom Colour</Label>
+                        <p className="text-sm text-muted-foreground">Use your own colours with the colour picker</p>
                       </div>
                       <FormField
                         control={announcementForm.control}
@@ -1044,7 +1044,7 @@ export default function AdminMarketingContent() {
                         name="image_url"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Preset Color</FormLabel>
+                            <FormLabel>Preset Colour</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value || "primary"}>
                               <FormControl>
                                 <SelectTrigger data-testid="select-announcement-color">

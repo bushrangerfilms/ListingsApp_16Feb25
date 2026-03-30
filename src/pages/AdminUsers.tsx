@@ -600,7 +600,7 @@ export default function AdminUsers() {
         <CardHeader>
           <CardTitle>{t('admin:organisations.users', 'Organisation Users')}</CardTitle>
           <CardDescription>
-            Users with access to this organization
+            Users with access to this organisation
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -166,7 +166,7 @@ export default function CookiePolicy() {
 
             <h2>5. Consent Records</h2>
             <p>
-              In accordance with GDPR, we maintain records of your cookie consent choices. 
+              In accordance with {legalConfig.gdprLabel}, we maintain records of your cookie consent choices. 
               These records include the date and time of consent, the categories consented to, 
               and a unique identifier. You may request access to your consent records at any time.
             </p>

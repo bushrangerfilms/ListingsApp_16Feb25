@@ -33,7 +33,7 @@ export default function AdminEmailSettings() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Email Settings</h2>
-        <p className="text-muted-foreground">Configure how emails are sent from your organization</p>
+        <p className="text-muted-foreground">Configure how emails are sent from your organisation</p>
       </div>
 
       <EmailSettingsCard organizationId={targetOrg.id} />
