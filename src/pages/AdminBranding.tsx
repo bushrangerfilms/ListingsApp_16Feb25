@@ -8,6 +8,7 @@ import { useOrganization } from "@/contexts/OrganizationContext";
 import { useOrganizationView } from "@/contexts/OrganizationViewContext";
 import { updateOrganizationProfile } from "@/lib/organizationHelpers";
 import { Loader2, Pipette, RotateCcw, ExternalLink } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 
 interface ColorPickerProps {
   label: string;
@@ -95,6 +96,11 @@ const DEFAULT_COLORS = {
 export default function AdminBranding() {
   const { organization, loading } = useOrganization();
   const { selectedOrganization, isOrganizationView } = useOrganizationView();
+  const { locale } = useLocale();
+  const isUS = locale === 'en-US';
+  const colourWord = isUS ? 'Color' : 'Colour';
+  const coloursWord = isUS ? 'colors' : 'colours';
+  const customiseWord = isUS ? 'Customize' : 'Customise';
   const [isSaving, setIsSaving] = useState(false);
   const [primaryColor, setPrimaryColor] = useState(DEFAULT_COLORS.primary);
   const [secondaryColor, setSecondaryColor] = useState(DEFAULT_COLORS.secondary);
@@ -183,28 +189,28 @@ export default function AdminBranding() {
     <div className="space-y-6">
       <div>
         <h3 className="text-xl font-semibold">Branding</h3>
-        <p className="text-muted-foreground">Customise the colors used on your public website</p>
+        <p className="text-muted-foreground">{customiseWord} the {coloursWord} used on your public website</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Color Palette</CardTitle>
+            <CardTitle>{colourWord} Palette</CardTitle>
             <CardDescription>
-              Choose colors that match your brand identity. Changes are previewed in real-time.
+              Choose {coloursWord} that match your brand identity. Changes are previewed in real-time.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <ColorPicker
-              label="Primary Color"
-              description="Main brand color used for buttons, headers, and accents"
+              label={`Primary ${colourWord}`}
+              description={`Main brand ${colourWord.toLowerCase()} used for buttons, headers, and accents`}
               value={primaryColor}
               onChange={setPrimaryColor}
               testId="input-primary-color"
             />
 
             <ColorPicker
-              label="Secondary Color"
+              label={`Secondary ${colourWord}`}
               description="Used for backgrounds, cards, and subtle elements"
               value={secondaryColor}
               onChange={setSecondaryColor}
@@ -218,7 +224,7 @@ export default function AdminBranding() {
                 data-testid="button-save-branding"
               >
                 {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Colors
+                Save {colourWord}s
               </Button>
               <Button
                 type="button"
@@ -237,7 +243,7 @@ export default function AdminBranding() {
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <div>
               <CardTitle>Live Preview</CardTitle>
-              <CardDescription>See how your colors look on your public site</CardDescription>
+              <CardDescription>See how your {coloursWord} look on your public site</CardDescription>
             </div>
             {publicSiteUrl && (
               <Button variant="outline" size="sm" asChild>

@@ -22,7 +22,7 @@ export default function PrivacyPolicy() {
     <div className="min-h-screen bg-background flex flex-col">
       <SEO 
         title={`Privacy Policy - ${businessName}`}
-        description={`Read our privacy policy to understand how ${businessName} collects, uses, and protects your personal data in compliance with GDPR.`}
+        description={`Read our privacy policy to understand how ${businessName} collects, uses, and protects your personal data in compliance with ${legalConfig.gdprLabel}.`}
       />
       <PublicHeader />
       
@@ -81,7 +81,7 @@ export default function PrivacyPolicy() {
               <li><strong>Cookies:</strong> See our <Link to="/cookie-policy" className="text-primary hover:underline">Cookie Policy</Link> for details</li>
             </ul>
 
-            <h2>4. Legal Basis for Processing (GDPR Article 6)</h2>
+            <h2>4. Legal Basis for Processing ({legalConfig.gdprLabel} Article 6)</h2>
             <p>We process your personal data based on the following legal grounds:</p>
             <ul>
               <li><strong>Contract Performance (Art. 6(1)(b)):</strong> Processing necessary to provide our services to you</li>
@@ -112,7 +112,7 @@ export default function PrivacyPolicy() {
             </ul>
             <p>
               All third-party processors are bound by data processing agreements and are required to 
-              protect your data in accordance with GDPR requirements.
+              protect your data in accordance with {legalConfig.gdprLabel} requirements.
             </p>
             <p>
               We do not sell your personal data to third parties.
@@ -120,26 +120,26 @@ export default function PrivacyPolicy() {
 
             <h2>7. International Data Transfers</h2>
             <p>
-              Some of our service providers may transfer data outside the European Economic Area (EEA). 
+              {legalConfig.transferContext}{' '}
               Where this occurs, we ensure appropriate safeguards are in place, including:
             </p>
             <ul>
-              <li>EU-US Data Privacy Framework certification</li>
-              <li>Standard Contractual Clauses (SCCs) approved by the European Commission</li>
-              <li>Binding Corporate Rules where applicable</li>
+              {legalConfig.internationalTransferSafeguards.map((safeguard, i) => (
+                <li key={i}>{safeguard}</li>
+              ))}
             </ul>
 
             <h2>8. Data Retention</h2>
             <p>We retain your personal data for the following periods:</p>
             <ul>
               <li><strong>Account Data:</strong> Duration of account plus 6 months after deletion</li>
-              <li><strong>Billing Records:</strong> 7 years (Irish tax law requirement)</li>
+              <li><strong>Billing Records:</strong> 7 years ({legalConfig.taxRetentionNote})</li>
               <li><strong>Property Listings:</strong> Duration of subscription plus 30-day grace period</li>
               <li><strong>Support Communications:</strong> 2 years</li>
-              <li><strong>Usage Analytics:</strong> 26 months (aggregated/anonymized thereafter)</li>
+              <li><strong>Usage Analytics:</strong> 26 months (aggregated/{legalConfig.anonymisedSpelling} thereafter)</li>
             </ul>
 
-            <h2>9. Your Rights Under GDPR</h2>
+            <h2>9. Your Rights Under {legalConfig.gdprLabel}</h2>
             <p>As a data subject, you have the following rights:</p>
             <ul>
               <li><strong>Right of Access (Art. 15):</strong> Request a copy of your personal data</li>
@@ -153,11 +153,11 @@ export default function PrivacyPolicy() {
             </ul>
             <p>
               To exercise any of these rights, please contact us at <a href={`mailto:${COMPANY_INFO.dpo.email}`} className="text-primary hover:underline">{COMPANY_INFO.dpo.email}</a>.
-              We will respond within 30 days as required by GDPR.
+              We will respond within 30 days as required by {legalConfig.gdprLabel}.
             </p>
 
             <h2>10. Data Security</h2>
-            <p>We implement appropriate technical and organizational measures to protect your personal data:</p>
+            <p>We implement appropriate technical and {legalConfig.organisationalSpelling} measures to protect your personal data:</p>
             <ul>
               <li>Encryption in transit (TLS 1.3) and at rest</li>
               <li>Secure authentication with password hashing</li>

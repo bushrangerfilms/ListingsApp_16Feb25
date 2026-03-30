@@ -13,6 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useOrganizationView } from "@/contexts/OrganizationViewContext";
 import { OrganizationLogoUploader } from "@/components/OrganizationLogoUploader";
+import { useLocale } from "@/hooks/useLocale";
 import { OrganizationFaviconUploader } from "@/components/OrganizationFaviconUploader";
 import { CustomDomainSetup } from "@/components/CustomDomainSetup";
 import { PropertyServicesSelector } from "@/components/PropertyServicesSelector";
@@ -35,6 +36,7 @@ type OrganizationFormData = z.infer<typeof organizationSchema>;
 
 export default function AdminOrganizationSettings() {
   const { organization, loading, refreshOrganization } = useOrganization();
+  const { t } = useLocale();
   const queryClient = useQueryClient();
   const { viewAsOrganizationId, selectedOrganization, isOrganizationView, isSuperAdmin } = useOrganizationView();
   const [searchParams] = useSearchParams();
@@ -102,7 +104,7 @@ export default function AdminOrganizationSettings() {
       await refreshOrganization();
       queryClient.invalidateQueries({ queryKey: ['onboarding-detection'] });
 
-      toast.success("Organization details saved successfully");
+      toast.success(`${t('admin:organisations.details')} saved successfully`);
     } catch (error) {
       console.error('Save error:', error);
       toast.error(error instanceof Error ? error.message : "Failed to update organization");
@@ -133,7 +135,7 @@ export default function AdminOrganizationSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Organization Settings</h2>
+        <h2 className="text-2xl font-bold">{t('admin:organisations.settings')}</h2>
         <p className="text-muted-foreground">Manage your organization profile and contact information</p>
       </div>
 

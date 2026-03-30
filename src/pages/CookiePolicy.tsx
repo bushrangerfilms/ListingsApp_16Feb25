@@ -44,7 +44,7 @@ export default function CookiePolicy() {
             <h3>2.1 Strictly Necessary Cookies</h3>
             <p>
               These cookies are essential for the website to function. They cannot be disabled. 
-              No consent is required for these cookies under GDPR/ePrivacy.
+              No consent is required for these cookies under {legalConfig.gdprLabel}/ePrivacy.
             </p>
             <table className="w-full text-sm">
               <thead>
