@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { PlatformHeader } from "@/components/PlatformHeader";
@@ -18,6 +18,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   useOnboardingAutoDetect();
   const { clearPreview } = useLocalePreview();
   const { organization } = useOrganization();
+  const [welcomeModalOpen, setWelcomeModalOpen] = useState(false);
+
+  const openWelcomeModal = useCallback(() => setWelcomeModalOpen(true), []);
 
   useEffect(() => {
     if (organization?.business_name) {
@@ -28,7 +31,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full">
-        <AppSidebar />
+        <AppSidebar onOpenWelcomeModal={openWelcomeModal} />
         <SidebarInset className="flex flex-col flex-1 min-w-0">
           <UKPreviewBanner onDisable={clearPreview} />
           <PlatformHeader />
@@ -37,7 +40,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </main>
         </SidebarInset>
       </div>
-      <WelcomeModal />
+      <WelcomeModal externalOpen={welcomeModalOpen} onExternalOpenChange={setWelcomeModalOpen} />
     </SidebarProvider>
   );
 }

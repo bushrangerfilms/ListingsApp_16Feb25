@@ -15,9 +15,10 @@ import { cn } from '@/lib/utils';
 interface OnboardingChecklistProps {
   className?: string;
   compact?: boolean;
+  onClick?: () => void;
 }
 
-export function OnboardingChecklist({ className, compact = false }: OnboardingChecklistProps) {
+export function OnboardingChecklist({ className, compact = false, onClick }: OnboardingChecklistProps) {
   const [isOpen, setIsOpen] = useState(true);
   const { 
     tasks, 
@@ -49,8 +50,10 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
 
   if (compact) {
     return (
-      <div 
-        className={cn("p-3 rounded-lg bg-card border", className)}
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn("p-3 rounded-lg bg-card border w-full text-left hover:bg-accent/50 transition-colors cursor-pointer", className)}
         data-testid="onboarding-checklist-compact"
       >
         <div className="flex items-center justify-between gap-2 mb-2">
@@ -63,7 +66,7 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
           </span>
         </div>
         <Progress value={(visibleCompleted / visibleTotal) * 100} className="h-1.5" />
-      </div>
+      </button>
     );
   }
 

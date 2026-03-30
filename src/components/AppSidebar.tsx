@@ -44,6 +44,7 @@ import { Shield } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
 import { toast } from "sonner";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
+import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
 
 interface NavItem {
   path: string;
@@ -63,7 +64,11 @@ const navItems: NavItem[] = [
   { path: '/admin/settings', labelKey: 'nav.settings', icon: Settings, adminOnly: true },
 ];
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  onOpenWelcomeModal?: () => void;
+}
+
+export function AppSidebar({ onOpenWelcomeModal }: AppSidebarProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const { open, toggleSidebar } = useSidebar();
@@ -342,6 +347,9 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-2 pb-20">
+        {open && (
+          <OnboardingChecklist compact onClick={onOpenWelcomeModal} className="mb-2" />
+        )}
         {open && (
           <div className="space-y-2 mb-2">
             {isSuperAdmin && !impersonationState && (
