@@ -1,20 +1,48 @@
 import { AlertTriangle, ExternalLink, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSocialConnectionCheck } from '@/hooks/useSocialConnectionCheck';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 const SOCIALS_HUB_CONNECTIONS_URL = 'https://socials.autolisting.io/connections';
+const DISMISS_KEY_PREFIX = 'social-connection-banner-dismissed-';
+const DISMISS_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface SocialConnectionBannerProps {
   className?: string;
 }
 
 export function SocialConnectionBanner({ className }: SocialConnectionBannerProps) {
+  const { organization } = useOrganization();
+  const { needsConnection, isLoading } = useSocialConnectionCheck();
   const [isDismissed, setIsDismissed] = useState(false);
 
-  if (isDismissed) {
+  const dismissKey = organization?.id ? `${DISMISS_KEY_PREFIX}${organization.id}` : null;
+
+  useEffect(() => {
+    if (!dismissKey) return;
+    const dismissedAt = localStorage.getItem(dismissKey);
+    if (dismissedAt) {
+      const elapsed = Date.now() - parseInt(dismissedAt, 10);
+      if (elapsed < DISMISS_DURATION_MS) {
+        setIsDismissed(true);
+      } else {
+        localStorage.removeItem(dismissKey);
+      }
+    }
+  }, [dismissKey]);
+
+  if (isLoading || !needsConnection || isDismissed) {
     return null;
   }
+
+  const handleDismiss = () => {
+    if (dismissKey) {
+      localStorage.setItem(dismissKey, Date.now().toString());
+    }
+    setIsDismissed(true);
+  };
 
   const handleConnectClick = () => {
     window.open(SOCIALS_HUB_CONNECTIONS_URL, '_blank', 'noopener,noreferrer');
@@ -39,7 +67,7 @@ export function SocialConnectionBanner({ className }: SocialConnectionBannerProp
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
+            <Button
               onClick={handleConnectClick}
               size="sm"
               className="bg-amber-600 hover:bg-amber-700 text-white"
@@ -51,7 +79,7 @@ export function SocialConnectionBanner({ className }: SocialConnectionBannerProp
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setIsDismissed(true)}
+              onClick={handleDismiss}
               aria-label="Dismiss"
               className="text-amber-700 hover:text-amber-800 hover:bg-amber-500/20 dark:text-amber-300 dark:hover:text-amber-200"
               data-testid="button-dismiss-social-banner"

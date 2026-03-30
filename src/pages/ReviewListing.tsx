@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, AlertCircle, Save } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, AlertTriangle, Save, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,8 @@ import { useLocale } from "@/hooks/useLocale";
 import type { ListingFormData } from "@/lib/listingSchema";
 import { extractPlanLimitError, type PlanLimitError } from "@/lib/planLimitError";
 import { UpgradePlanDialog } from "@/components/billing/UpgradePlanDialog";
+import { useSocialConnectionCheck } from "@/hooks/useSocialConnectionCheck";
+import { useEndCardSetupCheck } from "@/hooks/useEndCardSetupCheck";
 
 const ReviewListing = () => {
   const location = useLocation();
@@ -28,6 +30,8 @@ const ReviewListing = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [planLimitError, setPlanLimitError] = useState<PlanLimitError | null>(null);
+  const { needsConnection } = useSocialConnectionCheck();
+  const { needsSetup: needsEndCardSetup } = useEndCardSetupCheck();
   
   const [formData, setFormData] = useState<ListingFormData | null>(null);
   const [photos, setPhotos] = useState<File[]>([]);
@@ -919,6 +923,41 @@ const ReviewListing = () => {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {(needsConnection || needsEndCardSetup) && (
+            <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200 space-y-2">
+                <p className="font-semibold">Setup needed for social media automation</p>
+                {needsConnection && (
+                  <p>
+                    Your social media posts won't publish until you connect at least one social account.{' '}
+                    <a
+                      href="https://socials.autolisting.io/connections"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center font-medium underline hover:text-amber-900 dark:hover:text-amber-100"
+                    >
+                      Connect accounts <ExternalLink className="ml-1 h-3 w-3" />
+                    </a>
+                  </p>
+                )}
+                {needsEndCardSetup && (
+                  <p>
+                    Your video branding isn't configured — videos will use default styling.{' '}
+                    <a
+                      href="https://socials.autolisting.io/organization/settings/branding"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center font-medium underline hover:text-amber-900 dark:hover:text-amber-100"
+                    >
+                      Configure branding <ExternalLink className="ml-1 h-3 w-3" />
+                    </a>
+                  </p>
+                )}
+              </AlertDescription>
+            </Alert>
           )}
 
           <Alert className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
