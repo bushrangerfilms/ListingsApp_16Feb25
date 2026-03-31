@@ -276,6 +276,10 @@ function AdminRoutes() {
         {/* Static public routes MUST come before dynamic :orgSlug routes */}
         <Route path="/property/:id" element={<OrganizationRoute><PropertyDetails /></OrganizationRoute>} />
         <Route path="/request-valuation" element={<OrganizationRoute><ValuationRequest /></OrganizationRoute>} />
+        {/* Legal pages — must come before dynamic :orgSlug routes */}
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-conditions" element={<TermsConditions />} />
+        <Route path="/cookie-policy" element={<CookiePolicy />} />
 
         {/* Dynamic org routes - these match any single-segment path */}
         <Route path="/:orgSlug" element={<OrganizationRoute><PublicListings /></OrganizationRoute>} />
@@ -297,13 +301,14 @@ function OrgPublicRoutes() {
         <Route path="/" element={<OrganizationRoute><PublicListings /></OrganizationRoute>} />
         <Route path="/property/:id" element={<OrganizationRoute><PropertyDetails /></OrganizationRoute>} />
         <Route path="/request-valuation" element={<OrganizationRoute><ValuationRequest /></OrganizationRoute>} />
+        {/* Legal pages — must come before dynamic :orgSlug routes */}
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-conditions" element={<TermsConditions />} />
+        <Route path="/cookie-policy" element={<CookiePolicy />} />
         {/* Also support slug-based routes on custom domains for compatibility */}
         <Route path="/:orgSlug" element={<OrganizationRoute><PublicListings /></OrganizationRoute>} />
         <Route path="/:orgSlug/property/:id" element={<OrganizationRoute><PropertyDetails /></OrganizationRoute>} />
         <Route path="/:orgSlug/request-valuation" element={<OrganizationRoute><ValuationRequest /></OrganizationRoute>} />
-        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="/terms-conditions" element={<TermsConditions />} />
-        <Route path="/cookie-policy" element={<CookiePolicy />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
