@@ -153,15 +153,7 @@ export function EmailSettingsCard({ organizationId }: EmailSettingsCardProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-muted-foreground" />
-              <CardTitle>Email Settings</CardTitle>
-            </div>
-            <CardDescription>
-              Configure how emails are sent from your organisation
-            </CardDescription>
-          </CardHeader>
+
           <CardContent className="space-y-6">
             <Alert>
               <Info className="h-4 w-4" />
