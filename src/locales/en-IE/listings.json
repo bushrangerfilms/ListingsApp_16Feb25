@@ -9,6 +9,7 @@
   "delete": "Delete Listing",
   
   "status": {
+    "update": "Update Status",
     "draft": "Draft",
     "forSale": "For Sale",
     "saleAgreed": "Sale Agreed",
