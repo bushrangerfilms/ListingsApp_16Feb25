@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -20,7 +20,16 @@ export default function ValuationRequest() {
   const navigate = useNavigate();
   const { organization, setOrganizationBySlug } = useOrganization();
   const { organization: domainOrg, isPublicSite: isDomainBased, loading: domainLoading } = usePublicListings();
-  
+  const [searchParams] = useSearchParams();
+
+  // Capture UTM params from URL (passed by lead magnet social posts)
+  const utmParams = useMemo(() => ({
+    utm_source: searchParams.get('utm_source') || undefined,
+    utm_campaign: searchParams.get('utm_campaign') || undefined,
+    utm_content: searchParams.get('utm_content') || undefined,
+    post_id: searchParams.get('pid') || undefined,
+  }), [searchParams]);
+
   const [domainError, setDomainError] = useState(false);
   
   // Load organization by slug for slug-based access
@@ -118,6 +127,7 @@ export default function ValuationRequest() {
           body: JSON.stringify({
             ...formData,
             clientSlug, // Validated slug from domain or URL
+            ...utmParams,
           }),
         }
       );

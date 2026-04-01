@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { name, email, phone, propertyAddress, message, clientSlug } = await req.json();
+    const { name, email, phone, propertyAddress, message, clientSlug, utm_source, utm_campaign, utm_content, post_id } = await req.json();
 
     if (!name || !email || !phone || !propertyAddress || !clientSlug) {
       return new Response(
@@ -59,6 +59,10 @@ Deno.serve(async (req) => {
         property_address: propertyAddress,
         message: message || null,
         status: 'new',
+        utm_source: utm_source || null,
+        utm_campaign: utm_campaign || null,
+        utm_content: utm_content || null,
+        post_id: post_id || null,
       })
       .select()
       .single();
