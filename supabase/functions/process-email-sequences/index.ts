@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      db: { schema: 'public' },
+      db: { schema: 'crm' },
     });
 
     const now = new Date().toISOString();
@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
         // Check for next step in sequence
         const { data: nextSteps } = await supabase
           .from('email_sequence_steps')
-          .select('step_number, delay_days')
+          .select('step_number, delay_hours')
           .eq('sequence_id', queueItem.sequence_id)
           .eq('is_active', true)
           .gt('step_number', queueItem.current_step)
@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
         if (hasNextStep) {
           const nextStep = nextSteps[0];
           const nextSendDate = new Date();
-          nextSendDate.setDate(nextSendDate.getDate() + nextStep.delay_days);
+          nextSendDate.setTime(nextSendDate.getTime() + (nextStep.delay_hours || 24) * 60 * 60 * 1000);
 
           await supabase
             .from('profile_email_queue')
