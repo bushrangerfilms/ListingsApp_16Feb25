@@ -166,6 +166,12 @@ serve(async (req: Request) => {
       return await handleContactAgent(supabase, body);
     }
 
+    // Route: POST /submit-cta — CTA-type lead capture (free-valuation, market-update, tips-advice)
+    if (req.method === "POST" && pathParts[1] === "submit-cta") {
+      const body = await req.json();
+      return await handleSubmitCta(supabase, body);
+    }
+
     // Route: POST with action=get_config (for public site lead magnet buttons)
     if (req.method === "POST") {
       const body = await req.json();
@@ -1538,6 +1544,196 @@ async function handleContactAgent(supabase: any, body: any): Promise<Response> {
 }
 
 // ============================================
+// CTA Lead Capture (free-valuation, market-update, tips-advice)
+// ============================================
+
+const CTA_TYPE_CONFIG: Record<string, { label: string; stage: string; emailSubjectPrefix: string }> = {
+  "free-valuation": { label: "Free Valuation Request", stage: "Warm", emailSubjectPrefix: "New Valuation Request" },
+  "market-update": { label: "Market Report", stage: "Warm", emailSubjectPrefix: "New Market Report Lead" },
+  "tips-advice": { label: "Tips & Advice", stage: "Nurture", emailSubjectPrefix: "New Lead — Tips Download" },
+};
+
+async function handleSubmitCta(supabase: any, body: any): Promise<Response> {
+  const {
+    organization_id, type_key, name, email, phone, consent,
+    area, answers_json,
+    utm_source, utm_campaign, utm_content, post_id,
+  } = body;
+
+  if (!organization_id || !type_key || !email || !consent) {
+    return new Response(
+      JSON.stringify({ error: "organization_id, type_key, email, and consent are required" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const ctaConfig = CTA_TYPE_CONFIG[type_key];
+  if (!ctaConfig) {
+    return new Response(
+      JSON.stringify({ error: `Unknown CTA type: ${type_key}` }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Fetch org details
+  const { data: org, error: orgError } = await supabase
+    .from("organizations")
+    .select("id, slug, business_name, contact_email")
+    .eq("id", organization_id)
+    .single();
+
+  if (orgError || !org) {
+    return new Response(
+      JSON.stringify({ error: "Organization not found" }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Find or create lead_magnets entry for this CTA type
+  const typeUpper = type_key.replace(/-/g, "_").toUpperCase();
+  let { data: leadMagnet } = await supabase
+    .from("lead_magnets")
+    .select("id")
+    .eq("organization_id", organization_id)
+    .eq("type", typeUpper)
+    .single();
+
+  if (!leadMagnet) {
+    const { data: created } = await supabase
+      .from("lead_magnets")
+      .insert({ organization_id, type: typeUpper, is_enabled: true })
+      .select("id")
+      .single();
+    leadMagnet = created;
+  }
+
+  // Insert lead_submissions record
+  const { data: submission, error: insertError } = await supabase
+    .from("lead_submissions")
+    .insert({
+      organization_id,
+      lead_magnet_id: leadMagnet?.id || null,
+      name,
+      email,
+      phone,
+      consent,
+      answers_json: answers_json || { type_key, area },
+      utm_source,
+      utm_campaign,
+      campaign_id: utm_content,
+      post_id,
+    })
+    .select("id")
+    .single();
+
+  if (insertError) {
+    console.error("Error inserting CTA submission:", insertError);
+    return new Response(
+      JSON.stringify({ error: "Failed to create submission" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Create/update CRM seller profile
+  const sellerProfileId = await upsertSellerProfile(supabase, {
+    organization_id,
+    name,
+    email,
+    phone,
+    source: "lead_magnet",
+    submission: { band: null, confidence: null, _cta_stage: ctaConfig.stage },
+  });
+
+  if (sellerProfileId) {
+    await supabase
+      .from("lead_submissions")
+      .update({ seller_profile_id: sellerProfileId })
+      .eq("id", submission.id);
+  }
+
+  // Send email notification to org
+  const orgEmail = org.contact_email;
+  if (orgEmail) {
+    const emailSubject = `${ctaConfig.emailSubjectPrefix}: ${name || email}${area ? ` in ${area}` : ""}`;
+    const emailHtml = buildCtaLeadEmail({
+      leadName: name || "Not provided",
+      leadEmail: email,
+      leadPhone: phone || "Not provided",
+      orgName: org.business_name || "Your Organisation",
+      typeLabel: ctaConfig.label,
+      area: area || "",
+      answersJson: answers_json,
+    });
+
+    const emailSent = await sendEmail(orgEmail, emailSubject, emailHtml);
+    if (emailSent) {
+      await supabase
+        .from("lead_submissions")
+        .update({ email_sent: true, email_sent_at: new Date().toISOString() })
+        .eq("id", submission.id);
+    } else {
+      console.error(`CTA lead email failed for submission ${submission.id} to ${orgEmail}`);
+    }
+  }
+
+  return new Response(
+    JSON.stringify({ success: true, submission_id: submission.id }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+function buildCtaLeadEmail(params: {
+  leadName: string;
+  leadEmail: string;
+  leadPhone: string;
+  orgName: string;
+  typeLabel: string;
+  area: string;
+  answersJson?: any;
+}): string {
+  const { leadName, leadEmail, leadPhone, orgName, typeLabel, area, answersJson } = params;
+  const formattedDate = new Date().toLocaleDateString("en-IE", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  const additionalFields = answersJson
+    ? Object.entries(answersJson)
+        .filter(([k]) => !["type_key", "area"].includes(k))
+        .map(([k, v]) => `<tr><td style="padding:6px 12px;color:#6b7280;font-size:14px;">${k.replace(/_/g, " ")}</td><td style="padding:6px 12px;font-size:14px;">${v}</td></tr>`)
+        .join("")
+    : "";
+
+  return `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
+  <div style="max-width:600px;margin:0 auto;padding:20px;">
+    <div style="background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:12px 12px 0 0;padding:24px;text-align:center;">
+      <h1 style="margin:0;color:white;font-size:22px;">${typeLabel}</h1>
+      <p style="margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">New lead from AutoListing</p>
+    </div>
+    <div style="background:white;border-radius:0 0 12px 12px;padding:24px;border:1px solid #e5e7eb;border-top:none;">
+      <h2 style="margin:0 0 16px;font-size:16px;color:#111827;">Lead Details</h2>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:6px 12px;color:#6b7280;font-size:14px;">Name</td><td style="padding:6px 12px;font-size:14px;font-weight:600;">${leadName}</td></tr>
+        <tr><td style="padding:6px 12px;color:#6b7280;font-size:14px;">Email</td><td style="padding:6px 12px;font-size:14px;"><a href="mailto:${leadEmail}" style="color:#7c3aed;">${leadEmail}</a></td></tr>
+        <tr><td style="padding:6px 12px;color:#6b7280;font-size:14px;">Phone</td><td style="padding:6px 12px;font-size:14px;">${leadPhone}</td></tr>
+        ${area ? `<tr><td style="padding:6px 12px;color:#6b7280;font-size:14px;">Area</td><td style="padding:6px 12px;font-size:14px;">${area}</td></tr>` : ""}
+        <tr><td style="padding:6px 12px;color:#6b7280;font-size:14px;">Submitted</td><td style="padding:6px 12px;font-size:14px;">${formattedDate}</td></tr>
+        ${additionalFields}
+      </table>
+      <div style="margin:24px 0 0;padding:16px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;">
+        <p style="margin:0;font-size:14px;color:#166534;"><strong>Next Step:</strong> This lead has been added to your CRM. Follow up promptly for the best conversion.</p>
+      </div>
+    </div>
+    <p style="text-align:center;color:#9ca3af;font-size:12px;margin:16px 0 0;">Sent via AutoListing.io</p>
+  </div>
+</body>
+</html>`.trim();
+}
+
+// ============================================
 // CRM Integration
 // ============================================
 async function upsertSellerProfile(supabase: any, data: any): Promise<string | null> {
@@ -1594,6 +1790,9 @@ async function upsertSellerProfile(supabase: any, data: any): Promise<string | n
 }
 
 function determineLeadStage(submission: any): string {
+  // CTA types pass explicit stage
+  if (submission._cta_stage) return submission._cta_stage;
+  // Quiz types use score-based staging
   if (submission.band === "Ready to List") return "Hot";
   if (submission.band === "Nearly Ready") return "Warm";
   if (submission.confidence === "High") return "Warm";
