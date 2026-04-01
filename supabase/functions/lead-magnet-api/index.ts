@@ -166,6 +166,11 @@ serve(async (req: Request) => {
       return await handleContactAgent(supabase, body);
     }
 
+    // Route: GET /market-insights/:orgSlug/:area — AI-generated market insights
+    if (req.method === "GET" && pathParts[1] === "market-insights" && pathParts[2]) {
+      return await handleMarketInsights(supabase, pathParts[2], pathParts[3] || "");
+    }
+
     // Route: POST /submit-cta — CTA-type lead capture (free-valuation, market-update, tips-advice)
     if (req.method === "POST" && pathParts[1] === "submit-cta") {
       const body = await req.json();
@@ -1541,6 +1546,129 @@ async function handleContactAgent(supabase: any, body: any): Promise<Response> {
     JSON.stringify({ success: true, message: "Contact request sent" }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
+}
+
+// ============================================
+// Market Insights (AI-generated for landing pages)
+// ============================================
+
+async function handleMarketInsights(supabase: any, orgSlug: string, area: string): Promise<Response> {
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("id, business_name, slug")
+    .eq("slug", orgSlug)
+    .eq("is_active", true)
+    .single();
+
+  if (!org) {
+    return new Response(
+      JSON.stringify({ error: "Organization not found" }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  let targetArea = decodeURIComponent(area || "").trim();
+  if (!targetArea) {
+    const { data: areas } = await supabase
+      .from("org_service_areas")
+      .select("area_name, is_primary")
+      .eq("organization_id", org.id)
+      .order("is_primary", { ascending: false })
+      .limit(1);
+    targetArea = areas?.[0]?.area_name || "";
+  }
+
+  const googleApiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+  if (!googleApiKey || !targetArea) {
+    return new Response(
+      JSON.stringify({ org, area: targetArea || "your area", insights: getStaticMarketInsights(targetArea || "your area"), source: "static" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    const prompt = `You are a property market analyst. Generate a brief, engaging market update for the ${targetArea} area that a real estate agent would share with potential sellers.
+
+Return ONLY valid JSON:
+{
+  "headline": "<compelling headline, max 10 words>",
+  "summary": "<2-3 sentence market overview>",
+  "key_stats": [
+    {"label": "<stat name>", "value": "<stat value>", "trend": "<up|down|stable>"},
+    {"label": "<stat name>", "value": "<stat value>", "trend": "<up|down|stable>"},
+    {"label": "<stat name>", "value": "<stat value>", "trend": "<up|down|stable>"}
+  ],
+  "insights": [
+    "<insight 1 about buyer demand>",
+    "<insight 2 about pricing trends>",
+    "<insight 3 about time on market>",
+    "<insight 4 about what this means for sellers>"
+  ],
+  "cta_text": "<1 sentence encouraging sellers to get in touch>"
+}`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("[MarketInsights] Gemini error:", response.status);
+      return new Response(
+        JSON.stringify({ org, area: targetArea, insights: getStaticMarketInsights(targetArea), source: "static" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const result = await response.json();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) {
+      return new Response(
+        JSON.stringify({ org, area: targetArea, insights: getStaticMarketInsights(targetArea), source: "static" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const insights = JSON.parse(jsonMatch[0]);
+    return new Response(
+      JSON.stringify({ org, area: targetArea, insights, source: "ai" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    console.error("[MarketInsights] Error:", err);
+    return new Response(
+      JSON.stringify({ org, area: targetArea, insights: getStaticMarketInsights(targetArea), source: "static" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+function getStaticMarketInsights(area: string) {
+  return {
+    headline: `${area} Property Market Update`,
+    summary: `The property market in ${area} continues to evolve. Whether you're thinking about selling or just curious about local trends, here's what you need to know.`,
+    key_stats: [
+      { label: "Market Activity", value: "Strong", trend: "up" },
+      { label: "Buyer Demand", value: "Above Average", trend: "up" },
+      { label: "Average Time to Sell", value: "Competitive", trend: "stable" },
+    ],
+    insights: [
+      `Buyer demand in ${area} remains strong, with properties attracting significant interest.`,
+      `Well-presented homes in ${area} are achieving strong prices relative to asking.`,
+      `Properties in good condition are selling within competitive timeframes.`,
+      `If you're considering selling, current market conditions are favourable for sellers.`,
+    ],
+    cta_text: `Curious what your ${area} property could achieve? Get in touch for a confidential chat.`,
+  };
 }
 
 // ============================================
