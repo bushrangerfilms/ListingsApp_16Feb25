@@ -84,6 +84,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 // Lead Magnet Pages
 const LeadMagnetQuiz = lazyWithRetry(() => import("./pages/lead-magnet/LeadMagnetQuiz"));
 const MarketUpdatePage = lazyWithRetry(() => import("./pages/lead-magnet/MarketUpdatePage"));
+const TipsAdvicePage = lazyWithRetry(() => import("./pages/lead-magnet/TipsAdvicePage"));
 
 // Super Admin Portal Pages
 const SuperAdminDashboard = lazyWithRetry(() => import("./pages/internal/SuperAdminDashboard"));
@@ -273,6 +274,7 @@ function AdminRoutes() {
 
         {/* Lead Magnet Public Routes */}
         <Route path="/lead-magnet/:orgSlug/market-update" element={<MarketUpdatePage />} />
+        <Route path="/lead-magnet/:orgSlug/tips-advice" element={<TipsAdvicePage />} />
         <Route path="/lead-magnet/:orgSlug/:quizType" element={<LeadMagnetQuiz />} />
 
         {/* Static public routes MUST come before dynamic :orgSlug routes */}
@@ -300,6 +302,7 @@ function OrgPublicRoutes() {
       <Routes>
         {/* Lead magnet routes on custom domains — org detected from hostname */}
         <Route path="/quiz/market-update" element={<MarketUpdatePage />} />
+        <Route path="/quiz/tips-advice" element={<TipsAdvicePage />} />
         <Route path="/quiz/:quizType" element={<LeadMagnetQuiz />} />
         <Route path="/" element={<OrganizationRoute><PublicListings /></OrganizationRoute>} />
         <Route path="/property/:id" element={<OrganizationRoute><PropertyDetails /></OrganizationRoute>} />
