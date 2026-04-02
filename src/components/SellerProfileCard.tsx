@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, Phone, MapPin, Calendar, FileText, Zap } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, FileText, Zap, Target, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
@@ -43,9 +43,13 @@ export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) 
   const { locale } = useLocale();
   const [showTimeline, setShowTimeline] = useState(false);
   const [automationStatus, setAutomationStatus] = useState<{ active: boolean; sequence_name: string } | null>(null);
+  const [leadSubmission, setLeadSubmission] = useState<any>(null);
 
   useEffect(() => {
     fetchAutomationStatus();
+    if (seller.source === "lead_magnet") {
+      fetchLeadSubmission();
+    }
   }, [seller.id]);
 
   const fetchAutomationStatus = async () => {
@@ -62,6 +66,17 @@ export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) 
         sequence_name: data.email_sequence?.name || 'Active Sequence' 
       });
     }
+  };
+
+  const fetchLeadSubmission = async () => {
+    const { data } = await supabase
+      .from("lead_submissions")
+      .select("id, created_at, score, band, confidence, estimate_low, estimate_high, utm_source, utm_campaign, post_id, lead_magnets(type)")
+      .eq("seller_profile_id", seller.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data) setLeadSubmission(data);
   };
 
   const handleStageChange = async (newStage: string) => {
@@ -97,12 +112,13 @@ export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) 
   };
 
   const getSourceBadge = (source: string) => {
-    const badges: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+    const badges: Record<string, { label: string; variant: "default" | "secondary" | "outline"; className?: string }> = {
       valuation_request: { label: 'Valuation Request', variant: 'default' },
+      lead_magnet: { label: 'Lead Magnet', variant: 'default', className: 'bg-purple-600 hover:bg-purple-700' },
       manual: { label: 'Manual', variant: 'secondary' },
     };
-    const badge = badges[source] || { label: source, variant: 'outline' };
-    return <Badge variant={badge.variant}>{badge.label}</Badge>;
+    const badge = badges[source] || { label: source, variant: 'outline' as const };
+    return <Badge variant={badge.variant} className={badge.className}>{badge.label}</Badge>;
   };
 
   return (
@@ -184,8 +200,59 @@ export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) 
           </div>
         )}
 
+        {/* Lead Magnet Attribution */}
+        {seller.source === "lead_magnet" && leadSubmission && (
+          <div className="pt-4 border-t">
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="h-4 w-4 text-purple-600" />
+              <p className="text-sm font-semibold">Lead Source</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="text-muted-foreground">Type</div>
+              <div className="font-medium">
+                {(leadSubmission.lead_magnets as any)?.type?.replace(/_/g, " ") || "Lead Magnet"}
+              </div>
+              {leadSubmission.band && (
+                <>
+                  <div className="text-muted-foreground">Readiness</div>
+                  <div className="font-medium flex items-center gap-1.5">
+                    <Badge variant="outline" className="text-[10px]">{leadSubmission.band}</Badge>
+                    {leadSubmission.score != null && <span className="text-xs text-muted-foreground">({leadSubmission.score}/100)</span>}
+                  </div>
+                </>
+              )}
+              {leadSubmission.estimate_low && leadSubmission.estimate_high && (
+                <>
+                  <div className="text-muted-foreground">Estimate</div>
+                  <div className="font-medium flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-green-600" />
+                    {`€${leadSubmission.estimate_low.toLocaleString()} – €${leadSubmission.estimate_high.toLocaleString()}`}
+                    {leadSubmission.confidence && (
+                      <Badge variant="outline" className="text-[10px]">{leadSubmission.confidence}</Badge>
+                    )}
+                  </div>
+                </>
+              )}
+              {leadSubmission.utm_source && (
+                <>
+                  <div className="text-muted-foreground">Source</div>
+                  <div className="font-medium">{leadSubmission.utm_source}</div>
+                </>
+              )}
+              {leadSubmission.utm_campaign && (
+                <>
+                  <div className="text-muted-foreground">Campaign</div>
+                  <div className="font-medium">{leadSubmission.utm_campaign}</div>
+                </>
+              )}
+              <div className="text-muted-foreground">Submitted</div>
+              <div className="font-medium">{formatDate(leadSubmission.created_at)}</div>
+            </div>
+          </div>
+        )}
+
         <div className="pt-4 border-t flex gap-2">
-          <Button 
+          <Button
             variant="outline"
             onClick={() => window.location.href = `mailto:${seller.email}`}
             className="gap-2"
