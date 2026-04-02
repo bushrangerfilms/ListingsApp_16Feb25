@@ -101,6 +101,10 @@ export function LeadMagnetQuiz() {
 
   const normalizedType: QuizType = quizType?.toUpperCase().replace(/-/g, "_") as QuizType || "READY_TO_SELL";
 
+  // localStorage key for saving quiz progress
+  const progressKey = `quiz_progress_${orgSlugParam || "domain"}_${quizType || "quiz"}`;
+  const [showResumeBanner, setShowResumeBanner] = useState(false);
+
   // Resolve org slug from custom domain if not in URL params
   useEffect(() => {
     if (orgSlugParam) {
@@ -148,6 +152,22 @@ export function LeadMagnetQuiz() {
 
       setOrg(data.org);
       setConfig(data.config);
+
+      // Check for saved progress
+      try {
+        const saved = localStorage.getItem(progressKey);
+        if (saved) {
+          const { step, answers: savedAnswers, timestamp } = JSON.parse(saved);
+          const hoursSinceSave = (Date.now() - timestamp) / (1000 * 60 * 60);
+          if (hoursSinceSave < 24 && step > 0) {
+            setShowResumeBanner(true);
+            // Pre-load saved answers but don't restore step yet — user must click Resume
+            setAnswers(savedAnswers);
+          } else {
+            localStorage.removeItem(progressKey);
+          }
+        }
+      } catch { /* ignore corrupt data */ }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load quiz");
     } finally {
@@ -175,7 +195,12 @@ export function LeadMagnetQuiz() {
 
   const handleNext = () => {
     if (currentStep < totalSteps - 1) {
-      setCurrentStep((prev) => prev + 1);
+      const nextStep = currentStep + 1;
+      setCurrentStep(nextStep);
+      // Save progress to localStorage
+      try {
+        localStorage.setItem(progressKey, JSON.stringify({ step: nextStep, answers, timestamp: Date.now() }));
+      } catch { /* storage full or disabled */ }
     } else {
       submitQuiz();
     }
@@ -191,6 +216,8 @@ export function LeadMagnetQuiz() {
     if (!org || !config || submitting) return;
 
     setSubmitting(true);
+    // Clear saved progress on submission
+    try { localStorage.removeItem(progressKey); } catch { /* ignore */ }
     try {
       const response = await fetch(`${SUPABASE_URL}/functions/v1/lead-magnet-api/submit`, {
         method: "POST",
@@ -574,6 +601,41 @@ export function LeadMagnetQuiz() {
     <div className="min-h-screen bg-background py-8 px-4">
       <div className="max-w-2xl mx-auto">
         <Header org={org} />
+
+        {/* Resume banner for saved progress */}
+        {showResumeBanner && currentStep === 0 && (
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between gap-4">
+            <p className="text-sm text-blue-800">You have a saved quiz in progress.</p>
+            <div className="flex gap-2 flex-shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setShowResumeBanner(false);
+                  setAnswers({});
+                  try { localStorage.removeItem(progressKey); } catch { /* ignore */ }
+                }}
+              >
+                Start Over
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  try {
+                    const saved = localStorage.getItem(progressKey);
+                    if (saved) {
+                      const { step } = JSON.parse(saved);
+                      setCurrentStep(step);
+                    }
+                  } catch { /* ignore */ }
+                  setShowResumeBanner(false);
+                }}
+              >
+                Resume
+              </Button>
+            </div>
+          </div>
+        )}
 
         <Card className="mt-6">
           <CardHeader>
