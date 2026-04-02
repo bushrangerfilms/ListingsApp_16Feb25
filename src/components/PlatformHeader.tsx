@@ -46,7 +46,6 @@ export const PlatformHeader = () => {
     
     try {
       const { data: enquiries, count: enquiriesCount } = await supabase
-        .schema('crm')
         .from('property_enquiries')
         .select('*', { count: 'exact' })
         .eq('organization_id', organization.id)
@@ -55,7 +54,6 @@ export const PlatformHeader = () => {
         .limit(5);
 
       const { data: valuations, count: valuationsCount } = await supabase
-        .schema('crm')
         .from('valuation_requests')
         .select('*', { count: 'exact' })
         .eq('organization_id', organization.id)
@@ -107,7 +105,6 @@ export const PlatformHeader = () => {
     
     try {
       await supabase
-        .schema('crm')
         .from('property_enquiries')
         .update({ status: 'contacted' })
         .eq('id', enquiryId)
@@ -124,7 +121,6 @@ export const PlatformHeader = () => {
     
     try {
       await supabase
-        .schema('crm')
         .from('valuation_requests')
         .update({ status: 'contacted' })
         .eq('id', valuationId)
@@ -142,13 +138,11 @@ export const PlatformHeader = () => {
     try {
       await Promise.all([
         supabase
-          .schema('crm')
           .from('property_enquiries')
           .update({ status: 'contacted' })
           .eq('organization_id', organization.id)
           .eq('status', 'new'),
         supabase
-          .schema('crm')
           .from('valuation_requests')
           .update({ status: 'contacted' })
           .eq('organization_id', organization.id)

@@ -110,8 +110,8 @@ const createCookieStorage = () => {
 // Main client for browser/client-side operations (uses anon key + RLS)
 // Multi-schema setup:
 // - Shared tables (organizations, user_roles, user_organizations) are in public schema - shared with Social Media app
-// - CRM-specific tables (listings, buyer_profiles, etc.) are in crm schema
-// Always specify schema explicitly using .schema('public') or .schema('crm') in queries
+// - CRM tables exist in both crm and public schemas — use public (PostgREST only exposes public)
+// NOTE: Do NOT use .schema('crm') — PostgREST returns 406. Query via default public schema.
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,

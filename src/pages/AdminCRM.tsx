@@ -111,19 +111,19 @@ export default function AdminCRM() {
       setLoading(true);
       
       const [sellersResult, buyersResult, listingsResult] = await Promise.all([
-        (supabase.schema('crm') as any)
+        supabase
           .from('seller_profiles')
           .select('id, name, email, phone, property_address, stage, source, notes, created_at, last_contact_at, valuation_request_id, listed_property_id')
           .eq('organization_id', targetOrg.id)
           .order('created_at', { ascending: false })
           .limit(200),
-        (supabase.schema('crm') as any)
+        supabase
           .from('buyer_profiles')
           .select('id, name, email, phone, bedrooms_required, stage, source, notes, created_at, last_contact_at, property_alert_id, interested_properties, budget_min, budget_max')
           .eq('organization_id', targetOrg.id)
           .order('created_at', { ascending: false })
           .limit(200),
-        (supabase.schema('crm') as any)
+        supabase
           .from('listings')
           .select('id, title, address, crm_record_id')
           .eq('organization_id', targetOrg.id)
