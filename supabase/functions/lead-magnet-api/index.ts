@@ -1547,6 +1547,28 @@ async function handleContactAgent(supabase: any, body: any): Promise<Response> {
     );
   }
 
+  // Log CRM activity + update last_contact_at
+  if (submission.seller_profile_id) {
+    await supabase
+      .schema("crm")
+      .from("crm_activities")
+      .insert({
+        seller_profile_id: submission.seller_profile_id,
+        activity_type: "contact_request",
+        title: "Requested call back",
+        description: additional_info || "Lead requested a call back from quiz results page",
+      })
+      .then(({ error: actErr }: any) => {
+        if (actErr) console.warn("Failed to log contact activity:", actErr);
+      });
+
+    await supabase
+      .schema("crm")
+      .from("seller_profiles")
+      .update({ last_contact_at: new Date().toISOString() })
+      .eq("id", submission.seller_profile_id);
+  }
+
   return new Response(
     JSON.stringify({ success: true, message: "Contact request sent" }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
