@@ -613,6 +613,7 @@ export function LeadMagnetQuiz() {
                 onClick={() => {
                   setShowResumeBanner(false);
                   setAnswers({});
+                  setCurrentStep(0);
                   try { localStorage.removeItem(progressKey); } catch { /* ignore */ }
                 }}
               >
