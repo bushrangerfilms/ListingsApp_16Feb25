@@ -1550,7 +1550,6 @@ async function handleContactAgent(supabase: any, body: any): Promise<Response> {
   // Log CRM activity + update last_contact_at
   if (submission.seller_profile_id) {
     await supabase
-      .schema("crm")
       .from("crm_activities")
       .insert({
         seller_profile_id: submission.seller_profile_id,
@@ -1563,7 +1562,6 @@ async function handleContactAgent(supabase: any, body: any): Promise<Response> {
       });
 
     await supabase
-      .schema("crm")
       .from("seller_profiles")
       .update({ last_contact_at: new Date().toISOString() })
       .eq("id", submission.seller_profile_id);
@@ -1908,14 +1906,51 @@ async function handleSubmitCta(supabase: any, body: any): Promise<Response> {
   }
 
   // Create/update CRM seller profile
-  const sellerProfileId = await upsertSellerProfile(supabase, {
-    organization_id,
-    name,
-    email,
-    phone,
-    source: "lead_magnet",
-    submission: { band: null, confidence: null, _cta_stage: ctaConfig.stage },
-  });
+  // Create CRM seller profile via public schema
+  // NOTE: PostgREST only exposes public/storage/graphql_public schemas.
+  // The crm schema is NOT accessible via JS client or REST API.
+  // seller_profiles exists in both public AND crm schemas — use public.
+  let sellerProfileId: string | null = null;
+  let _debugProfileError: string | null = null;
+  try {
+    const { data: existingProfile, error: lookupErr } = await supabase
+      .from("seller_profiles")
+      .select("id")
+      .eq("organization_id", organization_id)
+      .eq("email", email)
+      .maybeSingle();
+
+    if (lookupErr) {
+      _debugProfileError = `lookup: ${JSON.stringify(lookupErr)}`;
+    } else if (existingProfile) {
+      await supabase.from("seller_profiles")
+        .update({ name: name || undefined, phone: phone || undefined, last_contact_at: new Date().toISOString() })
+        .eq("id", existingProfile.id);
+      sellerProfileId = existingProfile.id;
+    } else {
+      const { data: newProfile, error: profileError } = await supabase
+        .from("seller_profiles")
+        .insert({
+          organization_id,
+          name: name || "Lead Magnet Submission",
+          email,
+          phone: phone || "",
+          source: "lead_magnet",
+          stage: "lead",
+          notes: `From ${type_key} lead magnet (quality: ${ctaConfig.stage})`,
+        })
+        .select("id")
+        .single();
+
+      if (profileError) {
+        _debugProfileError = `insert: ${JSON.stringify(profileError)}`;
+      } else {
+        sellerProfileId = newProfile?.id || null;
+      }
+    }
+  } catch (err) {
+    _debugProfileError = `exception: ${err}`;
+  }
 
   if (sellerProfileId) {
     await supabase
@@ -2014,7 +2049,6 @@ async function upsertSellerProfile(supabase: any, data: any): Promise<string | n
 
   // Check for existing profile by email
   const { data: existing } = await supabase
-    .schema("crm")
     .from("seller_profiles")
     .select("id")
     .eq("organization_id", organization_id)
@@ -2024,7 +2058,6 @@ async function upsertSellerProfile(supabase: any, data: any): Promise<string | n
   if (existing) {
     // Update existing profile
     await supabase
-      .schema("crm")
       .from("seller_profiles")
       .update({
         name: name || undefined,
@@ -2039,23 +2072,22 @@ async function upsertSellerProfile(supabase: any, data: any): Promise<string | n
 
   // Create new profile
   const { data: newProfile, error } = await supabase
-    .schema("crm")
     .from("seller_profiles")
     .insert({
       organization_id,
       name: name || "Lead Magnet Submission",
       email,
-      phone,
+      phone: phone || "",
       source: "lead_magnet",
-      stage: determineLeadStage(submission),
-      notes: `From ${submission.lead_magnets?.type} quiz`,
+      stage: "lead",
+      notes: `From ${submission.lead_magnets?.type} quiz (quality: ${determineLeadStage(submission)})`,
       created_at: new Date().toISOString(),
     })
     .select("id")
     .single();
 
   if (error) {
-    console.error("Error creating seller profile:", error);
+    console.error("Error creating seller profile:", JSON.stringify(error));
     return null;
   }
 
