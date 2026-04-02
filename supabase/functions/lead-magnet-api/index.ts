@@ -171,6 +171,11 @@ serve(async (req: Request) => {
       return await handleMarketInsights(supabase, pathParts[2], pathParts[3] || "");
     }
 
+    // Route: GET /tips-content/:orgSlug/:area — AI-generated tips & advice article
+    if (req.method === "GET" && pathParts[1] === "tips-content" && pathParts[2]) {
+      return await handleTipsContent(supabase, pathParts[2], pathParts[3] || "");
+    }
+
     // Route: POST /submit-cta — CTA-type lead capture (free-valuation, market-update, tips-advice)
     if (req.method === "POST" && pathParts[1] === "submit-cta") {
       const body = await req.json();
@@ -1668,6 +1673,124 @@ function getStaticMarketInsights(area: string) {
       `If you're considering selling, current market conditions are favourable for sellers.`,
     ],
     cta_text: `Curious what your ${area} property could achieve? Get in touch for a confidential chat.`,
+  };
+}
+
+// ============================================
+// Tips & Advice Content (AI-generated for landing pages)
+// ============================================
+
+async function handleTipsContent(supabase: any, orgSlug: string, area: string): Promise<Response> {
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("id, business_name, slug, logo_url")
+    .eq("slug", orgSlug)
+    .eq("is_active", true)
+    .single();
+
+  if (!org) {
+    return new Response(
+      JSON.stringify({ error: "Organization not found" }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  let targetArea = decodeURIComponent(area || "").trim();
+  if (!targetArea) {
+    const { data: areas } = await supabase
+      .from("org_service_areas")
+      .select("area_name, is_primary")
+      .eq("organization_id", org.id)
+      .order("is_primary", { ascending: false })
+      .limit(1);
+    targetArea = areas?.[0]?.area_name || "";
+  }
+
+  const googleApiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+  if (!googleApiKey || !targetArea) {
+    return new Response(
+      JSON.stringify({ org, area: targetArea || "your area", tips: getStaticTips(targetArea || "your area", org.business_name), source: "static" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    const prompt = `You are a property expert writing an article for homeowners in ${targetArea} who might be thinking about selling their home. Write 6 practical, actionable tips.
+
+Return ONLY valid JSON:
+{
+  "headline": "<article headline, max 12 words, compelling>",
+  "intro": "<2 sentence introduction that hooks the reader>",
+  "tips": [
+    {
+      "title": "<short tip title, 3-6 words>",
+      "body": "<2-3 sentences of practical advice>",
+      "impact": "<High|Medium>"
+    }
+  ],
+  "conclusion": "<1-2 sentences wrapping up and encouraging action>",
+  "cta_text": "<1 sentence encouraging them to contact the agent>"
+}`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("[TipsContent] Gemini error:", response.status);
+      return new Response(
+        JSON.stringify({ org, area: targetArea, tips: getStaticTips(targetArea, org.business_name), source: "static" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const result = await response.json();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) {
+      return new Response(
+        JSON.stringify({ org, area: targetArea, tips: getStaticTips(targetArea, org.business_name), source: "static" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const tips = JSON.parse(jsonMatch[0]);
+    return new Response(
+      JSON.stringify({ org, area: targetArea, tips, source: "ai" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (err) {
+    console.error("[TipsContent] Error:", err);
+    return new Response(
+      JSON.stringify({ org, area: targetArea, tips: getStaticTips(targetArea, org.business_name), source: "static" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+function getStaticTips(area: string, orgName: string) {
+  return {
+    headline: `Expert Tips to Maximise Your ${area} Property Sale`,
+    intro: `Thinking about selling your home in ${area}? These practical tips from property experts can help you achieve the best possible price and a smooth sale.`,
+    tips: [
+      { title: "First Impressions Count", body: `Kerb appeal is everything. A freshly painted front door, clean windows, and a tidy garden can add thousands to your ${area} property's perceived value. Buyers form opinions within seconds of arriving.`, impact: "High" },
+      { title: "Declutter Every Room", body: "Remove personal items and excess furniture to make rooms feel larger and help buyers imagine themselves living there. Consider renting a storage unit during viewings.", impact: "High" },
+      { title: "Fix the Small Things", body: "Dripping taps, cracked tiles, and squeaky doors signal neglect. A weekend of minor repairs can prevent buyers from negotiating down on price.", impact: "Medium" },
+      { title: "Get Your BER Certificate", body: "Energy efficiency matters more than ever. If your rating is low, consider quick wins like attic insulation or draught-proofing before listing.", impact: "Medium" },
+      { title: "Price It Right from Day One", body: `Overpricing leads to stale listings. Research recent sales in ${area} and price competitively — well-priced homes attract multiple offers and often exceed asking.`, impact: "High" },
+      { title: "Choose the Right Agent", body: `An agent who knows ${area} intimately can price accurately, market effectively, and negotiate the best deal. Look for local track record and marketing quality.`, impact: "High" },
+    ],
+    conclusion: `Selling a home in ${area} doesn't have to be stressful. With the right preparation and expert guidance, you can achieve a great result.`,
+    cta_text: `Ready to take the next step? Contact ${orgName} for a free, no-obligation valuation of your property.`,
   };
 }
 
