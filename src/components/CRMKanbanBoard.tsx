@@ -227,6 +227,7 @@ export function CRMKanbanBoard({ type, profiles, onUpdate }: CRMKanbanBoardProps
             <SelectItem value="property_alert">{t('crm.sources.property_alert')}</SelectItem>
             <SelectItem value="property_enquiry">{t('crm.sources.property_enquiry')}</SelectItem>
             {type === "seller" && <SelectItem value="valuation_request">{t('crm.sources.valuation_request')}</SelectItem>}
+            {type === "seller" && <SelectItem value="lead_magnet">Lead Magnet</SelectItem>}
           </SelectContent>
         </Select>
       </div>
