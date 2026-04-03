@@ -157,14 +157,14 @@ export function CRMKanbanBoard({ type, profiles, onUpdate }: CRMKanbanBoardProps
 
     try {
       const table = type === "seller" ? "seller_profiles" : "buyer_profiles";
-      const { error } = await (supabase.schema('crm') as any).from(table).update({ stage: newStage }).eq("id", profileId);
+      const { error } = await supabase.from(table).update({ stage: newStage }).eq("id", profileId);
 
       if (error) throw error;
 
       // Log stage change activity
       const newStageObj = stages.find((s) => s.value === newStage);
       const translatedStageName = newStageObj ? t(newStageObj.labelKey) : newStage;
-      await (supabase.schema('crm') as any).from("crm_activities").insert({
+      await supabase.from("crm_activities").insert({
         [`${type}_profile_id`]: profileId,
         activity_type: "stage_change",
         title: t('crm.activity.stageChange', { stage: translatedStageName }),
