@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Sparkles, X, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TaskItem } from './TaskItem';
+import { PostingPreferencesDialog } from './PostingPreferencesDialog';
 import { useOnboarding } from '@/hooks/useOnboarding';
 import { usePlanInfo } from '@/hooks/usePlanInfo';
 import { useEndCardSetupCheck } from '@/hooks/useEndCardSetupCheck';
@@ -12,6 +14,7 @@ interface OnboardingProgressBannerProps {
 }
 
 export function OnboardingProgressBanner({ className }: OnboardingProgressBannerProps) {
+  const [prefsDialogOpen, setPrefsDialogOpen] = useState(false);
   const {
     tasks,
     tasksCompleted,
@@ -20,6 +23,7 @@ export function OnboardingProgressBanner({ className }: OnboardingProgressBanner
     isDismissed,
     isComplete,
     dismissOnboarding,
+    markTaskComplete,
     isLoading,
     isUpdating,
   } = useOnboarding();
@@ -41,6 +45,7 @@ export function OnboardingProgressBanner({ className }: OnboardingProgressBanner
   }
 
   return (
+    <>
     <Card className={className} data-testid="onboarding-progress-banner">
       <CardContent className="p-5">
         <div className="flex items-center justify-between gap-4 mb-4">
@@ -90,10 +95,19 @@ export function OnboardingProgressBanner({ className }: OnboardingProgressBanner
               href={task.href}
               icon={task.icon}
               external={task.external}
+              onAction={task.inlineAction ? () => setPrefsDialogOpen(true) : undefined}
             />
           ))}
         </div>
       </CardContent>
+
     </Card>
+
+      <PostingPreferencesDialog
+        open={prefsDialogOpen}
+        onOpenChange={setPrefsDialogOpen}
+        onComplete={() => markTaskComplete('set_posting_preferences')}
+      />
+    </>
   );
 }

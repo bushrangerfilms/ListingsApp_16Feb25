@@ -16,6 +16,7 @@ import {
   CollapsibleTrigger
 } from '@/components/ui/collapsible';
 import { TaskItem } from './TaskItem';
+import { PostingPreferencesDialog } from './PostingPreferencesDialog';
 import { useOnboarding, type OnboardingTask } from '@/hooks/useOnboarding';
 import { usePlanInfo } from '@/hooks/usePlanInfo';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,7 @@ interface OnboardingChecklistProps {
 export function OnboardingChecklist({ className, compact = false }: OnboardingChecklistProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [prefsDialogOpen, setPrefsDialogOpen] = useState(false);
   const navigate = useNavigate();
   const {
     tasks,
@@ -38,6 +40,7 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
     isDismissed,
     isComplete,
     dismissOnboarding,
+    markTaskComplete,
     isLoading,
     isUpdating
   } = useOnboarding();
@@ -60,11 +63,20 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
 
   const handleTaskNavigate = (task: OnboardingTask) => {
     setDialogOpen(false);
-    if (task.external) {
+    if (task.inlineAction) {
+      setPrefsDialogOpen(true);
+    } else if (task.external) {
       window.open(task.href, '_blank', 'noopener,noreferrer');
     } else {
       navigate(task.href);
     }
+  };
+
+  const getTaskOnAction = (task: OnboardingTask) => {
+    if (task.inlineAction) {
+      return () => setPrefsDialogOpen(true);
+    }
+    return undefined;
   };
 
   if (compact) {
@@ -113,6 +125,7 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
                       href={task.href}
                       icon={task.icon}
                       external={task.external}
+                      onAction={getTaskOnAction(task)}
                     />
                   </div>
                 );
@@ -130,11 +143,18 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
             )}
           </DialogContent>
         </Dialog>
+
+        <PostingPreferencesDialog
+          open={prefsDialogOpen}
+          onOpenChange={setPrefsDialogOpen}
+          onComplete={() => markTaskComplete('set_posting_preferences')}
+        />
       </>
     );
   }
 
   return (
+    <>
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
@@ -188,10 +208,18 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
               href={task.href}
               icon={task.icon}
               external={task.external}
+              onAction={getTaskOnAction(task)}
             />
           ))}
         </div>
       </CollapsibleContent>
     </Collapsible>
+
+    <PostingPreferencesDialog
+      open={prefsDialogOpen}
+      onOpenChange={setPrefsDialogOpen}
+      onComplete={() => markTaskComplete('set_posting_preferences')}
+    />
+    </>
   );
 }

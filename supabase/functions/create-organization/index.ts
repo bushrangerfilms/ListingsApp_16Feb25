@@ -271,6 +271,20 @@ serve(async (req) => {
       console.log('✅ AI Training metrics created');
     }
 
+    // Step 7b: Create organization_settings with post approval enabled by default
+    const { error: orgSettingsError } = await supabase
+      .from('organization_settings')
+      .insert({
+        organization_id: organization.id,
+        require_post_approval: true,
+      });
+
+    if (orgSettingsError) {
+      console.warn('⚠️ Warning: Failed to create organization settings (non-fatal):', orgSettingsError);
+    } else {
+      console.log('✅ Organization settings created with post approval enabled');
+    }
+
     // Step 8: Grant credits for comped/pilot organizations only
     if (isComped) {
       const COMPED_CREDITS = 100;
