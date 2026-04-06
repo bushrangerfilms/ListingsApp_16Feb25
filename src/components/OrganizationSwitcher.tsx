@@ -131,7 +131,7 @@ export const OrganizationSwitcher = () => {
             />
           </div>
 
-          <ScrollArea className="h-[300px] border rounded-md">
+          <ScrollArea className="h-[200px] sm:h-[300px] border rounded-md">
             {isLoading && (
               <div className="p-4 text-center text-muted-foreground" data-testid="text-loading">
                 Loading organizations...

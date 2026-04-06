@@ -109,7 +109,7 @@ export function BrochureStyleEditor({ branding, onChange, onSaveAsDefaults, isSa
         <p className="text-[10px] text-muted-foreground mb-1.5">
           Choose a layout style for your brochure
         </p>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {TEMPLATE_LIST.map((tmpl) => (
             <button
               key={tmpl.id}

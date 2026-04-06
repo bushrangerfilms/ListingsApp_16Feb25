@@ -423,6 +423,7 @@ export default function UsersPage() {
             </div>
           ) : (
             <>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -584,6 +585,7 @@ export default function UsersPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-4 border-t mt-4">

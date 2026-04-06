@@ -69,7 +69,7 @@ export function BrochureFeaturesEditor({ features, onChange, templateId }: Broch
   const defaults = getHeadingDefaults(templateId);
   return (
     <div className="space-y-3 p-3">
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
         <div>
           <Label className="text-[10px] text-muted-foreground">Services heading</Label>
           <Input

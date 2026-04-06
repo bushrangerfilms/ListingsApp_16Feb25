@@ -484,7 +484,7 @@ export default function PropertyDetails() {
                    </div>
                  </div>
 
-                <div className="flex items-center gap-6 py-4 border-y flex-wrap">
+                <div className="flex items-center gap-3 sm:gap-6 py-4 border-y flex-wrap">
                   {property.buildingType !== 'Land' && (
                     <>
                       <div className="flex items-center gap-2">
@@ -543,7 +543,7 @@ export default function PropertyDetails() {
                <Card>
                  <CardContent className="p-6 space-y-4">
                    <h2 className="text-xl font-semibold">Location</h2>
-                   <div className="w-full h-[400px] rounded-lg overflow-hidden">
+                   <div className="w-full h-64 sm:h-80 lg:h-[400px] rounded-lg overflow-hidden">
                      <iframe
                        width="100%"
                        height="100%"

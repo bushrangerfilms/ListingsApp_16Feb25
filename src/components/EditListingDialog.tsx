@@ -256,7 +256,7 @@ export function EditListingDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
@@ -278,7 +278,7 @@ export function EditListingDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="price">{t('listings.create.price.label')}</Label>
               <Input
@@ -361,7 +361,7 @@ export function EditListingDialog({
 
           {/* Energy Rating - only if enabled in region, NOT for Land */}
           {energyRatings.enabled && formData["Building Type"] !== "Land" && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="ber">{energyRatings.label}</Label>
                 <Select 
@@ -393,7 +393,7 @@ export function EditListingDialog({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="town">{t('listings.create.address.town')}</Label>
               <Input
@@ -467,7 +467,7 @@ export function EditListingDialog({
 
           {/* Bedrooms & Bathrooms - NOT for Land */}
           {formData["Building Type"] !== "Land" && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="bedrooms">{t('listings.create.details.bedrooms')}</Label>
                 <Input

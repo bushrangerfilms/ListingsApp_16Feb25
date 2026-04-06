@@ -153,7 +153,7 @@ export function BuyerProfileCard({ buyer, onUpdate }: BuyerProfileCardProps) {
             </div>
           </div>
           <Select value={buyer.stage} onValueChange={handleStageChange}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -474,7 +474,7 @@ const ListingsDashboard = () => {
       <SocialConnectionBanner className="mb-6" />
 
       {/* Advanced Search & Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Input
           placeholder={t('listings.filters.searchPlaceholder')}
           value={searchQuery}

@@ -140,7 +140,7 @@ export default function AuditLogPage() {
                 setPage(0);
               }}
             >
-              <SelectTrigger className="w-[180px]" data-testid="select-action-filter">
+              <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-action-filter">
                 <SelectValue placeholder="Action Type" />
               </SelectTrigger>
               <SelectContent>
@@ -160,6 +160,7 @@ export default function AuditLogPage() {
             </div>
           ) : data?.logs && data.logs.length > 0 ? (
             <>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -216,6 +217,7 @@ export default function AuditLogPage() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
 
               <div className="flex items-center justify-between mt-4 pt-4 border-t">
                 <p className="text-sm text-muted-foreground">
@@ -293,7 +295,7 @@ export default function AuditLogPage() {
       </Card>
 
       <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Audit Log Details</DialogTitle>
           </DialogHeader>

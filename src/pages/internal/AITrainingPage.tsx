@@ -497,7 +497,7 @@ export default function AITrainingPage() {
                 New Instruction Set
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
               <form onSubmit={handleSubmit}>
                 <DialogHeader>
                   <DialogTitle>Create Instruction Set</DialogTitle>
@@ -578,6 +578,7 @@ export default function AITrainingPage() {
               </CardHeader>
               <CardContent>
                 {filteredInstructions && filteredInstructions.length > 0 ? (
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -676,6 +677,7 @@ export default function AITrainingPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -691,7 +693,7 @@ export default function AITrainingPage() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingInstruction} onOpenChange={(open) => !open && setEditingInstruction(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
               <DialogTitle>Edit Instruction Set</DialogTitle>
@@ -719,7 +721,7 @@ export default function AITrainingPage() {
 
       {/* History Dialog */}
       <Dialog open={!!historyDialogId} onOpenChange={(open) => !open && setHistoryDialogId(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="w-[95vw] max-w-2xl">
           <DialogHeader>
             <DialogTitle>Change History</DialogTitle>
             <DialogDescription>

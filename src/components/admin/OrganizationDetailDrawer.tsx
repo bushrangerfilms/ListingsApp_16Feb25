@@ -332,7 +332,7 @@ export function OrganizationDetailDrawer({
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6 mt-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-muted rounded-lg p-3 text-center">
                     <Users className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
                     <div className="text-2xl font-semibold">{stats?.users ?? '-'}</div>
@@ -491,7 +491,7 @@ export function OrganizationDetailDrawer({
                   </div>
                 ) : credits ? (
                   <>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="bg-muted rounded-lg p-3 text-center">
                         <CreditCard className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
                         <div className="text-2xl font-semibold" data-testid="text-org-balance">

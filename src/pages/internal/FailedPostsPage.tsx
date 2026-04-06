@@ -147,14 +147,14 @@ export default function FailedPostsPage() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-[160px]"
+              className="w-full sm:w-[160px]"
               placeholder="From date"
             />
             <Input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-[160px]"
+              className="w-full sm:w-[160px]"
               placeholder="To date"
             />
             {(dateFrom || dateTo || searchQuery) && (
@@ -177,7 +177,7 @@ export default function FailedPostsPage() {
               </Button>
             </div>
           ) : filteredPosts.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
