@@ -20,6 +20,7 @@ import { extractPlanLimitError, type PlanLimitError } from "@/lib/planLimitError
 import { UpgradePlanDialog } from "@/components/billing/UpgradePlanDialog";
 import { OnboardingProgressBanner } from "@/components/onboarding/OnboardingProgressBanner";
 import { SocialConnectionBanner } from "@/components/SocialConnectionBanner";
+import { ApprovalControlCard } from "@/components/ApprovalControlCard";
 
 interface Listing {
   id: string;
@@ -472,6 +473,7 @@ const ListingsDashboard = () => {
       {/* Onboarding Progress Banner - includes branding warning when needed */}
       <OnboardingProgressBanner className="mb-6" />
       <SocialConnectionBanner className="mb-6" />
+      <ApprovalControlCard className="mb-6" listingCount={listings.length} />
 
       {/* Advanced Search & Filters */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

@@ -10,16 +10,18 @@ export interface TaskItemProps {
   icon: LucideIcon;
   disabled?: boolean;
   external?: boolean;
+  onAction?: () => void;
 }
 
-export function TaskItem({ 
-  title, 
-  description, 
-  isComplete, 
-  href, 
+export function TaskItem({
+  title,
+  description,
+  isComplete,
+  href,
   icon: Icon,
   disabled = false,
-  external = false
+  external = false,
+  onAction
 }: TaskItemProps) {
   const content = (
     <div 
@@ -71,6 +73,18 @@ export function TaskItem({
 
   if (isComplete || disabled) {
     return content;
+  }
+
+  if (onAction) {
+    return (
+      <button
+        type="button"
+        onClick={onAction}
+        className="block w-full text-left"
+      >
+        {content}
+      </button>
+    );
   }
 
   if (external) {

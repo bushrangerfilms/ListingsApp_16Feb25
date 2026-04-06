@@ -8,7 +8,8 @@ import {
   Palette,
   Share2,
   User,
-  ImageIcon
+  ImageIcon,
+  ShieldCheck
 } from 'lucide-react';
 
 export interface OnboardingTask {
@@ -19,6 +20,7 @@ export interface OnboardingTask {
   icon: LucideIcon;
   proOnly?: boolean;
   external?: boolean;
+  inlineAction?: boolean;
 }
 
 export const ONBOARDING_TASKS: OnboardingTask[] = [
@@ -57,6 +59,14 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     href: 'https://socials.autolisting.io/accounts',
     icon: Share2,
     external: true,
+  },
+  {
+    id: 'set_posting_preferences',
+    title: 'Choose posting preferences',
+    description: 'Decide if posts need your approval first',
+    href: '#posting-preferences',
+    icon: ShieldCheck,
+    inlineAction: true,
   },
   {
     id: 'save_end_card',

@@ -11,6 +11,7 @@ interface DetectionResult {
   save_end_card: boolean;
   connect_social: boolean;
   create_listing: boolean;
+  set_posting_preferences: boolean;
 }
 
 export function useOnboardingAutoDetect() {
@@ -37,6 +38,7 @@ export function useOnboardingAutoDetect() {
           save_end_card: false,
           connect_social: false,
           create_listing: false,
+          set_posting_preferences: false,
         };
       }
 
@@ -73,6 +75,7 @@ export function useOnboardingAutoDetect() {
         save_end_card: hasEndCard,
         connect_social: (socialConnectionsResult.count ?? 0) > 0,
         create_listing: (listingsResult.count ?? 0) > 0,
+        set_posting_preferences: false, // Only completed via explicit user interaction
       };
     },
     enabled: !!organization?.id && !onboardingLoading && !isDismissed && !isComplete,
