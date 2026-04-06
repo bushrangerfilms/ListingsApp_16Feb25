@@ -214,7 +214,7 @@ export default function DiscountCodesPage() {
                 Create Code
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="w-[95vw] max-w-md">
               <form onSubmit={handleSubmit}>
                 <DialogHeader>
                   <DialogTitle>Create Discount Code</DialogTitle>
@@ -355,6 +355,7 @@ export default function DiscountCodesPage() {
         </CardHeader>
         <CardContent>
           {discountCodes && discountCodes.length > 0 ? (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -434,6 +435,7 @@ export default function DiscountCodesPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Tag className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -446,7 +448,7 @@ export default function DiscountCodesPage() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editingCode} onOpenChange={(open) => !open && setEditingCode(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[95vw] max-w-md">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
               <DialogTitle>Edit Discount Code</DialogTitle>

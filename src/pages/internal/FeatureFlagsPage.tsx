@@ -352,6 +352,7 @@ export default function FeatureFlagsPage() {
         </CardHeader>
         <CardContent>
           {featureFlags && featureFlags.length > 0 ? (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -425,6 +426,7 @@ export default function FeatureFlagsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <ToggleLeft className="h-12 w-12 mx-auto mb-4 opacity-50" />

@@ -765,7 +765,7 @@ export default function AdminCommunications() {
                                 Edit Template
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                            <DialogContent className="w-[95vw] max-w-3xl max-h-[80vh] overflow-y-auto">
                               <DialogHeader>
                                 <DialogTitle>Edit Email Template</DialogTitle>
                                 <DialogDescription>
@@ -872,7 +872,7 @@ export default function AdminCommunications() {
                                 Edit Template
                               </Button>
                             </DialogTrigger>
-                            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                            <DialogContent className="w-[95vw] max-w-3xl max-h-[80vh] overflow-y-auto">
                               <DialogHeader>
                                 <DialogTitle>Edit Email Template</DialogTitle>
                                 <DialogDescription>

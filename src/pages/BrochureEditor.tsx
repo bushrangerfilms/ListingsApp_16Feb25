@@ -483,9 +483,9 @@ export default function BrochureEditor() {
       </div>
 
       {/* Split pane: Edit panel + Preview */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         {/* Edit panel (left) */}
-        <div className="w-[45%] min-w-[360px] border-r overflow-y-auto p-3">
+        <div className="w-full lg:w-[45%] lg:min-w-[360px] border-b lg:border-b-0 lg:border-r overflow-y-auto p-3">
           <BrochureEditPanel
             content={content}
             onChange={setContent}

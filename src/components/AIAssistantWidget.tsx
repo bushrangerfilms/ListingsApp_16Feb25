@@ -109,7 +109,7 @@ export const AIAssistantWidget = () => {
       {/* Chat Window */}
       {isOpen && (
         <Card
-          className={`fixed bottom-24 right-6 w-96 shadow-2xl transition-all duration-300 z-50 ${
+          className={`fixed bottom-24 right-6 w-[calc(100%-3rem)] sm:w-96 shadow-2xl transition-all duration-300 z-50 ${
             isMinimized ? "h-14" : "h-[500px]"
           } flex flex-col`}
         >

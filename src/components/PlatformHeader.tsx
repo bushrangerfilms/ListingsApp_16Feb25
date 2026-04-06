@@ -219,7 +219,7 @@ export const PlatformHeader = () => {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-0" align="end">
+              <PopoverContent className="w-[calc(100vw-2rem)] sm:w-80 p-0" align="end">
                 <div className="flex items-center justify-between gap-2 p-4 border-b">
                   <h3 className="font-semibold">Notifications</h3>
                   <div className="flex items-center gap-2">
@@ -349,7 +349,7 @@ export const PlatformHeader = () => {
                   <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[280px]">
+              <SheetContent side="right" className="w-full sm:w-[280px]">
                 <SheetHeader>
                   <SheetTitle>Navigation</SheetTitle>
                 </SheetHeader>

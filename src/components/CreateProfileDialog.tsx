@@ -136,7 +136,7 @@ export function CreateProfileDialog({ open, onOpenChange, profileType, onSuccess
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             Create {profileType === 'seller' ? 'Seller' : 'Buyer'} Profile

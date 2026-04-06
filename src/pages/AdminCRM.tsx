@@ -315,7 +315,7 @@ export default function AdminCRM() {
                       <Home className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">{t('crm.buyers.filterByProperty')}</span>
                       <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-                        <SelectTrigger className="w-[280px]" data-testid="select-property-filter">
+                        <SelectTrigger className="w-full sm:w-[280px]" data-testid="select-property-filter">
                           <SelectValue placeholder={t('crm.buyers.allProperties')} />
                         </SelectTrigger>
                         <SelectContent>
