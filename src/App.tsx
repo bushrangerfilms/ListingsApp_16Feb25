@@ -285,6 +285,9 @@ function AdminRoutes() {
         <Route path="/terms-conditions" element={<TermsConditions />} />
         <Route path="/cookie-policy" element={<CookiePolicy />} />
 
+        {/* Not found must come before dynamic :orgSlug route */}
+        <Route path="/not-found" element={<NotFound />} />
+
         {/* Dynamic org routes - these match any single-segment path */}
         <Route path="/:orgSlug" element={<OrganizationRoute><PublicListings /></OrganizationRoute>} />
         <Route path="/:orgSlug/property/:id" element={<OrganizationRoute><PropertyDetails /></OrganizationRoute>} />
