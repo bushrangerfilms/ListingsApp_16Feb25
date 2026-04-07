@@ -1552,13 +1552,14 @@ async function handleContactAgent(supabase: any, body: any): Promise<Response> {
     await supabase
       .from("crm_activities")
       .insert({
+        organization_id: submission.organization_id,
         seller_profile_id: submission.seller_profile_id,
-        activity_type: "contact_request",
+        activity_type: "call",
         title: "Requested call back",
         description: additional_info || "Lead requested a call back from quiz results page",
       })
       .then(({ error: actErr }: any) => {
-        if (actErr) console.warn("Failed to log contact activity:", actErr);
+        if (actErr) console.warn("Failed to log contact activity:", JSON.stringify(actErr));
       });
 
     await supabase
