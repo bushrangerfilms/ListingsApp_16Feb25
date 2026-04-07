@@ -18,6 +18,7 @@ import { OrganizationFaviconUploader } from "@/components/OrganizationFaviconUpl
 import { CustomDomainSetup } from "@/components/CustomDomainSetup";
 import { PropertyServicesSelector } from "@/components/PropertyServicesSelector";
 import { updateOrganizationProfile } from "@/lib/organizationHelpers";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import { Loader2 } from "lucide-react";
 import { getRegionConfig } from "@/lib/regionConfig";
 import type { SupportedLocale } from "@/lib/i18n";
@@ -45,6 +46,7 @@ export default function AdminOrganizationSettings() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [faviconUrl, setFaviconUrl] = useState<string | null>(null);
   const [customDomain, setCustomDomain] = useState<string | null>(null);
+  const { isComplete: onboardingComplete, isDismissed: onboardingDismissed } = useOnboarding();
 
   // Use the viewed organization if super admin is viewing as another org
   const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
@@ -102,7 +104,14 @@ export default function AdminOrganizationSettings() {
 
       // Refresh org context so onboarding auto-detection sees updated data
       await refreshOrganization();
-      queryClient.invalidateQueries({ queryKey: ['onboarding-detection'] });
+
+      // Defer invalidation so React re-renders with fresh org data before detection re-runs
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['onboarding-detection'] });
+        if (!onboardingComplete && !onboardingDismissed) {
+          window.dispatchEvent(new CustomEvent('onboarding:resume'));
+        }
+      }, 0);
 
       toast.success(`${t('admin:organisations.details')} saved successfully`);
     } catch (error) {

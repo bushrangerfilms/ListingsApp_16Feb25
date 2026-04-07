@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, X, Sparkles, ArrowRight } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -47,6 +47,13 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
 
   const { planName, isLoading: planLoading } = usePlanInfo();
   const isPro = planName === 'pro';
+
+  useEffect(() => {
+    if (!compact) return;
+    const handler = () => setDialogOpen(true);
+    window.addEventListener('onboarding:resume', handler);
+    return () => window.removeEventListener('onboarding:resume', handler);
+  }, [compact]);
 
   if (isLoading || planLoading) {
     return null;
