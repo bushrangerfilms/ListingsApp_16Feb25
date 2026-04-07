@@ -7,21 +7,21 @@ const sections = [
     id: "enquiries", 
     label: "Enquiries & Requests", 
     icon: MessageSquare, 
-    path: "/admin/communications",
+    path: "/admin/communications/enquiries",
     description: "View and manage property enquiries, valuation requests, and property alerts"
   },
-  { 
-    id: "sequences", 
-    label: "Email Sequences", 
-    icon: Send, 
-    path: "/admin/communications",
+  {
+    id: "sequences",
+    label: "Email Sequences",
+    icon: Send,
+    path: "/admin/communications/sequences",
     description: "Create and manage automated email sequences for buyers and sellers"
   },
-  { 
-    id: "analytics", 
-    label: "Email Analytics", 
-    icon: BarChart3, 
-    path: "/admin/communications",
+  {
+    id: "analytics",
+    label: "Email Analytics",
+    icon: BarChart3,
+    path: "/admin/communications/analytics",
     description: "Track performance metrics for email sequences and campaigns"
   },
   { 
