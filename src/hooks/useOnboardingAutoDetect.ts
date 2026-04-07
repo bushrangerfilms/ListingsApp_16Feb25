@@ -44,7 +44,7 @@ export function useOnboardingAutoDetect() {
 
       const supabaseAny = supabase as any;
       
-      const [listingsResult, socialConnectionsResult] = await Promise.all([
+      const [listingsResult, socialConnectionsResult, endCardResult] = await Promise.all([
         supabaseAny
           .from('listings')
           .select('id', { count: 'exact', head: true })
@@ -53,14 +53,14 @@ export function useOnboardingAutoDetect() {
           .from('organization_connected_socials')
           .select('id', { count: 'exact', head: true })
           .eq('organization_id', organization.id),
+        supabaseAny
+          .from('org_end_card_settings')
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', organization.id),
       ]);
 
-      // End card is considered saved if organization has logo and primary color set
-      const hasEndCard = !!(
-        organization.logo_url && 
-        organization.logo_url.length > 0 &&
-        organization.primary_color
-      );
+      // End card is saved if user has actually configured it in Socials app
+      const hasEndCard = (endCardResult.count ?? 0) > 0;
 
       // Profile is complete if contact name is set
       const hasProfile = !!(organization.contact_name && organization.contact_name.trim().length > 0);
