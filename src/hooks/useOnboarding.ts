@@ -46,18 +46,19 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     icon: Briefcase,
   },
   {
-    id: 'create_listing',
-    title: 'Add your first listing',
-    description: 'Add a property to get started',
-    href: '/admin/create',
-    icon: Home,
-  },
-  {
     id: 'connect_social',
     title: 'Connect social accounts',
     description: 'Link Instagram, TikTok, Facebook, etc.',
     href: 'https://socials.autolisting.io/accounts',
     icon: Share2,
+    external: true,
+  },
+  {
+    id: 'save_end_card',
+    title: 'Save end card',
+    description: 'Configure video end cards',
+    href: 'https://socials.autolisting.io/organization/settings/branding',
+    icon: Palette,
     external: true,
   },
   {
@@ -69,12 +70,11 @@ export const ONBOARDING_TASKS: OnboardingTask[] = [
     inlineAction: true,
   },
   {
-    id: 'save_end_card',
-    title: 'Save end card',
-    description: 'Configure video end cards',
-    href: 'https://socials.autolisting.io/organization/settings/branding',
-    icon: Palette,
-    external: true,
+    id: 'create_listing',
+    title: 'Add your first listing',
+    description: 'Add a property to get started',
+    href: '/admin/create',
+    icon: Home,
   },
 ];
 
