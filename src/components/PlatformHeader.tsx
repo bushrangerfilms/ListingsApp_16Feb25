@@ -254,7 +254,7 @@ export const PlatformHeader = () => {
                               key={enquiry.id}
                               onClick={() => {
                                 markEnquiryAsRead(enquiry.id);
-                                navigate('/admin/communications');
+                                navigate('/admin/communications/enquiries');
                                 setNotificationOpen(false);
                               }}
                               className="w-full text-left p-3 hover:bg-accent rounded-md transition-colors"
@@ -294,7 +294,7 @@ export const PlatformHeader = () => {
                               key={valuation.id}
                               onClick={() => {
                                 markValuationAsRead(valuation.id);
-                                navigate('/admin/communications');
+                                navigate('/admin/communications/enquiries');
                                 setNotificationOpen(false);
                               }}
                               className="w-full text-left p-3 hover:bg-accent rounded-md transition-colors"
@@ -330,7 +330,7 @@ export const PlatformHeader = () => {
                         variant="ghost"
                         className="w-full justify-center"
                         onClick={() => {
-                          navigate('/admin/communications');
+                          navigate('/admin/communications/enquiries');
                           setNotificationOpen(false);
                         }}
                         data-testid="button-view-all-communications"

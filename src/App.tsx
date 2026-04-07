@@ -49,6 +49,9 @@ const CookiePolicy = lazyWithRetry(() => import("./pages/CookiePolicy"));
 // Admin Pages
 const AdminAnalyticsHub = lazyWithRetry(() => import("./pages/AdminAnalyticsHub"));
 const AdminCommunicationsHub = lazyWithRetry(() => import("./pages/AdminCommunicationsHub"));
+const AdminCommunications = lazyWithRetry(() => import("./pages/AdminCommunications"));
+const AdminEmailSequences = lazyWithRetry(() => import("./pages/AdminEmailSequences"));
+const AdminSequenceAnalytics = lazyWithRetry(() => import("./pages/AdminSequenceAnalytics"));
 const AdminEmailTemplates = lazyWithRetry(() => import("./pages/AdminEmailTemplates"));
 const AdminCRM = lazyWithRetry(() => import("./pages/AdminCRM"));
 const AdminSettings = lazyWithRetry(() => import("./pages/AdminSettings"));
@@ -232,6 +235,9 @@ function AdminRoutes() {
         <Route path="/admin/analytics" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminAnalyticsHub /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/crm" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminCRM /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/communications" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminCommunicationsHub /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
+        <Route path="/admin/communications/enquiries" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminCommunications /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
+        <Route path="/admin/communications/sequences" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminEmailSequences /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
+        <Route path="/admin/communications/analytics" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminSequenceAnalytics /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/email-templates" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminEmailTemplates /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/billing" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><AdminBilling /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
         <Route path="/admin/billing/manage" element={<ProtectedRoute><PilotModeRouteGuard><AdminLayout><ManageSubscription /></AdminLayout></PilotModeRouteGuard></ProtectedRoute>} />
