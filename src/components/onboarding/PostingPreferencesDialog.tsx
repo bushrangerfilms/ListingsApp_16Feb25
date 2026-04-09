@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useOrganizationSettings } from '@/hooks/useOrganizationSettings';
+import { useToast } from '@/hooks/use-toast';
 
 interface PostingPreferencesDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ export function PostingPreferencesDialog({
 }: PostingPreferencesDialogProps) {
   const { requirePostApproval, isLoading, updatePostApproval, isUpdating } =
     useOrganizationSettings();
+  const { toast } = useToast();
 
   const [localValue, setLocalValue] = useState(true);
 
@@ -35,9 +37,18 @@ export function PostingPreferencesDialog({
   }, [isLoading, requirePostApproval]);
 
   const handleSave = async () => {
-    await updatePostApproval(localValue);
-    onComplete();
-    onOpenChange(false);
+    try {
+      await updatePostApproval(localValue);
+      onComplete();
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Failed to save posting preferences:', error);
+      toast({
+        title: 'Failed to save',
+        description: 'Could not save posting preferences. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
