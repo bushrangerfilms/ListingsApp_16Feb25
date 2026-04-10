@@ -17,6 +17,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { MarketingLayout } from '@/components/marketing/MarketingLayout';
+import { GuidanceVideoLink } from '@/components/ui/GuidanceVideoLink';
 import { supabase } from '@/integrations/supabase/client';
 
 const FREE_FEATURES = [
@@ -179,6 +180,11 @@ export default function SignupWizard() {
                 </li>
               ))}
             </ul>
+
+            <GuidanceVideoLink
+              url="https://youtu.be/RQhOENCec8o"
+              label="Getting Started Guide"
+            />
           </div>
 
           {/* Right: Signup Form */}
