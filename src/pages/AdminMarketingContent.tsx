@@ -295,9 +295,9 @@ export default function AdminMarketingContent() {
     const customDomain = targetOrg?.domain;
     const quizPath = type === "READY_TO_SELL" ? "ready-to-sell" : "worth-estimate";
     if (customDomain) {
-      return `https://${customDomain}/quiz/${quizPath}`;
+      return `https://${customDomain}/q/${quizPath}`;
     }
-    return `https://app.autolisting.io/lead-magnet/${slug}/${quizPath}`;
+    return `https://app.autolisting.io/q/${slug}/${quizPath}`;
   };
 
   const isHeroButtonVisible = (type: "READY_TO_SELL" | "WORTH_ESTIMATE") => {

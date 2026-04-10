@@ -88,6 +88,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const LeadMagnetQuiz = lazyWithRetry(() => import("./pages/lead-magnet/LeadMagnetQuiz"));
 const MarketUpdatePage = lazyWithRetry(() => import("./pages/lead-magnet/MarketUpdatePage"));
 const TipsAdvicePage = lazyWithRetry(() => import("./pages/lead-magnet/TipsAdvicePage"));
+const LinksPage = lazyWithRetry(() => import("./pages/lead-magnet/LinksPage"));
 
 // Super Admin Portal Pages
 const SuperAdminDashboard = lazyWithRetry(() => import("./pages/internal/SuperAdminDashboard"));
@@ -282,6 +283,12 @@ function AdminRoutes() {
         <Route path="/lead-magnet/:orgSlug/market-update" element={<MarketUpdatePage />} />
         <Route path="/lead-magnet/:orgSlug/tips-advice" element={<TipsAdvicePage />} />
         <Route path="/lead-magnet/:orgSlug/:quizType" element={<LeadMagnetQuiz />} />
+        {/* Short URL aliases */}
+        <Route path="/q/:orgSlug/market-update" element={<MarketUpdatePage />} />
+        <Route path="/q/:orgSlug/tips-advice" element={<TipsAdvicePage />} />
+        <Route path="/q/:orgSlug/:quizType" element={<LeadMagnetQuiz />} />
+        {/* Bio links page */}
+        <Route path="/links/:orgSlug" element={<LinksPage />} />
 
         {/* Static public routes MUST come before dynamic :orgSlug routes */}
         <Route path="/property/:id" element={<OrganizationRoute><PropertyDetails /></OrganizationRoute>} />
@@ -313,6 +320,12 @@ function OrgPublicRoutes() {
         <Route path="/quiz/market-update" element={<MarketUpdatePage />} />
         <Route path="/quiz/tips-advice" element={<TipsAdvicePage />} />
         <Route path="/quiz/:quizType" element={<LeadMagnetQuiz />} />
+        {/* Short URL aliases */}
+        <Route path="/q/market-update" element={<MarketUpdatePage />} />
+        <Route path="/q/tips-advice" element={<TipsAdvicePage />} />
+        <Route path="/q/:quizType" element={<LeadMagnetQuiz />} />
+        {/* Bio links page */}
+        <Route path="/links" element={<LinksPage />} />
         <Route path="/" element={<OrganizationRoute><PublicListings /></OrganizationRoute>} />
         <Route path="/property/:id" element={<OrganizationRoute><PropertyDetails /></OrganizationRoute>} />
         <Route path="/request-valuation" element={<OrganizationRoute><ValuationRequest /></OrganizationRoute>} />

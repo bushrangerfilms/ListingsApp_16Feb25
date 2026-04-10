@@ -61,7 +61,7 @@ export default function MarketUpdatePage() {
   const [form, setForm] = useState({ name: "", email: "", consent: false });
 
   const utmParams = useMemo(() => ({
-    utm_source: searchParams.get("utm_source") || undefined,
+    utm_source: searchParams.get("utm_source") || searchParams.get("s") || undefined,
     utm_campaign: searchParams.get("utm_campaign") || undefined,
     utm_content: searchParams.get("utm_content") || undefined,
     post_id: searchParams.get("pid") || undefined,

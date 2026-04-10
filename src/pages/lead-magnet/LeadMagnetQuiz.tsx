@@ -92,7 +92,7 @@ export function LeadMagnetQuiz() {
   const { toast } = useToast();
 
   const utmParams = useMemo(() => ({
-    utm_source: searchParams.get("utm_source"),
+    utm_source: searchParams.get("utm_source") || searchParams.get("s"),
     utm_campaign: searchParams.get("utm_campaign"),
     campaign_id: searchParams.get("c"),
     post_id: searchParams.get("pid"),
