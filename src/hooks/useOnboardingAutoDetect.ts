@@ -43,8 +43,14 @@ export function useOnboardingAutoDetect() {
       }
 
       const supabaseAny = supabase as any;
-      
-      const [listingsResult, socialConnectionsResult, endCardResult] = await Promise.all([
+
+      // Fetch org data directly from DB to avoid stale React closure values
+      const [orgResult, listingsResult, socialConnectionsResult, endCardResult] = await Promise.all([
+        supabaseAny
+          .from('organizations')
+          .select('contact_name, logo_url, property_services')
+          .eq('id', organization.id)
+          .single(),
         supabaseAny
           .from('listings')
           .select('id', { count: 'exact', head: true })
@@ -59,19 +65,21 @@ export function useOnboardingAutoDetect() {
           .eq('organization_id', organization.id),
       ]);
 
+      const orgData = orgResult.data;
+
       // End card is saved if user has actually configured it in Socials app
       const hasEndCard = (endCardResult.count ?? 0) > 0;
 
       // Profile is complete if contact name is set
-      const hasProfile = !!(organization.contact_name && organization.contact_name.trim().length > 0);
+      const hasProfile = !!(orgData?.contact_name && orgData.contact_name.trim().length > 0);
 
       // Logo is complete if logo_url is set
-      const hasLogo = !!(organization.logo_url && organization.logo_url.length > 0);
+      const hasLogo = !!(orgData?.logo_url && orgData.logo_url.length > 0);
 
       return {
         complete_profile: hasProfile,
         upload_logo: hasLogo,
-        configure_services: !!(organization.property_services && organization.property_services.length > 0),
+        configure_services: !!(orgData?.property_services && orgData.property_services.length > 0),
         save_end_card: hasEndCard,
         connect_social: (socialConnectionsResult.count ?? 0) > 0,
         create_listing: (listingsResult.count ?? 0) > 0,
