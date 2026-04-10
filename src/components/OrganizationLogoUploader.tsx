@@ -3,8 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Upload, X, ImageIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { uploadOrganizationLogo, deleteOrganizationLogo } from "@/lib/organizationHelpers";
+import { uploadOrganizationLogo, deleteOrganizationLogo, updateOrganizationProfile } from "@/lib/organizationHelpers";
 import { useTranslation } from "react-i18next";
+import { useOrganization } from "@/contexts/OrganizationContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface OrganizationLogoUploaderProps {
   currentLogoUrl: string | null;
@@ -18,6 +20,8 @@ export function OrganizationLogoUploader({
   onLogoUpdate,
 }: OrganizationLogoUploaderProps) {
   const { t } = useTranslation('admin');
+  const { refreshOrganization } = useOrganization();
+  const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentLogoUrl);
 
@@ -55,9 +59,16 @@ export function OrganizationLogoUploader({
     try {
       // Upload to storage
       const publicUrl = await uploadOrganizationLogo(file, organizationId);
-      
+
+      // Persist logo_url to the database immediately so onboarding detection picks it up
+      await updateOrganizationProfile(organizationId, { logo_url: publicUrl });
+
       setPreviewUrl(publicUrl);
       onLogoUpdate(publicUrl);
+
+      // Refresh org context and onboarding detection
+      await refreshOrganization();
+      queryClient.invalidateQueries({ queryKey: ['onboarding-detection'] });
 
       toast({
         title: "Logo uploaded",
@@ -82,9 +93,16 @@ export function OrganizationLogoUploader({
 
     try {
       await deleteOrganizationLogo(currentLogoUrl);
-      
+
+      // Clear logo_url in the database immediately
+      await updateOrganizationProfile(organizationId, { logo_url: null });
+
       setPreviewUrl(null);
       onLogoUpdate(null);
+
+      // Refresh org context and onboarding detection
+      await refreshOrganization();
+      queryClient.invalidateQueries({ queryKey: ['onboarding-detection'] });
 
       toast({
         title: "Logo deleted",
