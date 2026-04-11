@@ -80,7 +80,8 @@ export default function MarketingHome() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const { currency: detectedCurrency } = useLocale();
+  const { currency: detectedCurrency, locale } = useLocale();
+  const optimizedWord = locale === 'en-US' ? 'optimized' : 'optimised';
   const currency = detectedCurrency as SupportedCurrency;
 
   const { data: plans } = useQuery({
@@ -265,7 +266,7 @@ export default function MarketingHome() {
               </p>
               <ul className="space-y-2">
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 6 platforms supported</li>
-                <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Platform-optimised captions</li>
+                <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Platform-{optimizedWord} captions</li>
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Lead magnets and quiz posts</li>
               </ul>
             </div>

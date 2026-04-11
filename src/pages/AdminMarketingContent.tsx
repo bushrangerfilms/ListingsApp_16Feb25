@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, Image, FileText, Megaphone, Pipette, ClipboardCopy, Link2, FileQuestion } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
+import { useLocale } from "@/hooks/useLocale";
 
 interface MarketingContent {
   id?: string;
@@ -85,6 +86,11 @@ type AnnouncementBarFormData = z.infer<typeof announcementBarSchema>;
 export default function AdminMarketingContent() {
   const { organization, loading: orgLoading } = useOrganization();
   const { selectedOrganization, isOrganizationView } = useOrganizationView();
+  const { locale } = useLocale();
+  const isUS = locale === 'en-US';
+  const customizeWord = isUS ? 'Customize' : 'Customise';
+  const customizedWord = isUS ? 'customized' : 'customised';
+  const organizationWord = isUS ? 'organization' : 'organisation';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sellPropertyContent, setSellPropertyContent] = useState<MarketingContent | null>(null);
@@ -585,7 +591,7 @@ export default function AdminMarketingContent() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Marketing Content</h2>
-        <p className="text-muted-foreground">Customise the marketing sections displayed on your public listings page</p>
+        <p className="text-muted-foreground">{customizeWord} the marketing sections displayed on your public listings page</p>
       </div>
 
       <Tabs defaultValue="sell_property" className="w-full">
@@ -614,7 +620,7 @@ export default function AdminMarketingContent() {
               <CardTitle>Sell Your Property Section</CardTitle>
               <CardDescription>
                 This section appears on your public listings page to encourage property owners to list with you.
-                The organisation name will be automatically inserted where you use {'{business_name}'}.
+                The {organizationWord} name will be automatically inserted where you use {'{business_name}'}.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -653,7 +659,7 @@ export default function AdminMarketingContent() {
                             data-testid="input-sell-property-headline"
                           />
                         </FormControl>
-                        <FormDescription>Use {'{business_name}'} to insert your organisation name</FormDescription>
+                        <FormDescription>Use {'{business_name}'} to insert your {organizationWord} name</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -783,7 +789,7 @@ export default function AdminMarketingContent() {
             <CardHeader>
               <CardTitle>Why Choose Us Section</CardTitle>
               <CardDescription>
-                Customise the reasons why clients should choose your agency.
+                {customizeWord} the reasons why clients should choose your agency.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -822,7 +828,7 @@ export default function AdminMarketingContent() {
                             data-testid="input-why-choose-headline"
                           />
                         </FormControl>
-                        <FormDescription>Use {'{business_name}'} to insert your organisation name</FormDescription>
+                        <FormDescription>Use {'{business_name}'} to insert your {organizationWord} name</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1380,9 +1386,9 @@ export default function AdminMarketingContent() {
             <div>
               <h3 className="font-semibold mb-1">Default Content</h3>
               <p className="text-sm text-muted-foreground">
-                If you haven't customised a section, default marketing copy will be displayed. 
-                The default content uses your organisation name and generic real estate messaging.
-                Customise each section to make your public page unique and compelling.
+                If you haven't {customizedWord} a section, default marketing copy will be displayed.
+                The default content uses your {organizationWord} name and generic real estate messaging.
+                {customizeWord} each section to make your public page unique and compelling.
               </p>
             </div>
           </div>

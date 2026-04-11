@@ -68,8 +68,8 @@ export default function PrivacyPolicy() {
             
             <h3>3.1 Information You Provide</h3>
             <ul>
-              <li><strong>Account Information:</strong> Name, email address, password, organisation name</li>
-              <li><strong>Billing Information:</strong> Payment card details (processed by Stripe), billing address, VAT number</li>
+              <li><strong>Account Information:</strong> Name, email address, password, {legalConfig.organisationalSpelling === 'organizational' ? 'organization' : 'organisation'} name</li>
+              <li><strong>Billing Information:</strong> Payment card details (processed by Stripe), billing address, {legalConfig.vatLabel} number</li>
               <li><strong>Property Information:</strong> Property addresses, descriptions, images, valuations</li>
               <li><strong>Communications:</strong> Emails, support requests, feedback</li>
             </ul>
@@ -81,13 +81,13 @@ export default function PrivacyPolicy() {
               <li><strong>Cookies:</strong> See our <Link to="/cookie-policy" className="text-primary hover:underline">Cookie Policy</Link> for details</li>
             </ul>
 
-            <h2>4. Legal Basis for Processing ({legalConfig.gdprLabel} Article 6)</h2>
-            <p>We process your personal data based on the following legal grounds:</p>
+            <h2>4. Legal Basis for Processing</h2>
+            <p>We process your personal data based on the following legal grounds under {legalConfig.gdprLabel}:</p>
             <ul>
-              <li><strong>Contract Performance (Art. 6(1)(b)):</strong> Processing necessary to provide our services to you</li>
-              <li><strong>Legitimate Interests (Art. 6(1)(f)):</strong> Improving our services, fraud prevention, security</li>
-              <li><strong>Legal Obligation (Art. 6(1)(c)):</strong> Compliance with tax, accounting, and regulatory requirements</li>
-              <li><strong>Consent (Art. 6(1)(a)):</strong> Marketing communications (where applicable)</li>
+              <li><strong>Contract Performance:</strong> Processing necessary to provide our services to you</li>
+              <li><strong>Legitimate Interests:</strong> Improving our services, fraud prevention, security</li>
+              <li><strong>Legal Obligation:</strong> Compliance with tax, accounting, and regulatory requirements</li>
+              <li><strong>Consent:</strong> Marketing communications (where applicable)</li>
             </ul>
 
             <h2>5. How We Use Your Data</h2>
@@ -95,9 +95,9 @@ export default function PrivacyPolicy() {
             <ul>
               <li>Provide, maintain, and improve our services</li>
               <li>Process transactions and send billing notifications</li>
-              <li>Respond to your enquiries and provide customer support</li>
+              <li>Respond to your {countryCode === 'US' ? 'inquiries' : 'enquiries'} and provide customer support</li>
               <li>Send service-related communications (account updates, security alerts)</li>
-              <li>Analyse usage patterns to improve user experience</li>
+              <li>{countryCode === 'US' ? 'Analyze' : 'Analyse'} usage patterns to improve user experience</li>
               <li>Prevent fraud and ensure platform security</li>
               <li>Comply with legal obligations</li>
             </ul>
@@ -140,16 +140,15 @@ export default function PrivacyPolicy() {
             </ul>
 
             <h2>9. Your Rights Under {legalConfig.gdprLabel}</h2>
-            <p>As a data subject, you have the following rights:</p>
+            <p>You have the following rights regarding your personal data:</p>
             <ul>
-              <li><strong>Right of Access (Art. 15):</strong> Request a copy of your personal data</li>
-              <li><strong>Right to Rectification (Art. 16):</strong> Correct inaccurate or incomplete data</li>
-              <li><strong>Right to Erasure (Art. 17):</strong> Request deletion of your personal data ("right to be forgotten")</li>
-              <li><strong>Right to Restrict Processing (Art. 18):</strong> Limit how we use your data</li>
-              <li><strong>Right to Data Portability (Art. 20):</strong> Receive your data in a machine-readable format</li>
-              <li><strong>Right to Object (Art. 21):</strong> Object to processing based on legitimate interests</li>
-              <li><strong>Right to Withdraw Consent (Art. 7):</strong> Withdraw consent at any time (where processing is based on consent)</li>
-              <li><strong>Rights Related to Automated Decision-Making (Art. 22):</strong> Not be subject to solely automated decisions with legal effects</li>
+              <li><strong>Right of Access:</strong> Request a copy of your personal data</li>
+              <li><strong>Right to {countryCode === 'US' ? 'Correction' : 'Rectification'}:</strong> Correct inaccurate or incomplete data</li>
+              <li><strong>Right to {countryCode === 'US' ? 'Deletion' : 'Erasure'}:</strong> Request deletion of your personal data</li>
+              <li><strong>Right to Restrict Processing:</strong> Limit how we use your data</li>
+              <li><strong>Right to Data Portability:</strong> Receive your data in a machine-readable format</li>
+              <li><strong>Right to Object:</strong> Object to processing based on legitimate interests</li>
+              <li><strong>Right to Withdraw Consent:</strong> Withdraw consent at any time (where processing is based on consent)</li>
             </ul>
             <p>
               To exercise any of these rights, please contact us at <a href={`mailto:${COMPANY_INFO.dpo.email}`} className="text-primary hover:underline">{COMPANY_INFO.dpo.email}</a>.

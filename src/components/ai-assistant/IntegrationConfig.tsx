@@ -24,7 +24,8 @@ interface OrganizationData {
 export const IntegrationConfig = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const customizeWord = locale === 'en-US' ? 'Customize' : 'Customise';
   const [hasChanges, setHasChanges] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedEmbed, setCopiedEmbed] = useState(false);
@@ -230,7 +231,7 @@ export const IntegrationConfig = () => {
         <CardHeader>
           <CardTitle>Appearance Settings</CardTitle>
           <CardDescription>
-            Customise how your AI assistant looks and greets visitors
+            {customizeWord} how your AI assistant looks and greets visitors
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

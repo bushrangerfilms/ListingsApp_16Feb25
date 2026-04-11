@@ -199,7 +199,7 @@ serve(async (req) => {
         }
       });
     } else {
-      contextParts.push(`\nNote: There are currently no active property listings to show. You can still help visitors with general enquiries.`);
+      contextParts.push(`\nNote: There are currently no active property listings to show. You can still help visitors with general inquiries.`);
     }
 
     // Get active knowledge documents (filtered by organization)

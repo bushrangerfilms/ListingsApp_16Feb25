@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useLocale } from "@/hooks/useLocale";
 import {
   Table,
   TableBody,
@@ -56,6 +57,8 @@ type SortKey = "totalViews" | "totalEnquiries" | "conversionRate" | "uniqueViews
 type SortDirection = "asc" | "desc";
 
 export default function AdminListingAnalytics() {
+  const { locale } = useLocale();
+  const enquiriesWord = locale === 'en-US' ? 'Inquiries' : 'Enquiries';
   const [listingMetrics, setListingMetrics] = useState<ListingMetrics[]>([]);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -205,7 +208,7 @@ export default function AdminListingAnalytics() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Listing Performance Analytics</h1>
-            <p className="text-muted-foreground">Track views, enquiries, and conversion metrics</p>
+            <p className="text-muted-foreground">Track views, {enquiriesWord.toLowerCase()}, and conversion metrics</p>
           </div>
           <Button onClick={fetchListingAnalytics}>
             <TrendingUp className="mr-2 h-4 w-4" />
@@ -230,7 +233,7 @@ export default function AdminListingAnalytics() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Enquiries</CardTitle>
+              <CardTitle className="text-sm font-medium">Total {enquiriesWord}</CardTitle>
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -249,7 +252,7 @@ export default function AdminListingAnalytics() {
             <CardContent>
               <div className="text-2xl font-bold">{avgConversionRate.toFixed(2)}%</div>
               <p className="text-xs text-muted-foreground">
-                Views to enquiries ratio
+                Views to {enquiriesWord.toLowerCase()} ratio
               </p>
             </CardContent>
           </Card>
@@ -283,7 +286,7 @@ export default function AdminListingAnalytics() {
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold truncate">{listing.listingTitle}</h3>
                           <p className="text-sm text-muted-foreground">
-                            {listing.totalViews} views • {listing.totalEnquiries} enquiries
+                            {listing.totalViews} views • {listing.totalEnquiries} {enquiriesWord.toLowerCase()}
                           </p>
                         </div>
                       </div>
@@ -301,7 +304,7 @@ export default function AdminListingAnalytics() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Views vs Enquiries Trend (Last 30 Days)</CardTitle>
+                <CardTitle>Views vs {enquiriesWord} Trend (Last 30 Days)</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -322,7 +325,7 @@ export default function AdminListingAnalytics() {
                       type="monotone"
                       dataKey="enquiries"
                       stroke="hsl(var(--secondary))"
-                      name="Enquiries"
+                      name={enquiriesWord}
                       strokeWidth={2}
                     />
                   </LineChart>
@@ -355,7 +358,7 @@ export default function AdminListingAnalytics() {
                       </TableHead>
                       <TableHead className="cursor-pointer" onClick={() => handleSort("totalEnquiries")}>
                         <div className="flex items-center gap-1">
-                          Enquiries
+                          {enquiriesWord}
                           <ArrowUpDown className="h-3 w-3" />
                         </div>
                       </TableHead>
@@ -440,7 +443,7 @@ export default function AdminListingAnalytics() {
                         <p className="font-semibold">{listing.totalViews}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Enquiries</p>
+                        <p className="text-muted-foreground">{enquiriesWord}</p>
                         <p className="font-semibold">{listing.totalEnquiries}</p>
                       </div>
                       <div>

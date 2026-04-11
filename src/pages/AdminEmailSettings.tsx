@@ -3,9 +3,11 @@ import { useOrganizationView } from "@/contexts/OrganizationViewContext";
 import { EmailSettingsCard } from "@/components/EmailSettingsCard";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 
 export default function AdminEmailSettings() {
   const { organization, loading } = useOrganization();
+  const { locale } = useLocale();
   const { selectedOrganization, isOrganizationView } = useOrganizationView();
 
   const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
@@ -33,7 +35,7 @@ export default function AdminEmailSettings() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Email Settings</h2>
-        <p className="text-muted-foreground">Configure how emails are sent from your organisation</p>
+        <p className="text-muted-foreground">Configure how emails are sent from your {locale === 'en-US' ? 'organization' : 'organisation'}</p>
       </div>
 
       <EmailSettingsCard organizationId={targetOrg.id} />
