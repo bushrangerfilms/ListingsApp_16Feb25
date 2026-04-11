@@ -3303,6 +3303,405 @@ async function handleDeleteOrganizations(
   };
 }
 
+// ==================== BROADCAST HANDLERS ====================
+
+async function handleBroadcastsList(supabase: SupabaseClient, auth: AuthResult) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const { data, error } = await supabase
+    .from("broadcast_campaigns")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`Failed to fetch broadcasts: ${error.message}`);
+  return data || [];
+}
+
+async function handleCreateBroadcast(supabase: SupabaseClient, auth: AuthResult, body: any) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const { subject, body_html, preview_text, from_name, from_email, audience_filters, scheduled_for } = body;
+
+  if (!subject || !body_html) {
+    throw new Error("Subject and body_html are required");
+  }
+
+  const { data, error } = await supabase
+    .from("broadcast_campaigns")
+    .insert({
+      subject,
+      body_html,
+      preview_text: preview_text || null,
+      from_name: from_name || "AutoListing",
+      from_email: from_email || "noreply@autolisting.io",
+      audience_filters: audience_filters || {},
+      scheduled_for: scheduled_for || null,
+      status: scheduled_for ? "scheduled" : "draft",
+      created_by: auth.user.id,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to create broadcast: ${error.message}`);
+  return data;
+}
+
+async function handleBroadcastDetail(supabase: SupabaseClient, auth: AuthResult, campaignId: string) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const { data: campaign, error: campaignError } = await supabase
+    .from("broadcast_campaigns")
+    .select("*")
+    .eq("id", campaignId)
+    .single();
+
+  if (campaignError) throw new Error(`Broadcast not found: ${campaignError.message}`);
+
+  const { data: recipients, error: recipientsError } = await supabase
+    .from("broadcast_recipients")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .order("sent_at", { ascending: false })
+    .limit(500);
+
+  if (recipientsError) {
+    console.error("Error fetching recipients:", recipientsError);
+  }
+
+  return { ...campaign, recipients: recipients || [] };
+}
+
+async function handleUpdateBroadcast(supabase: SupabaseClient, auth: AuthResult, campaignId: string, body: any) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  // Only allow updating drafts
+  const { data: existing } = await supabase
+    .from("broadcast_campaigns")
+    .select("status")
+    .eq("id", campaignId)
+    .single();
+
+  if (!existing || existing.status !== "draft") {
+    throw new Error("Only draft campaigns can be edited");
+  }
+
+  const updateData: Record<string, any> = {};
+  if (body.subject !== undefined) updateData.subject = body.subject;
+  if (body.body_html !== undefined) updateData.body_html = body.body_html;
+  if (body.preview_text !== undefined) updateData.preview_text = body.preview_text;
+  if (body.from_name !== undefined) updateData.from_name = body.from_name;
+  if (body.from_email !== undefined) updateData.from_email = body.from_email;
+  if (body.audience_filters !== undefined) updateData.audience_filters = body.audience_filters;
+  if (body.scheduled_for !== undefined) updateData.scheduled_for = body.scheduled_for;
+
+  const { data, error } = await supabase
+    .from("broadcast_campaigns")
+    .update(updateData)
+    .eq("id", campaignId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to update broadcast: ${error.message}`);
+  return data;
+}
+
+async function handleDeleteBroadcast(supabase: SupabaseClient, auth: AuthResult, campaignId: string) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const { data: existing } = await supabase
+    .from("broadcast_campaigns")
+    .select("status")
+    .eq("id", campaignId)
+    .single();
+
+  if (!existing || (existing.status !== "draft" && existing.status !== "cancelled")) {
+    throw new Error("Only draft or cancelled campaigns can be deleted");
+  }
+
+  const { error } = await supabase
+    .from("broadcast_campaigns")
+    .delete()
+    .eq("id", campaignId);
+
+  if (error) throw new Error(`Failed to delete broadcast: ${error.message}`);
+  return { success: true };
+}
+
+async function handleAudienceCount(supabase: SupabaseClient, auth: AuthResult, filters: any) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const recipients = await buildRecipientList(supabase, filters);
+  return { count: recipients.length };
+}
+
+async function buildRecipientList(supabase: SupabaseClient, filters: any) {
+  // Get all users with email addresses
+  const { data: users, error: usersError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  if (usersError) throw new Error(`Failed to list users: ${usersError.message}`);
+
+  const allUsers = users?.users || [];
+
+  // Get unsubscribes
+  const { data: unsubscribes } = await supabase
+    .from("broadcast_unsubscribes")
+    .select("email");
+  const unsubscribedEmails = new Set((unsubscribes || []).map((u: any) => u.email.toLowerCase()));
+
+  // Get user org memberships with org details for filtering
+  let orgFilter: Map<string, any> | null = null;
+  const hasOrgFilters = filters.plans?.length || filters.countries?.length || filters.account_statuses?.length;
+
+  if (hasOrgFilters) {
+    const { data: orgData } = await supabase
+      .from("user_organizations")
+      .select(`
+        user_id,
+        organizations!inner(
+          id,
+          current_plan_name,
+          country_code,
+          account_status
+        )
+      `);
+
+    orgFilter = new Map();
+    for (const row of (orgData || [])) {
+      const org = (row as any).organizations;
+      if (!org) continue;
+
+      const userId = row.user_id;
+      let passesFilter = true;
+
+      if (filters.plans?.length && !filters.plans.includes(org.current_plan_name)) {
+        passesFilter = false;
+      }
+      if (filters.countries?.length && !filters.countries.includes(org.country_code)) {
+        passesFilter = false;
+      }
+      if (filters.account_statuses?.length && !filters.account_statuses.includes(org.account_status)) {
+        passesFilter = false;
+      }
+
+      if (passesFilter) {
+        orgFilter.set(userId, true);
+      }
+    }
+  }
+
+  // Build final recipient list
+  const recipients: Array<{ user_id: string; email: string; name: string | null }> = [];
+  const seenEmails = new Set<string>();
+
+  for (const user of allUsers) {
+    if (!user.email) continue;
+    const emailLower = user.email.toLowerCase();
+
+    // Skip unsubscribed
+    if (unsubscribedEmails.has(emailLower)) continue;
+    // Skip duplicates
+    if (seenEmails.has(emailLower)) continue;
+    // Skip if org filters active and user doesn't match
+    if (orgFilter && !orgFilter.has(user.id)) continue;
+
+    seenEmails.add(emailLower);
+    recipients.push({
+      user_id: user.id,
+      email: user.email,
+      name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+    });
+  }
+
+  return recipients;
+}
+
+async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, campaignId: string) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  // Load campaign
+  const { data: campaign, error: campaignError } = await supabase
+    .from("broadcast_campaigns")
+    .select("*")
+    .eq("id", campaignId)
+    .single();
+
+  if (campaignError || !campaign) throw new Error("Broadcast not found");
+  if (campaign.status !== "draft" && campaign.status !== "scheduled") {
+    throw new Error(`Cannot send a campaign with status: ${campaign.status}`);
+  }
+
+  // Build recipient list
+  const recipients = await buildRecipientList(supabase, campaign.audience_filters || {});
+  if (recipients.length === 0) {
+    throw new Error("No recipients match the audience filters");
+  }
+
+  // Update campaign status to sending
+  await supabase
+    .from("broadcast_campaigns")
+    .update({ status: "sending", total_recipients: recipients.length, sent_by: auth.user.id })
+    .eq("id", campaignId);
+
+  // Insert all recipients
+  const recipientRows = recipients.map((r) => ({
+    campaign_id: campaignId,
+    email: r.email,
+    user_id: r.user_id,
+    name: r.name,
+    status: "pending",
+  }));
+
+  // Insert in batches of 100
+  for (let i = 0; i < recipientRows.length; i += 100) {
+    const batch = recipientRows.slice(i, i + 100);
+    const { error: insertError } = await supabase.from("broadcast_recipients").insert(batch);
+    if (insertError) {
+      console.error("Error inserting recipients batch:", insertError);
+    }
+  }
+
+  // Get inserted recipients with IDs
+  const { data: insertedRecipients } = await supabase
+    .from("broadcast_recipients")
+    .select("id, email")
+    .eq("campaign_id", campaignId);
+
+  // Send emails via Resend
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
+  if (!resendApiKey) throw new Error("RESEND_API_KEY not configured");
+
+  const { Resend } = await import("https://esm.sh/resend@4.0.0");
+  const resend = new Resend(resendApiKey);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const siteUrl = Deno.env.get("SITE_URL") || supabaseUrl;
+
+  let sentCount = 0;
+  const recipientMap = new Map((insertedRecipients || []).map((r: any) => [r.email, r.id]));
+
+  // Send in batches of 50
+  for (let i = 0; i < recipients.length; i += 50) {
+    const batch = recipients.slice(i, i + 50);
+
+    for (const recipient of batch) {
+      try {
+        const recipientId = recipientMap.get(recipient.email);
+
+        // Build tracking pixel and unsubscribe link
+        const trackingPixelUrl = `${siteUrl}/functions/v1/track-email-event?broadcastRecipientId=${recipientId}&event=opened`;
+
+        // HMAC-based unsubscribe token
+        const encoder = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+          "raw",
+          encoder.encode(Deno.env.get("BROADCAST_UNSUBSCRIBE_SECRET") || "broadcast-unsub-default"),
+          { name: "HMAC", hash: "SHA-256" },
+          false,
+          ["sign"]
+        );
+        const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(recipient.email));
+        const token = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+        const unsubscribeUrl = `${siteUrl}/functions/v1/broadcast-unsubscribe?email=${encodeURIComponent(recipient.email)}&token=${token}`;
+
+        // Build email HTML with tracking and unsubscribe
+        let emailHtml = campaign.body_html;
+
+        // Wrap links with click tracking
+        emailHtml = emailHtml.replace(
+          /<a\s+([^>]*href=["']([^"']+)["'][^>]*)>/gi,
+          (match: string, attrs: string, url: string) => {
+            if (url.includes('track-email-event') || url.includes('broadcast-unsubscribe')) {
+              return match;
+            }
+            const trackedUrl = `${siteUrl}/functions/v1/track-email-event?broadcastRecipientId=${recipientId}&event=clicked&redirect=${encodeURIComponent(url)}`;
+            return `<a ${attrs.replace(url, trackedUrl)}>`;
+          }
+        );
+
+        // Add unsubscribe footer and tracking pixel
+        emailHtml += `
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; text-align: center;">
+            <p>You're receiving this because you have an AutoListing account.</p>
+            <p style="margin-top: 8px;">
+              <a href="${unsubscribeUrl}" style="color: #6b7280; text-decoration: underline;">Unsubscribe from product updates</a>
+            </p>
+          </div>
+          <img src="${trackingPixelUrl}" width="1" height="1" alt="" style="display:none;" />
+        `;
+
+        const { data: emailResult, error: emailError } = await resend.emails.send({
+          from: `${campaign.from_name} <${campaign.from_email}>`,
+          to: [recipient.email],
+          subject: campaign.subject,
+          html: emailHtml,
+        });
+
+        if (emailError) {
+          console.error(`Failed to send to ${recipient.email}:`, emailError);
+          await supabase
+            .from("broadcast_recipients")
+            .update({ status: "failed" })
+            .eq("id", recipientId);
+        } else {
+          sentCount++;
+          await supabase
+            .from("broadcast_recipients")
+            .update({
+              status: "sent",
+              resend_email_id: emailResult?.id || null,
+              sent_at: new Date().toISOString(),
+            })
+            .eq("id", recipientId);
+        }
+      } catch (err) {
+        console.error(`Error sending to ${recipient.email}:`, err);
+      }
+    }
+  }
+
+  // Update campaign as sent
+  await supabase
+    .from("broadcast_campaigns")
+    .update({
+      status: "sent",
+      sent_at: new Date().toISOString(),
+      total_sent: sentCount,
+    })
+    .eq("id", campaignId);
+
+  // Audit log
+  await supabase.from("admin_audit_log").insert({
+    actor_id: auth.user.id,
+    action_type: "send_broadcast",
+    target_type: "broadcast_campaign",
+    target_id: campaignId,
+    after_state: { total_recipients: recipients.length, total_sent: sentCount },
+  });
+
+  return { success: true, total_recipients: recipients.length, total_sent: sentCount };
+}
+
+async function handleCancelBroadcast(supabase: SupabaseClient, auth: AuthResult, campaignId: string) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const { data: existing } = await supabase
+    .from("broadcast_campaigns")
+    .select("status")
+    .eq("id", campaignId)
+    .single();
+
+  if (!existing || existing.status !== "scheduled") {
+    throw new Error("Only scheduled campaigns can be cancelled");
+  }
+
+  const { error } = await supabase
+    .from("broadcast_campaigns")
+    .update({ status: "cancelled" })
+    .eq("id", campaignId);
+
+  if (error) throw new Error(`Failed to cancel broadcast: ${error.message}`);
+  return { success: true };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -3543,6 +3942,33 @@ serve(async (req) => {
         date_from: url.searchParams.get("date_from") || undefined,
         date_to: url.searchParams.get("date_to") || undefined,
       });
+
+    // ==================== BROADCAST ROUTES ====================
+    } else if (path === "/broadcasts" && method === "GET") {
+      responseData = await handleBroadcastsList(supabase, authResult);
+    } else if (path === "/broadcasts" && method === "POST") {
+      const body = await req.json();
+      responseData = await handleCreateBroadcast(supabase, authResult, body);
+    } else if (path === "/broadcasts/audience-count" && method === "GET") {
+      const filtersParam = url.searchParams.get("filters");
+      const filters = filtersParam ? JSON.parse(filtersParam) : {};
+      responseData = await handleAudienceCount(supabase, authResult, filters);
+    } else if (path.match(/^\/broadcasts\/[^/]+\/send$/) && method === "POST") {
+      const campaignId = path.replace("/broadcasts/", "").replace("/send", "");
+      responseData = await handleSendBroadcast(supabase, authResult, campaignId);
+    } else if (path.match(/^\/broadcasts\/[^/]+\/cancel$/) && method === "POST") {
+      const campaignId = path.replace("/broadcasts/", "").replace("/cancel", "");
+      responseData = await handleCancelBroadcast(supabase, authResult, campaignId);
+    } else if (path.match(/^\/broadcasts\/[^/]+$/) && method === "GET") {
+      const campaignId = path.replace("/broadcasts/", "");
+      responseData = await handleBroadcastDetail(supabase, authResult, campaignId);
+    } else if (path.match(/^\/broadcasts\/[^/]+$/) && method === "PATCH") {
+      const campaignId = path.replace("/broadcasts/", "");
+      const body = await req.json();
+      responseData = await handleUpdateBroadcast(supabase, authResult, campaignId, body);
+    } else if (path.match(/^\/broadcasts\/[^/]+$/) && method === "DELETE") {
+      const campaignId = path.replace("/broadcasts/", "");
+      responseData = await handleDeleteBroadcast(supabase, authResult, campaignId);
     } else {
       return new Response(
         JSON.stringify({ error: "Not found", path }),

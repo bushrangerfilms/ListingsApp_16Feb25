@@ -328,14 +328,14 @@ export default function UsersPage() {
             </div>
             {isSuperAdmin && (
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => toast({ title: 'Send Email', description: 'Bulk email feature coming soon. Requires Resend API integration.' })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.href = '/internal/broadcasts'}
                   data-testid="button-bulk-email"
                 >
                   <Mail className="h-4 w-4 mr-2" />
-                  Send Email
+                  Send Broadcast
                 </Button>
                 <Button 
                   variant="outline" 

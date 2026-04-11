@@ -555,6 +555,60 @@ export interface OrganizationDetailResponse {
   } | null;
 }
 
+export interface BroadcastCampaign {
+  id: string;
+  subject: string;
+  body_html: string;
+  preview_text: string | null;
+  from_name: string;
+  from_email: string;
+  audience_filters: {
+    plans?: string[];
+    countries?: string[];
+    account_statuses?: string[];
+  };
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed' | 'cancelled';
+  scheduled_for: string | null;
+  sent_at: string | null;
+  total_recipients: number;
+  total_sent: number;
+  total_opened: number;
+  total_clicked: number;
+  total_bounced: number;
+  created_by: string | null;
+  sent_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BroadcastRecipient {
+  id: string;
+  campaign_id: string;
+  email: string;
+  user_id: string | null;
+  name: string | null;
+  status: 'pending' | 'sent' | 'opened' | 'clicked' | 'bounced' | 'complained' | 'failed';
+  resend_email_id: string | null;
+  sent_at: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  created_at: string;
+}
+
+export interface BroadcastCampaignInput {
+  subject: string;
+  body_html: string;
+  preview_text?: string;
+  from_name?: string;
+  from_email?: string;
+  audience_filters?: BroadcastCampaign['audience_filters'];
+  scheduled_for?: string;
+}
+
+export interface BroadcastCampaignDetail extends BroadcastCampaign {
+  recipients: BroadcastRecipient[];
+}
+
 export const adminApi = {
   organizations: {
     list: (params?: { search?: string; status?: string; page?: number; pageSize?: number }) => {
@@ -997,5 +1051,37 @@ export const adminApi = {
       adminFetch<{ success: boolean }>(`/video-music/${encodeURIComponent(id)}`, {
         method: "DELETE",
       }),
+  },
+
+  broadcasts: {
+    list: () => adminFetch<BroadcastCampaign[]>("/broadcasts"),
+    get: (id: string) => adminFetch<BroadcastCampaignDetail>(`/broadcasts/${id}`),
+    create: (data: BroadcastCampaignInput) =>
+      adminFetch<BroadcastCampaign>("/broadcasts", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<BroadcastCampaignInput>) =>
+      adminFetch<BroadcastCampaign>(`/broadcasts/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    delete: (id: string) =>
+      adminFetch<{ success: boolean }>(`/broadcasts/${id}`, {
+        method: "DELETE",
+      }),
+    send: (id: string) =>
+      adminFetch<{ success: boolean; total_recipients: number; total_sent: number }>(
+        `/broadcasts/${id}/send`,
+        { method: "POST" }
+      ),
+    cancel: (id: string) =>
+      adminFetch<{ success: boolean }>(`/broadcasts/${id}/cancel`, {
+        method: "POST",
+      }),
+    audienceCount: (filters: BroadcastCampaign['audience_filters']) => {
+      const params = new URLSearchParams({ filters: JSON.stringify(filters) });
+      return adminFetch<{ count: number }>(`/broadcasts/audience-count?${params}`);
+    },
   },
 };
