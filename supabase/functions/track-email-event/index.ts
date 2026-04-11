@@ -19,17 +19,109 @@ Deno.serve(async (req) => {
   try {
     // Handle both GET (tracking pixel) and POST (webhook) requests
     let queueId: string;
+    let broadcastRecipientId: string = '';
     let eventType: string;
     let eventData: Record<string, any> = {};
-    
+
     if (req.method === 'GET') {
-      // Tracking pixel request
+      // Tracking pixel or click tracking request
       const url = new URL(req.url);
       queueId = url.searchParams.get('queueId') || '';
+      broadcastRecipientId = url.searchParams.get('broadcastRecipientId') || '';
       eventType = url.searchParams.get('event') || 'opened';
-      
-      if (!queueId) {
-        // Return transparent 1x1 pixel even on error
+
+      // Handle click redirect
+      const redirect = url.searchParams.get('redirect');
+
+      if (!queueId && !broadcastRecipientId) {
+        const pixel = Uint8Array.from(atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'), c => c.charCodeAt(0));
+        return new Response(pixel, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'image/gif',
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          },
+        });
+      }
+
+      // Handle broadcast recipient tracking
+      if (broadcastRecipientId) {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey, { db: { schema: 'public' } });
+
+        // Get the recipient to find campaign_id
+        const { data: recipient } = await supabase
+          .from('broadcast_recipients')
+          .select('id, campaign_id, status')
+          .eq('id', broadcastRecipientId)
+          .maybeSingle();
+
+        if (recipient) {
+          const now = new Date().toISOString();
+
+          if (eventType === 'opened' && recipient.status === 'sent') {
+            await supabase
+              .from('broadcast_recipients')
+              .update({ status: 'opened', opened_at: now })
+              .eq('id', broadcastRecipientId);
+
+            // Increment campaign counter
+            await supabase.rpc('increment_broadcast_stat', {
+              p_campaign_id: recipient.campaign_id,
+              p_stat: 'total_opened',
+            }).then(null, () => {
+              // Fallback if RPC doesn't exist yet
+              supabase
+                .from('broadcast_campaigns')
+                .select('total_opened')
+                .eq('id', recipient.campaign_id)
+                .single()
+                .then(({ data }) => {
+                  if (data) {
+                    supabase
+                      .from('broadcast_campaigns')
+                      .update({ total_opened: (data.total_opened || 0) + 1 })
+                      .eq('id', recipient.campaign_id);
+                  }
+                });
+            });
+          } else if (eventType === 'clicked') {
+            const updateData: any = { clicked_at: now };
+            if (recipient.status === 'sent' || recipient.status === 'opened') {
+              updateData.status = 'clicked';
+            }
+            await supabase
+              .from('broadcast_recipients')
+              .update(updateData)
+              .eq('id', broadcastRecipientId);
+
+            // Increment campaign click counter
+            await supabase
+              .from('broadcast_campaigns')
+              .select('total_clicked')
+              .eq('id', recipient.campaign_id)
+              .single()
+              .then(({ data }) => {
+                if (data) {
+                  supabase
+                    .from('broadcast_campaigns')
+                    .update({ total_clicked: (data.total_clicked || 0) + 1 })
+                    .eq('id', recipient.campaign_id);
+                }
+              });
+          }
+        }
+
+        // For click events, redirect
+        if (eventType === 'clicked' && redirect) {
+          return new Response(null, {
+            status: 302,
+            headers: { ...corsHeaders, 'Location': redirect },
+          });
+        }
+
+        // Return tracking pixel for open events
         const pixel = Uint8Array.from(atob('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'), c => c.charCodeAt(0));
         return new Response(pixel, {
           headers: {

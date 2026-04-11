@@ -31,6 +31,7 @@ import {
   Shield,
   Bell,
   Mail,
+  Megaphone,
   Coins,
   Brain,
   Music,
@@ -87,6 +88,7 @@ const navSections: NavSection[] = [
   {
     label: 'Communications',
     items: [
+      { path: '/internal/broadcasts', label: 'Broadcasts', icon: Megaphone, superAdminOnly: true },
       { path: '/internal/email-queue', label: 'Email Queue', icon: Mail },
     ]
   },
