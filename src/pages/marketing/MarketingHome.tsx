@@ -21,6 +21,7 @@ import {
   Home,
   Sparkles,
 } from 'lucide-react';
+import { GuidanceVideoLink } from '@/components/ui/GuidanceVideoLink';
 
 const DEMO_VIDEO_URL = 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/pilot-program-demo.mp4';
 const DEMO_THUMBNAIL_URL = 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/video-thumbnail.png';
@@ -137,9 +138,10 @@ export default function MarketingHome() {
               </Button>
             </div>
 
-            <p className="text-sm text-muted-foreground">
-              Start with 3 listings free. Upgrade anytime.
-            </p>
+            <GuidanceVideoLink
+              url="https://youtu.be/RQhOENCec8o"
+              label="Getting Started Guide"
+            />
           </div>
         </div>
       </section>
