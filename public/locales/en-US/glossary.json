@@ -3,9 +3,12 @@
   "_fallback": "en-IE",
 
   "legal": {
+    "solicitor": "Attorney",
+    "conveyancing": "Title Insurance",
     "stampDuty": "Transfer Tax",
+    "freehold": "Fee Simple",
     "landRegistry": "County Recorder",
-    "localAuthority": "Local Government"
+    "enquiries": "Inquiries"
   },
 
   "property": {
@@ -18,6 +21,7 @@
 
   "professionals": {
     "estateAgent": "Real Estate Agent",
+    "auctioneer": "Auctioneer",
     "surveyorRICS": "Licensed Appraiser"
   },
 

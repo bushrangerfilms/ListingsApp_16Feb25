@@ -11,6 +11,7 @@ import { useOrganization } from '@/contexts/OrganizationContext';
 import { useOrganizationView } from '@/contexts/OrganizationViewContext';
 import { supabase } from '@/integrations/supabase/client';
 import { SITE_COPY_FIELDS, SITE_COPY_GROUPS, DEFAULT_LOCALE, SiteCopyField } from '@/lib/siteContentKeys';
+import { useLocale } from '@/hooks/useLocale';
 
 interface ContentValues {
   [key: string]: string;
@@ -18,6 +19,8 @@ interface ContentValues {
 
 export default function AdminContent() {
   const { toast } = useToast();
+  const { locale } = useLocale();
+  const customizeWord = locale === 'en-US' ? 'Customize' : 'Customise';
   const { organization } = useOrganization();
   const { selectedOrganization, isOrganizationView } = useOrganizationView();
   const [values, setValues] = useState<ContentValues>({});
@@ -210,7 +213,7 @@ export default function AdminContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <p className="text-muted-foreground">
-            Customise the text displayed on your public website. Leave fields empty to use defaults.
+            {customizeWord} the text displayed on your public website. Leave fields empty to use defaults.
           </p>
         </div>
         <div className="flex gap-2">

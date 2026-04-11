@@ -59,7 +59,8 @@ const responseLengths = [
 export const TrainingConfig = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const customizeWord = locale === 'en-US' ? 'Customize' : 'Customise';
   const [hasChanges, setHasChanges] = useState(false);
 
   const { data: config, isLoading } = useQuery({
@@ -395,7 +396,7 @@ export const TrainingConfig = () => {
         <CardHeader>
           <CardTitle>Widget Settings</CardTitle>
           <CardDescription>
-            Customise how the AI assistant widget appears and greets users
+            {customizeWord} how the AI assistant widget appears and greets users
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getEdgeLocaleConfig } from "../_shared/locale-config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -79,8 +80,12 @@ serve(async (req) => {
 
   try {
     const { image, text, organizationId, locale } = await req.json();
-    
-    console.log('Extracting property details from input');
+    const localeConfig = getEdgeLocaleConfig(locale || 'en-IE');
+    const currencySymbol = localeConfig.currency.symbol;
+    const postalCodeLabel = localeConfig.postalCode.label;
+    const areaUnit = localeConfig.measurements.area === 'sqft' ? 'sqft' : 'sqm';
+
+    console.log('Extracting property details from input, locale:', locale || 'en-IE');
 
     const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY');
     if (!GOOGLE_AI_API_KEY) {
@@ -131,14 +136,14 @@ CATEGORY: Determine if this is:
 - "Holiday Rental" - Short-term rental (look for "per night", "per week", "€X pw", "holiday let", "Airbnb", "vacation rental", "self-catering")
 
 PRICE: Extract the numeric price value ONLY (no currency symbols or text). Look for:
-- Sale prices: "€250,000", "250000", "€250k"
-- Monthly rental rates: "€4,500 per month", "€4500 pcm", "From €X per month", "€X/month"
-- Weekly/nightly rates for holiday rentals: "€500 per week", "€100 per night"
-Extract ONLY the numeric value (e.g., "4500" from "€4,500 per month"). Remove commas, currency symbols, and text.
+- Sale prices: "${currencySymbol}250,000", "250000", "${currencySymbol}250k"
+- Monthly rental rates: "${currencySymbol}4,500 per month", "${currencySymbol}4500 pcm", "From ${currencySymbol}X per month", "${currencySymbol}X/month"
+- Weekly/nightly rates for holiday rentals: "${currencySymbol}500 per week", "${currencySymbol}100 per night"
+Extract ONLY the numeric value (e.g., "4500" from "${currencySymbol}4,500 per month"). Remove commas, currency symbols, and text.
 If you see "POA", "Price on Application", "Contact for price", or similar, set isPOA to true and price to "0".
 
 BUILDING TYPE: Look for property type (Detached, Semi-Detached, Terrace, Apartment, Commercial, Land)
-BER RATING: Look for energy rating badges or BER certificates (A1-G or EXEMPT)
+ENERGY RATING: Look for energy rating badges or certificates if present
 
 DESCRIPTION: Extract ONLY the actual property description text. CRITICAL FILTERING AND DEDUPLICATION RULES:
 - EXCLUDE any mortgage advertising, financing tools, calculators, or buying guides (e.g., "Your Mortgage and Insurance Tools", "Check off the steps", "Budget calculator", "Learn more about what this area has to offer")
@@ -155,7 +160,7 @@ Room Name: dimensions
 Another Room: dimensions
 Services include: details
 
-Also extract: price (euros, numbers only), bedrooms, bathrooms, building size (sqm), land size (acres), full address including street, town, county, and eircode.
+Also extract: price (numbers only), bedrooms, bathrooms, building size (${areaUnit}), land size (acres), full address including street, town, county/state, and ${postalCodeLabel.toLowerCase()}.
 
 If any field is not visible in the image, leave it empty. Be thorough and extract all visible text.`
         },
@@ -182,13 +187,13 @@ Pay special attention to:
   * "Rental" - Long-term RENTAL (monthly rate, keywords: "to let", "per month", "€X pcm", "monthly rent", "lease")
   * "Holiday Rental" - Short-term rental (keywords: "per night", "per week", "€X pw", "holiday let", "Airbnb", "vacation rental", "self-catering")
 - PRICE: Extract the numeric price value ONLY (no currency symbols or text). Look for:
-  * Sale prices: "€250,000", "250000", "€250k"
-  * Monthly rental rates: "€4,500 per month", "€4500 pcm", "From €X per month", "€X/month"  
-  * Weekly/nightly rates for holiday rentals: "€500 per week", "€100 per night"
-  Extract ONLY the numeric value (e.g., "4500" from "€4,500 per month"). Remove commas, currency symbols, and text.
+  * Sale prices: "${currencySymbol}250,000", "250000", "${currencySymbol}250k"
+  * Monthly rental rates: "${currencySymbol}4,500 per month", "${currencySymbol}4500 pcm", "From ${currencySymbol}X per month", "${currencySymbol}X/month"
+  * Weekly/nightly rates for holiday rentals: "${currencySymbol}500 per week", "${currencySymbol}100 per night"
+  Extract ONLY the numeric value (e.g., "4500" from "${currencySymbol}4,500 per month"). Remove commas, currency symbols, and text.
   If you see "POA", "Price on Application", "Contact for price", or similar, set isPOA to true and price to "0".
 - BUILDING TYPE: Property type (Detached, Semi-Detached, Terrace, Apartment, Commercial, Land)
-- BER RATING: Energy rating (A1-G or EXEMPT)
+- ENERGY RATING: Energy rating if present
 - DESCRIPTION: Extract ONLY the actual property description text. CRITICAL RULES:
   * EXCLUDE any mortgage advertising, financing tools, calculators, or buying guides (e.g., "Your Mortgage and Insurance Tools", "Check off the steps", "Budget calculator", "Learn more about what this area has to offer")
   * EXCLUDE standard features that belong in Specs (like "Parking", "Garden", "Alarm" - these go in the Specs field)
@@ -203,7 +208,7 @@ Room Name: dimensions
 Another Room: dimensions
 Services include: details
 
-Also extract: price (euros), bedrooms, bathrooms, building size (sqm), land size (acres), address, town, county, eircode.
+Also extract: price (numbers only), bedrooms, bathrooms, building size (${areaUnit}), land size (acres), address, town, county/state, ${postalCodeLabel.toLowerCase()}.
 
 Be thorough and extract all available information.`
       });
@@ -270,7 +275,7 @@ Be thorough and extract all available information.`
           },
           eircode: {
             type: 'string',
-            description: 'Irish postal code (Eircode)'
+            description: `Postal code (${postalCodeLabel})`
           },
           berRating: {
             type: 'string',

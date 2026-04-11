@@ -444,7 +444,7 @@ async function handleUnlock(supabase: any, body: any): Promise<Response> {
 
   // Send email notification to agent/org
   const orgEmail = submission.organizations?.contact_email;
-  const orgName = submission.organizations?.business_name || "Your Organisation";
+  const orgName = submission.organizations?.business_name || "Your Organization";
   
   if (orgEmail) {
     const quizType = type === "READY_TO_SELL" ? "Ready to Sell" : "Worth Estimate";
@@ -1519,11 +1519,11 @@ async function handleContactAgent(supabase: any, body: any): Promise<Response> {
   }
 
   const orgEmail = submission.organizations?.contact_email;
-  const orgName = submission.organizations?.business_name || "Your Organisation";
+  const orgName = submission.organizations?.business_name || "Your Organization";
 
   if (!orgEmail) {
     return new Response(
-      JSON.stringify({ error: "Organisation contact email not configured" }),
+      JSON.stringify({ error: "Organization contact email not configured" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
@@ -1968,7 +1968,7 @@ async function handleSubmitCta(supabase: any, body: any): Promise<Response> {
       leadName: name || "Not provided",
       leadEmail: email,
       leadPhone: phone || "Not provided",
-      orgName: org.business_name || "Your Organisation",
+      orgName: org.business_name || "Your Organization",
       typeLabel: ctaConfig.label,
       area: area || "",
       answersJson: answers_json,

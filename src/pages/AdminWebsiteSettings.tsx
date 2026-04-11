@@ -1,6 +1,7 @@
 import { useState, lazy, Suspense, Component, type ReactNode } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Star, Image, Share2, Bot, Palette, FileText, Loader2, AlertTriangle } from "lucide-react";
+import { useLocale } from "@/hooks/useLocale";
 
 // Lazy-load ALL sub-components to isolate import-level failures
 const AdminBranding = lazy(() => import("./AdminBranding"));
@@ -65,12 +66,14 @@ function LazyTab({ name, children }: { name: string; children: ReactNode }) {
 
 export default function AdminWebsiteSettings() {
   const [activeTab, setActiveTab] = useState("branding");
+  const { locale } = useLocale();
+  const customizeWord = locale === 'en-US' ? 'Customize' : 'Customise';
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Website Settings</h2>
-        <p className="text-muted-foreground">Customise your public-facing website content and features</p>
+        <p className="text-muted-foreground">{customizeWord} your public-facing website content and features</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
