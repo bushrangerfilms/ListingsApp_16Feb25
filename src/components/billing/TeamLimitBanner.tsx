@@ -13,8 +13,11 @@ export function TeamLimitBanner({ onUpgrade, className = '' }: TeamLimitBannerPr
   const { currentUserCount, maxUsers, isAtLimit, isApproachingLimit, isLoading } = useTeamLimit();
   const { planName } = usePlanInfo();
 
-  const isStarter = planName === 'starter';
-  const isTrial = planName === 'trial';
+  // Show upgrade CTA for any non-comped plan that has room to grow.
+  // 'free' / 'starter' / 'trial' are the three plan names that historically showed this.
+  const showUpgradeCta = planName === 'free' || planName === 'starter' || planName === 'trial' || !planName;
+  const isStarter = showUpgradeCta;
+  const isTrial = showUpgradeCta;
 
   if (isLoading) {
     return null;
