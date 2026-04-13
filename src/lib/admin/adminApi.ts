@@ -1071,10 +1071,13 @@ export const adminApi = {
       adminFetch<{ success: boolean }>(`/broadcasts/${id}`, {
         method: "DELETE",
       }),
-    send: (id: string) =>
+    send: (id: string, excludedEmails?: string[]) =>
       adminFetch<{ success: boolean; total_recipients: number; total_sent: number }>(
         `/broadcasts/${id}/send`,
-        { method: "POST" }
+        {
+          method: "POST",
+          body: JSON.stringify({ excluded_emails: excludedEmails || [] }),
+        }
       ),
     cancel: (id: string) =>
       adminFetch<{ success: boolean }>(`/broadcasts/${id}/cancel`, {
@@ -1083,6 +1086,12 @@ export const adminApi = {
     audienceCount: (filters: BroadcastCampaign['audience_filters']) => {
       const params = new URLSearchParams({ filters: JSON.stringify(filters) });
       return adminFetch<{ count: number }>(`/broadcasts/audience-count?${params}`);
+    },
+    audiencePreview: (filters: BroadcastCampaign['audience_filters']) => {
+      const params = new URLSearchParams({ filters: JSON.stringify(filters) });
+      return adminFetch<{ recipients: Array<{ user_id: string; email: string; name: string | null }> }>(
+        `/broadcasts/audience-preview?${params}`
+      );
     },
   },
 };
