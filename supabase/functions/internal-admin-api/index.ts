@@ -3434,6 +3434,13 @@ async function handleAudienceCount(supabase: SupabaseClient, auth: AuthResult, f
   return { count: recipients.length };
 }
 
+async function handleAudiencePreview(supabase: SupabaseClient, auth: AuthResult, filters: any) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const recipients = await buildRecipientList(supabase, filters);
+  return { recipients };
+}
+
 async function buildRecipientList(supabase: SupabaseClient, filters: any) {
   // Get all users with email addresses
   const { data: users, error: usersError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
@@ -3456,17 +3463,27 @@ async function buildRecipientList(supabase: SupabaseClient, filters: any) {
     filters.engagement?.length;
 
   if (hasOrgFilters) {
-    const { data: orgData } = await supabase
+    // Fetch user_organizations and organizations separately — avoids PostgREST join quirks
+    const { data: userOrgs, error: userOrgsError } = await supabase
       .from("user_organizations")
-      .select(`
-        user_id,
-        organizations!inner(
-          id,
-          current_plan_name,
-          country_code,
-          account_status
-        )
-      `);
+      .select("user_id, organization_id");
+
+    if (userOrgsError) {
+      console.error("Error fetching user_organizations:", userOrgsError);
+    }
+
+    const { data: orgs, error: orgsError } = await supabase
+      .from("organizations")
+      .select("id, current_plan_name, country_code, account_status");
+
+    if (orgsError) {
+      console.error("Error fetching organizations:", orgsError);
+    }
+
+    const orgsById = new Map<string, any>();
+    for (const org of (orgs || [])) {
+      orgsById.set(org.id, org);
+    }
 
     // Engagement lookups — only run if needed
     let orgsWithListings: Set<string> | null = null;
@@ -3475,7 +3492,8 @@ async function buildRecipientList(supabase: SupabaseClient, filters: any) {
     if (filters.engagement?.includes("no_listings")) {
       const { data: listingOrgs } = await supabase
         .from("listings")
-        .select("organization_id");
+        .select("organization_id")
+        .not("organization_id", "is", null);
       orgsWithListings = new Set(
         (listingOrgs || []).map((l: any) => l.organization_id).filter(Boolean)
       );
@@ -3492,8 +3510,8 @@ async function buildRecipientList(supabase: SupabaseClient, filters: any) {
     }
 
     orgFilter = new Map();
-    for (const row of (orgData || [])) {
-      const org = (row as any).organizations;
+    for (const row of (userOrgs || [])) {
+      const org = orgsById.get(row.organization_id);
       if (!org) continue;
 
       const userId = row.user_id;
@@ -3559,7 +3577,7 @@ async function buildRecipientList(supabase: SupabaseClient, filters: any) {
   return recipients;
 }
 
-async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, campaignId: string) {
+async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, campaignId: string, body: any) {
   if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
 
   // Load campaign
@@ -3575,7 +3593,15 @@ async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, c
   }
 
   // Build recipient list
-  const recipients = await buildRecipientList(supabase, campaign.audience_filters || {});
+  let recipients = await buildRecipientList(supabase, campaign.audience_filters || {});
+
+  // Apply exclusions from the request body
+  const excludedEmails: string[] = Array.isArray(body?.excluded_emails) ? body.excluded_emails : [];
+  if (excludedEmails.length > 0) {
+    const excludeSet = new Set(excludedEmails.map((e: string) => e.toLowerCase()));
+    recipients = recipients.filter((r) => !excludeSet.has(r.email.toLowerCase()));
+  }
+
   if (recipients.length === 0) {
     throw new Error("No recipients match the audience filters");
   }
@@ -3998,9 +4024,14 @@ serve(async (req) => {
       const filtersParam = url.searchParams.get("filters");
       const filters = filtersParam ? JSON.parse(filtersParam) : {};
       responseData = await handleAudienceCount(supabase, authResult, filters);
+    } else if (path === "/broadcasts/audience-preview" && method === "GET") {
+      const filtersParam = url.searchParams.get("filters");
+      const filters = filtersParam ? JSON.parse(filtersParam) : {};
+      responseData = await handleAudiencePreview(supabase, authResult, filters);
     } else if (path.match(/^\/broadcasts\/[^/]+\/send$/) && method === "POST") {
       const campaignId = path.replace("/broadcasts/", "").replace("/send", "");
-      responseData = await handleSendBroadcast(supabase, authResult, campaignId);
+      const body = await req.json().catch(() => ({}));
+      responseData = await handleSendBroadcast(supabase, authResult, campaignId, body);
     } else if (path.match(/^\/broadcasts\/[^/]+\/cancel$/) && method === "POST") {
       const campaignId = path.replace("/broadcasts/", "").replace("/cancel", "");
       responseData = await handleCancelBroadcast(supabase, authResult, campaignId);

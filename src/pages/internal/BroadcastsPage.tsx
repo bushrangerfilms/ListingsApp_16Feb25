@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
@@ -73,8 +75,12 @@ export default function BroadcastsPage() {
   const [view, setView] = useState<View>("list");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [confirmSendId, setConfirmSendId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Recipient review dialog state
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewCampaignId, setReviewCampaignId] = useState<string | null>(null);
+  const [excludedEmails, setExcludedEmails] = useState<Set<string>>(new Set());
 
   // Compose form state
   const [subject, setSubject] = useState("");
@@ -139,17 +145,49 @@ export default function BroadcastsPage() {
   });
 
   const sendMutation = useMutation({
-    mutationFn: (id: string) => adminApi.broadcasts.send(id),
+    mutationFn: ({ id, excluded }: { id: string; excluded: string[] }) =>
+      adminApi.broadcasts.send(id, excluded),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts"] });
       toast({ title: "Broadcast sent", description: `Sent to ${result.total_sent} recipients` });
-      setConfirmSendId(null);
+      setReviewDialogOpen(false);
+      setReviewCampaignId(null);
+      setExcludedEmails(new Set());
     },
     onError: (err: Error) => {
       toast({ title: "Send failed", description: err.message, variant: "destructive" });
-      setConfirmSendId(null);
     },
   });
+
+  // Load recipient preview when review dialog opens
+  const { data: previewData, isLoading: previewLoading } = useQuery({
+    queryKey: ["admin", "broadcasts", "audience-preview", reviewCampaignId],
+    queryFn: async () => {
+      // Get filters from the campaign being reviewed
+      const campaign = campaigns?.find((c) => c.id === reviewCampaignId);
+      if (!campaign) return { recipients: [] };
+      return adminApi.broadcasts.audiencePreview(campaign.audience_filters || {});
+    },
+    enabled: reviewDialogOpen && !!reviewCampaignId,
+  });
+
+  function openReviewDialog(campaignId: string) {
+    setReviewCampaignId(campaignId);
+    setExcludedEmails(new Set());
+    setReviewDialogOpen(true);
+  }
+
+  function toggleExclude(email: string) {
+    setExcludedEmails((prev) => {
+      const next = new Set(prev);
+      if (next.has(email)) {
+        next.delete(email);
+      } else {
+        next.add(email);
+      }
+      return next;
+    });
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => adminApi.broadcasts.delete(id),
@@ -224,7 +262,7 @@ export default function BroadcastsPage() {
       return;
     }
 
-    // If editing, save first then confirm send
+    // If editing, save first then open review dialog
     if (editingId) {
       const data: Partial<BroadcastCampaignInput> = {
         subject,
@@ -234,12 +272,12 @@ export default function BroadcastsPage() {
       };
       updateMutation.mutate({ id: editingId, data }, {
         onSuccess: () => {
-          setConfirmSendId(editingId);
+          openReviewDialog(editingId);
           setView("list");
         },
       });
     } else {
-      // Create then confirm send
+      // Create then open review dialog
       const data: BroadcastCampaignInput = {
         subject,
         body_html: bodyHtml,
@@ -248,7 +286,7 @@ export default function BroadcastsPage() {
       };
       createMutation.mutate(data, {
         onSuccess: (created) => {
-          setConfirmSendId(created.id);
+          openReviewDialog(created.id);
           setView("list");
         },
       });
@@ -719,7 +757,7 @@ export default function BroadcastsPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setConfirmSendId(campaign.id)}
+                                onClick={() => openReviewDialog(campaign.id)}
                               >
                                 <Send className="h-4 w-4" />
                               </Button>
@@ -771,31 +809,123 @@ export default function BroadcastsPage() {
         </CardContent>
       </Card>
 
-      {/* Send Confirmation Dialog */}
-      <AlertDialog open={!!confirmSendId} onOpenChange={() => setConfirmSendId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Send Broadcast?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will send the email to all matching recipients. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => confirmSendId && sendMutation.mutate(confirmSendId)}
-              disabled={sendMutation.isPending}
+      {/* Recipient Review Dialog */}
+      <Dialog
+        open={reviewDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReviewDialogOpen(false);
+            setReviewCampaignId(null);
+            setExcludedEmails(new Set());
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Review Recipients</DialogTitle>
+            <DialogDescription>
+              Uncheck anyone you want to skip. Only checked recipients will receive this broadcast.
+            </DialogDescription>
+          </DialogHeader>
+
+          {previewLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : previewData?.recipients && previewData.recipients.length > 0 ? (
+            <>
+              <div className="flex items-center justify-between pb-2 border-b">
+                <p className="text-sm text-muted-foreground">
+                  {previewData.recipients.length - excludedEmails.size} of {previewData.recipients.length} selected
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setExcludedEmails(new Set())}
+                  >
+                    Select all
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setExcludedEmails(new Set(previewData.recipients.map((r) => r.email)))
+                    }
+                  >
+                    Deselect all
+                  </Button>
+                </div>
+              </div>
+              <ScrollArea className="flex-1 max-h-[400px]">
+                <div className="space-y-1 pr-4">
+                  {previewData.recipients.map((r) => {
+                    const isExcluded = excludedEmails.has(r.email);
+                    return (
+                      <label
+                        key={r.user_id}
+                        className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={!isExcluded}
+                          onCheckedChange={() => toggleExclude(r.email)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {r.name || r.email}
+                          </p>
+                          {r.name && (
+                            <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No recipients match these filters</p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReviewDialogOpen(false);
+                setReviewCampaignId(null);
+                setExcludedEmails(new Set());
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!reviewCampaignId) return;
+                sendMutation.mutate({
+                  id: reviewCampaignId,
+                  excluded: Array.from(excludedEmails),
+                });
+              }}
+              disabled={
+                sendMutation.isPending ||
+                !previewData?.recipients?.length ||
+                previewData.recipients.length - excludedEmails.size === 0
+              }
             >
               {sendMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <Send className="h-4 w-4 mr-2" />
               )}
-              Send Now
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Send to {previewData?.recipients ? previewData.recipients.length - excludedEmails.size : 0}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
