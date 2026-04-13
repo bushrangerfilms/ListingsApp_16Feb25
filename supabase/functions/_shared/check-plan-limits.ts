@@ -24,8 +24,15 @@ export async function checkPlanLimit(
   });
 
   if (error) {
-    console.error(`[check-plan-limits] Error checking ${checkType} limit for org ${organizationId}:`, error);
-    // Fail open — don't block operations if the check itself fails
+    // Fail open — don't block operations if the check itself fails.
+    // This is a deliberate trade-off: a broken RPC should not lock paying
+    // customers out. Callers that care (e.g. hard-limit features) should
+    // layer an additional defence. We log loudly so the condition is visible
+    // in Sentry/logs and can be monitored.
+    console.error(
+      `[check-plan-limits] FAIL_OPEN: ${checkType} check for org ${organizationId} errored — allowing operation to proceed`,
+      error,
+    );
     return {
       allowed: true,
       currentCount: 0,

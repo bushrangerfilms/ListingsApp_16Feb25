@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useToast } from '@/hooks/use-toast';
+import { usePlanInfo } from '@/hooks/usePlanInfo';
+import { UpgradePlanDialog } from '@/components/billing/UpgradePlanDialog';
 import { pdf } from '@react-pdf/renderer';
 import {
   ArrowLeft,
@@ -46,6 +48,40 @@ export default function BrochureEditor() {
   const navigate = useNavigate();
   const { organization } = useOrganization();
   const { toast } = useToast();
+  const { planInfo, isLoading: planLoading } = usePlanInfo();
+
+  // Plan gate: brochure generator is paid-only. Comped orgs (account_status === 'active')
+  // and trial orgs pass through; free tier sees the upgrade dialog and is sent back.
+  const isPaidPlan = planInfo?.accountStatus === 'active' || planInfo?.accountStatus === 'trial';
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  useEffect(() => {
+    if (!planLoading && planInfo && !isPaidPlan) {
+      setShowUpgrade(true);
+    }
+  }, [planLoading, planInfo, isPaidPlan]);
+
+  if (!planLoading && planInfo && !isPaidPlan) {
+    return (
+      <>
+        <div className="p-8 text-center">
+          <h1 className="text-2xl font-semibold mb-2">Brochure Generator</h1>
+          <p className="text-muted-foreground mb-4">Available on paid plans.</p>
+          <Button onClick={() => navigate('/admin/listings')} variant="outline">
+            Back to Listings
+          </Button>
+        </div>
+        <UpgradePlanDialog
+          open={showUpgrade}
+          onOpenChange={(open) => {
+            setShowUpgrade(open);
+            if (!open) navigate('/admin/listings');
+          }}
+          feature="brochure"
+          planName={planInfo.planName ?? 'free'}
+        />
+      </>
+    );
+  }
 
   const [content, setContent] = useState<BrochureContent | null>(null);
   const [branding, setBranding] = useState<BrochureBranding | null>(null);
