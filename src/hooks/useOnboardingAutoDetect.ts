@@ -16,7 +16,7 @@ interface DetectionResult {
 
 export function useOnboardingAutoDetect() {
   const { organization } = useOrganization();
-  const { tasksCompleted, markTaskComplete, isLoading: onboardingLoading, isDismissed, isComplete } = useOnboarding();
+  const { tasksCompleted, markTasksComplete, isLoading: onboardingLoading, isDismissed, isComplete } = useOnboarding();
   const processedTasksRef = useRef<Set<string>>(new Set());
   const lastOrgIdRef = useRef<string | null>(null);
 
@@ -103,13 +103,17 @@ export function useOnboardingAutoDetect() {
       return;
     }
 
+    const toMark: string[] = [];
     (Object.entries(detectedTasks) as [keyof DetectionResult, boolean][]).forEach(([taskId, isDetected]) => {
       if (isDetected && !tasksCompleted[taskId] && !processedTasksRef.current.has(taskId)) {
         processedTasksRef.current.add(taskId);
-        markTaskComplete(taskId);
+        toMark.push(taskId);
       }
     });
-  }, [detectedTasks, detectionLoading, onboardingLoading, tasksCompleted, markTaskComplete, isDismissed, isComplete]);
+    if (toMark.length > 0) {
+      markTasksComplete(toMark);
+    }
+  }, [detectedTasks, detectionLoading, onboardingLoading, tasksCompleted, markTasksComplete, isDismissed, isComplete]);
 
   return {
     detectedTasks,

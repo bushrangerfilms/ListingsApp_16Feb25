@@ -150,10 +150,12 @@ export function useOnboarding() {
     },
   });
 
-  const markTaskComplete = async (taskId: string) => {
+  const markTasksComplete = async (taskIds: string[]) => {
+    if (taskIds.length === 0) return;
     const currentTasks = progress?.tasks_completed || {};
-    const updatedTasks = { ...currentTasks, [taskId]: true };
-    
+    const updatedTasks = { ...currentTasks };
+    for (const id of taskIds) updatedTasks[id] = true;
+
     const allComplete = ONBOARDING_TASKS.every(
       task => updatedTasks[task.id] || task.proOnly
     );
@@ -163,6 +165,8 @@ export function useOnboarding() {
       completed_at: allComplete ? new Date().toISOString() : null,
     });
   };
+
+  const markTaskComplete = (taskId: string) => markTasksComplete([taskId]);
 
   const markWelcomeSeen = async () => {
     await upsertProgress.mutateAsync({
@@ -198,6 +202,7 @@ export function useOnboarding() {
     isComplete: !!progress?.completed_at,
     hasSeenWelcome: !!progress?.welcome_seen_at,
     markTaskComplete,
+    markTasksComplete,
     markWelcomeSeen,
     dismissOnboarding,
     isUpdating: upsertProgress.isPending,
