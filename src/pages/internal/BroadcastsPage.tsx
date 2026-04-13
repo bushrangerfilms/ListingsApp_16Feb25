@@ -58,6 +58,11 @@ const STATUS_OPTIONS = [
   { value: "suspended", label: "Suspended" },
 ];
 
+const ENGAGEMENT_OPTIONS = [
+  { value: "no_listings", label: "No listings yet" },
+  { value: "onboarding_incomplete", label: "Onboarding incomplete" },
+];
+
 type View = "list" | "compose" | "detail";
 
 export default function BroadcastsPage() {
@@ -78,6 +83,7 @@ export default function BroadcastsPage() {
   const [filterPlans, setFilterPlans] = useState<string[]>([]);
   const [filterCountries, setFilterCountries] = useState<string[]>([]);
   const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
+  const [filterEngagement, setFilterEngagement] = useState<string[]>([]);
   const [previewTab, setPreviewTab] = useState<string>("edit");
 
   // List query
@@ -99,6 +105,7 @@ export default function BroadcastsPage() {
     ...(filterPlans.length > 0 ? { plans: filterPlans } : {}),
     ...(filterCountries.length > 0 ? { countries: filterCountries } : {}),
     ...(filterStatuses.length > 0 ? { account_statuses: filterStatuses } : {}),
+    ...(filterEngagement.length > 0 ? { engagement: filterEngagement } : {}),
   };
 
   const { data: audienceData } = useQuery({
@@ -170,6 +177,7 @@ export default function BroadcastsPage() {
     setFilterPlans([]);
     setFilterCountries([]);
     setFilterStatuses([]);
+    setFilterEngagement([]);
     setEditingId(null);
     setPreviewTab("edit");
   }
@@ -183,6 +191,7 @@ export default function BroadcastsPage() {
       setFilterPlans(campaign.audience_filters?.plans || []);
       setFilterCountries(campaign.audience_filters?.countries || []);
       setFilterStatuses(campaign.audience_filters?.account_statuses || []);
+      setFilterEngagement(campaign.audience_filters?.engagement || []);
     } else {
       resetForm();
     }
@@ -544,6 +553,41 @@ export default function BroadcastsPage() {
                     ))}
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label>Engagement</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Target users who need a nudge. Matches orgs meeting any selected criterion.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {ENGAGEMENT_OPTIONS.map((opt) => (
+                      <Badge
+                        key={opt.value}
+                        variant={filterEngagement.includes(opt.value) ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() =>
+                          setFilterEngagement((prev) =>
+                            prev.includes(opt.value)
+                              ? prev.filter((s) => s !== opt.value)
+                              : [...prev, opt.value]
+                          )
+                        }
+                      >
+                        {opt.label}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Sender</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm font-mono text-muted-foreground">
+                  AutoListing &lt;noreply@autolisting.io&gt;
+                </p>
               </CardContent>
             </Card>
 
