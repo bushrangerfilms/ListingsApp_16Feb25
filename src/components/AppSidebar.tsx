@@ -45,6 +45,7 @@ import { useLocale } from "@/hooks/useLocale";
 import { toast } from "sonner";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
+import { AcademySection } from "@/components/sidebar/AcademySection";
 
 interface NavItem {
   path: string;
@@ -340,6 +341,8 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <AcademySection />
       </SidebarContent>
 
       <SidebarFooter className="p-2 pb-20">
