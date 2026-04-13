@@ -566,6 +566,7 @@ export interface BroadcastCampaign {
     plans?: string[];
     countries?: string[];
     account_statuses?: string[];
+    engagement?: string[];
   };
   status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed' | 'cancelled';
   scheduled_for: string | null;

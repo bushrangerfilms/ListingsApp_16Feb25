@@ -3449,7 +3449,11 @@ async function buildRecipientList(supabase: SupabaseClient, filters: any) {
 
   // Get user org memberships with org details for filtering
   let orgFilter: Map<string, any> | null = null;
-  const hasOrgFilters = filters.plans?.length || filters.countries?.length || filters.account_statuses?.length;
+  const hasOrgFilters =
+    filters.plans?.length ||
+    filters.countries?.length ||
+    filters.account_statuses?.length ||
+    filters.engagement?.length;
 
   if (hasOrgFilters) {
     const { data: orgData } = await supabase
@@ -3463,6 +3467,29 @@ async function buildRecipientList(supabase: SupabaseClient, filters: any) {
           account_status
         )
       `);
+
+    // Engagement lookups — only run if needed
+    let orgsWithListings: Set<string> | null = null;
+    let orgsWithCompletedOnboarding: Set<string> | null = null;
+
+    if (filters.engagement?.includes("no_listings")) {
+      const { data: listingOrgs } = await supabase
+        .from("listings")
+        .select("organization_id");
+      orgsWithListings = new Set(
+        (listingOrgs || []).map((l: any) => l.organization_id).filter(Boolean)
+      );
+    }
+
+    if (filters.engagement?.includes("onboarding_incomplete")) {
+      const { data: onboardingRows } = await supabase
+        .from("onboarding_progress")
+        .select("organization_id, completed_at")
+        .not("completed_at", "is", null);
+      orgsWithCompletedOnboarding = new Set(
+        (onboardingRows || []).map((o: any) => o.organization_id)
+      );
+    }
 
     orgFilter = new Map();
     for (const row of (orgData || [])) {
@@ -3480,6 +3507,24 @@ async function buildRecipientList(supabase: SupabaseClient, filters: any) {
       }
       if (filters.account_statuses?.length && !filters.account_statuses.includes(org.account_status)) {
         passesFilter = false;
+      }
+
+      // Engagement filters (OR semantics — matches any selected)
+      if (filters.engagement?.length) {
+        let matchesEngagement = false;
+        if (filters.engagement.includes("no_listings") && orgsWithListings && !orgsWithListings.has(org.id)) {
+          matchesEngagement = true;
+        }
+        if (
+          filters.engagement.includes("onboarding_incomplete") &&
+          orgsWithCompletedOnboarding &&
+          !orgsWithCompletedOnboarding.has(org.id)
+        ) {
+          matchesEngagement = true;
+        }
+        if (!matchesEngagement) {
+          passesFilter = false;
+        }
       }
 
       if (passesFilter) {
