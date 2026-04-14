@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   Dialog,
@@ -622,11 +623,10 @@ export default function BroadcastsPage() {
                       <TabsTrigger value="preview">Preview</TabsTrigger>
                     </TabsList>
                     <TabsContent value="edit">
-                      <Textarea
-                        placeholder="<h2>Hello!</h2><p>We have some exciting updates...</p>"
+                      <RichTextEditor
                         value={bodyHtml}
-                        onChange={(e) => setBodyHtml(e.target.value)}
-                        className="font-mono text-sm min-h-[300px]"
+                        onChange={setBodyHtml}
+                        placeholder="Hello! We have some exciting updates to share..."
                       />
                     </TabsContent>
                     <TabsContent value="preview">
@@ -640,7 +640,7 @@ export default function BroadcastsPage() {
                           />
                         ) : (
                           <p className="text-muted-foreground text-center py-12">
-                            Enter HTML content in the Edit tab to see a preview
+                            Start writing in the Edit tab to see a preview
                           </p>
                         )}
                       </div>
