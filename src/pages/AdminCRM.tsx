@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, LayoutList, LayoutGrid, BarChart3, Home, X } from "lucide-react";
 import { toast } from "sonner";
 import { SellerProfileCard } from "@/components/SellerProfileCard";
+import { useQueryClient } from "@tanstack/react-query";
+import { getCrmLastAck, setCrmLastAck } from "@/hooks/useNewSellersCount";
 import { BuyerProfileCard } from "@/components/BuyerProfileCard";
 import { CreateProfileDialog } from "@/components/CreateProfileDialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -72,10 +74,31 @@ export default function AdminCRM() {
     return (localStorage.getItem("crm-view-mode") as "list" | "kanban") || "list";
   });
 
+  // Snapshot the "last acknowledged" CRM visit timestamp *before* we bump
+  // it forward below. This way, NEW pills on seller cards stay visible
+  // for the current visit even though the sidebar badge clears immediately
+  // on mount. Next visit starts with a fresh snapshot.
+  const targetOrgForAck = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
+  const [preMountAck] = useState<string>(() => getCrmLastAck(targetOrgForAck?.id));
+
+  const queryClient = useQueryClient();
+
   // Persist view mode preference
   useEffect(() => {
     localStorage.setItem("crm-view-mode", viewMode);
   }, [viewMode]);
+
+  // Bump the CRM "last ack" timestamp forward on mount so the sidebar
+  // badge clears immediately. Invalidate the count query so the badge
+  // re-fetches against the new timestamp.
+  useEffect(() => {
+    if (targetOrgForAck?.id) {
+      setCrmLastAck(targetOrgForAck.id);
+      queryClient.invalidateQueries({
+        queryKey: ["crm-new-sellers-count", targetOrgForAck.id],
+      });
+    }
+  }, [targetOrgForAck?.id, queryClient]);
 
   useEffect(() => {
     const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
@@ -263,7 +286,12 @@ export default function AdminCRM() {
                 ) : (
                   <div className="grid gap-4">
                     {filteredSellers.map((seller) => (
-                      <SellerProfileCard key={seller.id} seller={seller} onUpdate={fetchProfiles} />
+                      <SellerProfileCard
+                        key={seller.id}
+                        seller={seller}
+                        onUpdate={fetchProfiles}
+                        isNew={seller.created_at > preMountAck}
+                      />
                     ))}
                   </div>
                 )}
