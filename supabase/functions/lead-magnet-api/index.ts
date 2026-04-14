@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.75.0";
 import { publicCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { getEdgeLocaleConfig, formatEdgePrice } from '../_shared/locale-config.ts';
@@ -1076,18 +1077,100 @@ function getDefaultMarketResearch(propertyType: string): any {
 }
 
 // ============================================
-// AI Market Research (Google Gemini)
+// AI Market Research (Anthropic Claude)
 // ============================================
+// Tool schema for Claude's structured market research response. Using tool
+// use with `strict: true` guarantees Claude returns data matching this shape —
+// no brittle JSON parsing, no "Unterminated string" errors.
+const MARKET_RESEARCH_TOOL = {
+  name: "report_market_research",
+  description:
+    "Report market research findings for a specific Irish property. Call this once with your complete analysis.",
+  input_schema: {
+    type: "object",
+    properties: {
+      price_per_sqm_low: {
+        type: "number",
+        description: "Conservative low estimate in euros per square metre",
+      },
+      price_per_sqm_high: {
+        type: "number",
+        description: "Conservative high estimate in euros per square metre",
+      },
+      avg_price_sqm: {
+        type: "number",
+        description: "Average price per square metre in euros",
+      },
+      comparable_sales: {
+        type: "array",
+        description: "List of 3-5 comparable recent sales in the area",
+        items: {
+          type: "object",
+          properties: {
+            description: { type: "string" },
+            sale_price: { type: "number" },
+            approx_sqm: { type: "number" },
+            price_per_sqm: { type: "number" },
+            distance_km: { type: "number" },
+          },
+          required: [
+            "description",
+            "sale_price",
+            "approx_sqm",
+            "price_per_sqm",
+            "distance_km",
+          ],
+          additionalProperties: false,
+        },
+      },
+      market_insights: {
+        type: "string",
+        description: "1-2 sentence summary of local market conditions",
+      },
+      volatility: {
+        type: "string",
+        enum: ["low", "medium", "high"],
+      },
+      trend: {
+        type: "string",
+        enum: ["Rising", "Stable", "Declining"],
+        description: "Use exact title-case values — constrained by DB CHECK constraint",
+      },
+      research_confidence: {
+        type: "string",
+        enum: ["strong", "moderate", "weak"],
+      },
+      area_premium_notes: {
+        type: "string",
+        description: "Notes about location premiums or discounts",
+      },
+    },
+    required: [
+      "price_per_sqm_low",
+      "price_per_sqm_high",
+      "avg_price_sqm",
+      "comparable_sales",
+      "market_insights",
+      "volatility",
+      "trend",
+      "research_confidence",
+      "area_premium_notes",
+    ],
+    additionalProperties: false,
+  },
+  strict: true,
+} as const;
+
 async function performAIMarketResearch(
   supabase: any,
   areaKey: string,
   propertyType: string,
   answers: any
 ): Promise<any> {
-  const googleApiKey = Deno.env.get("GOOGLE_AI_API_KEY");
-  
-  if (!googleApiKey) {
-    console.log("No Google AI API key configured, using default research");
+  const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY_AUTOLISTING");
+
+  if (!anthropicApiKey) {
+    console.log("No Anthropic API key configured, using default research");
     return null;
   }
 
@@ -1095,103 +1178,53 @@ async function performAIMarketResearch(
   const county = answers.county || "unknown county";
   const propertyTypeLabel = {
     detached: "detached house",
-    semi: "semi-detached house", 
+    semi: "semi-detached house",
     terrace: "terraced house",
     apartment: "apartment",
-    bungalow: "bungalow"
+    bungalow: "bungalow",
   }[propertyType] || "residential property";
 
   const bedrooms = answers.bedrooms || "3";
   const propertyAge = answers.property_age || "unknown";
-  const landSize = answers.land_size_acres ? `${answers.land_size_acres} acres` : "standard plot";
+  const landSize = answers.land_size_acres
+    ? `${answers.land_size_acres} acres`
+    : "standard plot";
 
   // TODO: Make country/market context dynamic when quiz expands beyond Ireland
-  const prompt = `You are a property valuation expert in Ireland. Research and provide current market data for properties in ${townland}, County ${county}.
+  const userPrompt = `Research current market data for a ${propertyTypeLabel} in ${townland}, County ${county}, Ireland.
 
-Property Details:
-- Type: ${propertyTypeLabel}
+Property details:
 - Bedrooms: ${bedrooms}
 - Approximate age: ${propertyAge}
 - Land size: ${landSize}
 
-Please provide a JSON response with comparable sales analysis. Research recent sales (last 6-12 months) in this area and nearby comparable areas.
+Provide a comparable sales analysis based on recent sales (last 6–12 months) in this area and nearby comparable areas. Consider price per square metre for similar properties, impact of age and land size, distance from town centre, and current market trends.
 
-Consider:
-1. Recent comparable sales prices in the area
-2. Price per square metre for similar properties
-3. Impact of property age on value
-4. Impact of land size on value
-5. Distance from nearest town centre
-6. Current market trends
-
-Respond with ONLY valid JSON in this exact format (no markdown, no explanation):
-{
-  "price_per_sqm_low": <number - conservative low estimate in euros>,
-  "price_per_sqm_high": <number - conservative high estimate in euros>,
-  "avg_price_sqm": <number - average price per sqm in euros>,
-  "comparable_sales": [
-    {
-      "description": "<brief description of comparable property>",
-      "sale_price": <number in euros>,
-      "approx_sqm": <number>,
-      "price_per_sqm": <number>,
-      "distance_km": <number - approximate distance from subject property>
-    }
-  ],
-  "market_insights": "<1-2 sentence summary of local market conditions>",
-  "volatility": "<low|medium|high>",
-  "trend": "<rising|stable|falling>",
-  "research_confidence": "<strong|moderate|weak>",
-  "area_premium_notes": "<any notes about location premiums or discounts>"
-}`;
+Call the \`report_market_research\` tool exactly once with your complete findings.`;
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 2000,
-          },
-        }),
-      }
-    );
+    const client = new Anthropic({ apiKey: anthropicApiKey });
 
-    if (!response.ok) {
-      console.error("Gemini API error:", response.status, await response.text());
+    const response = await client.messages.create({
+      model: "claude-opus-4-6",
+      max_tokens: 4096,
+      system:
+        "You are a property valuation expert in Ireland. Use the report_market_research tool to return structured research findings.",
+      tools: [MARKET_RESEARCH_TOOL as any],
+      tool_choice: { type: "tool", name: "report_market_research" },
+      messages: [{ role: "user", content: userPrompt }],
+    });
+
+    const toolUse = response.content.find((b: any) => b.type === "tool_use");
+    if (!toolUse || toolUse.type !== "tool_use") {
+      console.error("Claude did not call the market research tool");
       return null;
     }
 
-    const data = await response.json();
-    const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const research = toolUse.input as any;
 
-    if (!textContent) {
-      console.error("No text content in Gemini response");
-      return null;
-    }
-
-    // Parse JSON from response (handle potential markdown code blocks)
-    let jsonStr = textContent.trim();
-    if (jsonStr.startsWith("```json")) {
-      jsonStr = jsonStr.slice(7);
-    }
-    if (jsonStr.startsWith("```")) {
-      jsonStr = jsonStr.slice(3);
-    }
-    if (jsonStr.endsWith("```")) {
-      jsonStr = jsonStr.slice(0, -3);
-    }
-    jsonStr = jsonStr.trim();
-
-    const research = JSON.parse(jsonStr);
-
-    // Validate required fields
     if (!research.price_per_sqm_low || !research.price_per_sqm_high) {
-      console.error("Invalid research response - missing price fields");
+      console.error("Invalid research response — missing price fields");
       return null;
     }
 
@@ -1199,17 +1232,20 @@ Respond with ONLY valid JSON in this exact format (no markdown, no explanation):
     const expiresAt = new Date();
     expiresAt.setMonth(expiresAt.getMonth() + 6);
 
-    await supabase.from("market_research_cache").upsert({
-      area_key: areaKey,
-      property_type: propertyType,
-      research_json: research,
-      expires_at: expiresAt.toISOString(),
-      created_at: new Date().toISOString(),
-    }, {
-      onConflict: "area_key,property_type",
-    });
+    await supabase.from("market_research_cache").upsert(
+      {
+        area_key: areaKey,
+        property_type: propertyType,
+        research_json: research,
+        expires_at: expiresAt.toISOString(),
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "area_key,property_type" }
+    );
 
-    console.log(`AI research cached for ${areaKey}/${propertyType}, expires: ${expiresAt.toISOString()}`);
+    console.log(
+      `AI research cached for ${areaKey}/${propertyType}, expires: ${expiresAt.toISOString()}`
+    );
 
     return research;
   } catch (error) {
