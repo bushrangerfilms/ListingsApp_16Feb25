@@ -126,9 +126,6 @@ export default function BroadcastsPage() {
     mutationFn: (data: BroadcastCampaignInput) => adminApi.broadcasts.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts"] });
-      toast({ title: "Draft saved" });
-      resetForm();
-      setView("list");
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -138,9 +135,6 @@ export default function BroadcastsPage() {
       adminApi.broadcasts.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts"] });
-      toast({ title: "Draft updated" });
-      resetForm();
-      setView("list");
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -262,10 +256,16 @@ export default function BroadcastsPage() {
       audience_filters: audienceFilters,
     };
 
+    const onDone = () => {
+      toast({ title: editingId ? "Draft updated" : "Draft saved" });
+      resetForm();
+      setView("list");
+    };
+
     if (editingId) {
-      updateMutation.mutate({ id: editingId, data });
+      updateMutation.mutate({ id: editingId, data }, { onSuccess: onDone });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, { onSuccess: onDone });
     }
   }
 
