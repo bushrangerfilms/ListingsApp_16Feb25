@@ -45,6 +45,9 @@ interface GatedResult {
   estimate_range?: string;
   confidence?: string;
   message: string;
+  resolved_town?: string;
+  resolved_county?: string;
+  resolution_confidence?: "high" | "medium" | "low";
 }
 
 interface FullResult {
@@ -184,7 +187,20 @@ export function LeadMagnetQuiz() {
   };
 
   const canProceed = () => {
-    const currentQuestions = steps[currentStep]?.questions || [];
+    const step = steps[currentStep];
+    if (!step) return false;
+
+    // Composite step: Property Location (Eircode-first with town/county fallback).
+    // Valid when either: a properly-formatted Eircode OR (town AND county) present.
+    if ((step as any).customRender === "property_location") {
+      const eircode = typeof answers.eircode === "string" ? answers.eircode.trim() : "";
+      if (eircode && EIRCODE_REGEX.test(eircode)) return true;
+      const town = typeof answers.town === "string" ? answers.town.trim() : "";
+      const county = typeof answers.county === "string" ? answers.county.trim() : "";
+      return !!(town && county);
+    }
+
+    const currentQuestions = step.questions || [];
     return currentQuestions.every((q: any) => {
       if (!q.required) return true;
       const answer = answers[q.key];
@@ -653,14 +669,24 @@ export function LeadMagnetQuiz() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {steps[currentStep]?.questions.map((question: any) => (
-              <QuestionField
-                key={question.key}
-                question={question}
-                value={answers[question.key]}
-                onChange={(value) => handleAnswer(question.key, value)}
+            {(steps[currentStep] as any)?.customRender === "property_location" ? (
+              <PropertyLocationStep
+                eircode={(answers.eircode as string) || ""}
+                town={(answers.town as string) || ""}
+                county={(answers.county as string) || ""}
+                setAnswer={handleAnswer}
+                counties={IE_COUNTIES}
               />
-            ))}
+            ) : (
+              steps[currentStep]?.questions.map((question: any) => (
+                <QuestionField
+                  key={question.key}
+                  question={question}
+                  value={answers[question.key]}
+                  onChange={(value) => handleAnswer(question.key, value)}
+                />
+              ))
+            )}
 
             <div className="flex justify-between pt-4">
               <Button
@@ -731,6 +757,137 @@ function Header({ org }: { org: OrgConfig | null }) {
           Your information is only shared with {org.business_name}
         </p>
       )}
+    </div>
+  );
+}
+
+interface PropertyLocationStepProps {
+  eircode: string;
+  town: string;
+  county: string;
+  setAnswer: (key: string, value: string) => void;
+  counties: Array<{ value: string; label: string }>;
+}
+
+function PropertyLocationStep({ eircode, town, county, setAnswer, counties }: PropertyLocationStepProps) {
+  // Fallback (Town + County) is revealed when the user taps the disclosure link
+  // OR when they've already entered a town/county (e.g. resume from localStorage).
+  const [fallbackOpen, setFallbackOpen] = useState<boolean>(!!(town || county));
+
+  const trimmedEircode = eircode.trim();
+  const isValidEircode = trimmedEircode.length > 0 && EIRCODE_REGEX.test(trimmedEircode);
+  const hasTypedSomething = trimmedEircode.length > 0;
+  const showFormatError = hasTypedSomething && !isValidEircode;
+
+  // Map iframe URL — reuses the free Google Maps embed pattern from PropertyDetails.tsx.
+  // Only rendered when the Eircode format-validates.
+  const mapSrc = isValidEircode
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(trimmedEircode)}&output=embed`
+    : null;
+
+  return (
+    <div className="space-y-5">
+      {/* Eircode field — primary input */}
+      <div className="space-y-2">
+        <Label htmlFor="eircode" className="text-base font-medium">
+          Eircode
+          {!fallbackOpen && <span className="text-destructive ml-1">*</span>}
+        </Label>
+        <Input
+          id="eircode"
+          type="text"
+          autoCapitalize="characters"
+          value={eircode}
+          onChange={(e) => setAnswer("eircode", e.target.value)}
+          placeholder="e.g., H53 YA97"
+          className={showFormatError ? "border-destructive" : ""}
+          data-testid="input-eircode"
+        />
+        <p className="text-xs text-muted-foreground">
+          Your Eircode pinpoints your exact location for a more accurate estimate than a town name alone.
+        </p>
+        {showFormatError && (
+          <p className="text-xs text-destructive">
+            That doesn't look like a valid Eircode. Please check the format (e.g. <span className="font-mono">H53 YA97</span>),
+            or use the fallback below.
+          </p>
+        )}
+      </div>
+
+      {/* Live map preview — free Google Maps iframe embed, same pattern as PropertyDetails */}
+      {mapSrc && (
+        <div className="space-y-2">
+          <Label className="text-sm text-muted-foreground">Location preview</Label>
+          <div className="w-full h-56 rounded-lg overflow-hidden border">
+            <iframe
+              title="Property location"
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              style={{ border: 0 }}
+              src={mapSrc}
+              allowFullScreen
+              loading="lazy"
+              data-testid="iframe-location-map"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Disclosure: Town + County fallback */}
+      <div className="pt-2 border-t">
+        {!fallbackOpen ? (
+          <button
+            type="button"
+            onClick={() => setFallbackOpen(true)}
+            className="text-sm text-primary underline underline-offset-2 hover:opacity-80"
+            data-testid="button-reveal-fallback"
+          >
+            I don't have my Eircode
+          </button>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              No Eircode? Give us your nearest town and county instead — your estimate will be less precise
+              but we'll do our best.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="town" className="text-base font-medium">
+                Town or area
+                <span className="text-destructive ml-1">*</span>
+              </Label>
+              <Input
+                id="town"
+                type="text"
+                value={town}
+                onChange={(e) => setAnswer("town", e.target.value)}
+                placeholder="e.g., Ballinasloe"
+                data-testid="input-town"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="county" className="text-base font-medium">
+                County
+                <span className="text-destructive ml-1">*</span>
+              </Label>
+              <select
+                id="county"
+                value={county}
+                onChange={(e) => setAnswer("county", e.target.value)}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                data-testid="select-county"
+              >
+                <option value="">Select an option</option>
+                {counties.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -981,6 +1138,20 @@ function GatedResultPreview({ result, type }: { result: GatedResult | null; type
                 {result.confidence} Confidence
               </Badge>
             </div>
+            {result.resolved_town && result.resolved_county && (
+              <p className="text-sm text-muted-foreground">
+                {result.resolution_confidence === "low" ? (
+                  <>
+                    Estimate based on <span className="font-medium">{result.resolved_town}, Co. {result.resolved_county}</span> as a best guess.
+                  </>
+                ) : (
+                  <>
+                    Based on your Eircode, we found your property near{" "}
+                    <span className="font-medium">{result.resolved_town}, Co. {result.resolved_county}</span>.
+                  </>
+                )}
+              </p>
+            )}
             <p className="text-sm font-medium text-primary">
               <Lock className="h-3.5 w-3.5 inline mr-1" />
               Full valuation with market insights ready to unlock
@@ -1452,44 +1623,37 @@ const readyToSellSteps = [
   },
 ];
 
+// Irish Eircode format: routing key (one letter A-Y excluding I + 2 digits)
+// followed by optional space then 4 chars (digits + letters A-Y excluding I).
+// Used for client-side validation before enabling the Next button.
+// TODO (Issue #6): lift to locale-aware regionConfig so UK/US/etc. drop in.
+const EIRCODE_REGEX = /^[AC-FHKNPRTV-Y]\d{2}\s?[0-9AC-FHKNPRTV-Y]{4}$/i;
+
+const IE_COUNTIES = [
+  { value: "dublin", label: "Dublin" },
+  { value: "cork", label: "Cork" },
+  { value: "galway", label: "Galway" },
+  { value: "limerick", label: "Limerick" },
+  { value: "waterford", label: "Waterford" },
+  { value: "kildare", label: "Kildare" },
+  { value: "meath", label: "Meath" },
+  { value: "wicklow", label: "Wicklow" },
+  { value: "wexford", label: "Wexford" },
+  { value: "other", label: "Other" },
+];
+
 const worthEstimateSteps = [
   {
     title: "Property Location",
     description: "Where is your property located?",
     icon: Home,
+    customRender: "property_location",
+    // questions kept as metadata for handleSubmit / validation introspection;
+    // the actual UI is rendered by PropertyLocationStep.
     questions: [
-      {
-        key: "eircode",
-        label: "Eircode",
-        type: "text",
-        required: false,
-        placeholder: "e.g., D02 XY45 (optional)",
-      },
-      {
-        key: "town",
-        label: "Townland",
-        type: "text",
-        required: true,
-        placeholder: "e.g., Mountbellew",
-      },
-      {
-        key: "county",
-        label: "County",
-        type: "select",
-        required: true,
-        options: [
-          { value: "dublin", label: "Dublin" },
-          { value: "cork", label: "Cork" },
-          { value: "galway", label: "Galway" },
-          { value: "limerick", label: "Limerick" },
-          { value: "waterford", label: "Waterford" },
-          { value: "kildare", label: "Kildare" },
-          { value: "meath", label: "Meath" },
-          { value: "wicklow", label: "Wicklow" },
-          { value: "wexford", label: "Wexford" },
-          { value: "other", label: "Other" },
-        ],
-      },
+      { key: "eircode", label: "Eircode", type: "text", required: false },
+      { key: "town", label: "Town or area", type: "text", required: false },
+      { key: "county", label: "County", type: "select", required: false, options: IE_COUNTIES },
     ],
   },
   {

@@ -722,15 +722,36 @@ function determineBand(score: number): string {
 // ============================================
 // Worth Estimate Calculation (V1 - Conservative Envelope per Spec)
 // ============================================
+
+// Normalize an Irish Eircode for use in a cache key. We use the 3-char
+// routing key (the first half of the Eircode) as the cache scope so every
+// property in the same routing area shares the same market research —
+// e.g. both "H53 YA97" and "H53 AB12" cache under "IE:H53".
+function normalizeEircode(raw: string): string {
+  return raw.trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function buildAreaKeyFromAnswers(answers: any): string {
+  const eircode = answers.eircode ? normalizeEircode(answers.eircode) : "";
+  if (eircode.length >= 3) {
+    return `IE:${eircode.slice(0, 3)}`;
+  }
+  // Fallback: user typed a town/county instead of an Eircode
+  const town = (answers.town || answers.area || "").toLowerCase().replace(/\s+/g, "_");
+  const county = (answers.county || "").toLowerCase().replace(/\s+/g, "_");
+  return `IE:${town}_${county}`;
+}
+
 async function calculateWorthEstimate(supabase: any, answers: any): Promise<any> {
-  const areaKey = `${answers.town || answers.area || ""}_${answers.county || ""}`.toLowerCase().replace(/\s+/g, "_");
+  const hasEircode = !!answers.eircode && answers.eircode.trim().length > 0;
+  const hasFallbackLocation = !!(answers.town || answers.area || answers.county);
   const propertyType = normalizePropertyType(answers.property_type);
 
-  // STEP 8: Refusal Rule - if no usable location data
-  if (!areaKey || areaKey === "_" || (!answers.town && !answers.area && !answers.county)) {
+  // STEP 8: Refusal Rule — need at least eircode OR town/county
+  if (!hasEircode && !hasFallbackLocation) {
     return {
       refused: true,
-      refusal_message: "We can't estimate reliably for this area yet. A local appraisal is recommended.",
+      refusal_message: "We can't estimate without a location. Please provide your Eircode or town.",
       estimate_low: null,
       estimate_high: null,
       confidence: null,
@@ -738,6 +759,8 @@ async function calculateWorthEstimate(supabase: any, answers: any): Promise<any>
       valuation_model_version: "v1",
     };
   }
+
+  const areaKey = buildAreaKeyFromAnswers(answers);
 
   // STEP 1: Get market research (cached, AI-generated, or default)
   let research = await getCachedResearch(supabase, areaKey, propertyType);
@@ -748,13 +771,19 @@ async function calculateWorthEstimate(supabase: any, answers: any): Promise<any>
     // No cache - try AI research
     console.log(`No cached research for ${areaKey}/${propertyType}, attempting AI research...`);
     research = await performAIMarketResearch(supabase, areaKey, propertyType, answers);
-    
+
     if (research) {
       researchSource = "ai";
       console.log(`AI research completed for ${areaKey}/${propertyType}`);
     } else {
-      // Fallback to defaults
-      research = getDefaultMarketResearch(propertyType);
+      // Fallback to defaults — synthesise resolution from user input
+      research = {
+        ...getDefaultMarketResearch(propertyType),
+        resolved_town: answers.town || answers.area || "Unknown",
+        resolved_county: answers.county || "Unknown",
+        resolution_confidence: "low",
+        resolution_failed: true,
+      };
       researchWeak = true; // No cached/AI research = weak confidence
       researchSource = "default";
       console.log(`Using default research for ${areaKey}/${propertyType}`);
@@ -1024,6 +1053,9 @@ async function calculateWorthEstimate(supabase: any, answers: any): Promise<any>
     research_source: researchSource,
     research_snapshot_id: research.id || null,
     valuation_model_version: "v1",
+    resolved_town: research.resolved_town || answers.town || answers.area || null,
+    resolved_county: research.resolved_county || answers.county || null,
+    resolution_confidence: research.resolution_confidence || null,
   };
 }
 
@@ -1144,6 +1176,31 @@ const MARKET_RESEARCH_TOOL = {
         type: "string",
         description: "Notes about location premiums or discounts",
       },
+      resolved_town: {
+        type: "string",
+        description:
+          "The town or nearest settlement you determined the Eircode resolves to. " +
+          "If the user provided a town fallback instead of an Eircode, echo that back.",
+      },
+      resolved_county: {
+        type: "string",
+        description: "The county for the resolved area. Must be a real Irish county.",
+      },
+      resolution_confidence: {
+        type: "string",
+        enum: ["high", "medium", "low"],
+        description:
+          "high = you recognize the exact Eircode routing key and identify a specific area; " +
+          "medium = you can infer the general area; " +
+          "low = best guess, or user provided a town fallback instead of an Eircode.",
+      },
+      resolution_failed: {
+        type: "boolean",
+        description:
+          "Set true only if you cannot resolve the Eircode to an area at all. " +
+          "When true, still populate resolved_town/resolved_county with your best guess " +
+          "and set resolution_confidence to 'low'.",
+      },
     },
     required: [
       "price_per_sqm_low",
@@ -1155,6 +1212,10 @@ const MARKET_RESEARCH_TOOL = {
       "trend",
       "research_confidence",
       "area_premium_notes",
+      "resolved_town",
+      "resolved_county",
+      "resolution_confidence",
+      "resolution_failed",
     ],
     additionalProperties: false,
   },
@@ -1174,8 +1235,9 @@ async function performAIMarketResearch(
     return null;
   }
 
-  const townland = answers.town || answers.area || "unknown area";
-  const county = answers.county || "unknown county";
+  const eircode = answers.eircode ? String(answers.eircode).trim() : "";
+  const fallbackTown = answers.town || answers.area || "";
+  const fallbackCounty = answers.county || "";
   const propertyTypeLabel = {
     detached: "detached house",
     semi: "semi-detached house",
@@ -1190,15 +1252,46 @@ async function performAIMarketResearch(
     ? `${answers.land_size_acres} acres`
     : "standard plot";
 
-  // TODO: Make country/market context dynamic when quiz expands beyond Ireland
-  const userPrompt = `Research current market data for a ${propertyTypeLabel} in ${townland}, County ${county}, Ireland.
+  // TODO: Make country/market context dynamic when quiz expands beyond Ireland.
+  // The Eircode is the authoritative location when present — it pinpoints
+  // the property regardless of what free-text town the user typed.
+  // Claude resolves the Eircode → town/county inline and returns the
+  // resolution alongside the market research in one tool call.
+  const locationBlock = eircode
+    ? `- Eircode: ${eircode}  ← AUTHORITATIVE LOCATION (ignore any typed town that conflicts)
+- User-typed town (may be wrong): ${fallbackTown || "not provided"}
+- User-typed county (may be wrong): ${fallbackCounty || "not provided"}`
+    : `- No Eircode provided, using user-typed fallback:
+- Town: ${fallbackTown || "unknown"}
+- County: ${fallbackCounty || "unknown"}`;
+
+  const resolutionTask = eircode
+    ? `TASK 1 — Resolve the Eircode to an actual location:
+  • Identify the exact town/settlement the Eircode corresponds to. Irish Eircode routing keys (first 3 chars) map to specific areas — for example, H53 = Ballinasloe area in Co. Galway/Roscommon.
+  • Return your determination in \`resolved_town\` and \`resolved_county\`.
+  • Set \`resolution_confidence\` to "high" if you recognize the exact routing key and identify a specific area, "medium" if you can infer only the general area, "low" if you are guessing.
+  • If you genuinely cannot resolve the Eircode at all, set \`resolution_failed: true\` and provide your best-guess resolved_town/resolved_county with resolution_confidence: "low".
+  • If the Eircode and user-typed town disagree, trust the Eircode.`
+    : `TASK 1 — Echo the user's town/county:
+  • The user did not provide an Eircode. Return \`resolved_town: "${fallbackTown}"\`, \`resolved_county: "${fallbackCounty}"\`, \`resolution_confidence: "low"\`, \`resolution_failed: false\`.`;
+
+  const userPrompt = `Research current market data for a ${propertyTypeLabel} in Ireland.
+
+Location:
+${locationBlock}
 
 Property details:
 - Bedrooms: ${bedrooms}
 - Approximate age: ${propertyAge}
 - Land size: ${landSize}
 
-Provide a comparable sales analysis based on recent sales (last 6–12 months) in this area and nearby comparable areas. Consider price per square metre for similar properties, impact of age and land size, distance from town centre, and current market trends.
+${resolutionTask}
+
+TASK 2 — Research current market comparables for the resolved area:
+  • Recent sales (last 6–12 months) in this area and nearby comparable areas
+  • Price per square metre for similar properties
+  • Impact of age and land size, distance from town centre, and current market trends
+  • 3–5 comparable sales with description, sale_price, approx_sqm, price_per_sqm, distance_km
 
 Call the \`report_market_research\` tool exactly once with your complete findings.`;
 
@@ -1276,6 +1369,11 @@ function getGatedResult(type: string, result: any): any {
       estimate_range: `€${formatNumber(widerLow)} - €${formatNumber(widerHigh)}`,
       confidence: "Preliminary",
       message: "Get your full valuation report for a refined estimate and market insights.",
+      // Resolution data is exposed in the gated preview too — the trust moment
+      // ("we found your property near X") happens BEFORE the email gate.
+      resolved_town: result.resolved_town || null,
+      resolved_county: result.resolved_county || null,
+      resolution_confidence: result.resolution_confidence || null,
     };
   }
 }
