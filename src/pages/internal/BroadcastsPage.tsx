@@ -539,26 +539,24 @@ export default function BroadcastsPage() {
                       : "... recipients"}
                   </Badge>
                 </CardTitle>
-                <CardDescription className="flex items-center justify-between gap-2">
-                  <span>Leave all empty to send to everyone</span>
-                  {(audienceData?.count ?? 0) > 0 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-auto py-1 px-2 text-xs"
-                      onClick={() => openReviewDialog(null, true)}
-                    >
-                      <Users className="h-3 w-3 mr-1" />
-                      View & exclude
-                      {excludedEmails.size > 0 && (
-                        <span className="ml-1 text-muted-foreground">
-                          ({excludedEmails.size} excluded)
-                        </span>
-                      )}
-                    </Button>
-                  )}
-                </CardDescription>
+                <CardDescription>Leave all empty to send to everyone</CardDescription>
+                {(audienceData?.count ?? 0) > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-full justify-center"
+                    onClick={() => openReviewDialog(null, true)}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    View &amp; exclude recipients
+                    {excludedEmails.size > 0 && (
+                      <span className="ml-1 text-muted-foreground">
+                        ({excludedEmails.size} excluded)
+                      </span>
+                    )}
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
