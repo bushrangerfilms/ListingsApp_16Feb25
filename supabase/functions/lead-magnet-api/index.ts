@@ -1562,10 +1562,13 @@ function buildLeadNotificationEmail(data: LeadNotificationData): string {
           ${answersHtml}
         </ul>
 
-        <div style="margin-top: 24px; padding: 15px; background: #e8f4fd; border-radius: 4px;">
-          <p style="margin: 0; color: #1a73e8;">
-            <strong>Next Step:</strong> This lead has been automatically added to your CRM.
+        <div style="margin-top: 24px; padding: 20px; background: #e8f5e9; border-left: 4px solid #34a853; border-radius: 4px;">
+          <p style="margin: 0 0 12px 0; color: #1e4620; font-size: 15px;">
+            <strong>✓ Added to your CRM.</strong> This lead has been saved as a new seller profile. All the details above are already in your sellers pipeline, ready for follow-up.
           </p>
+          <a href="https://app.autolisting.io/admin/crm" style="display: inline-block; margin-top: 4px; padding: 10px 20px; background: #34a853; color: white; text-decoration: none; border-radius: 4px; font-weight: 600; font-size: 14px;">
+            View in CRM &rarr;
+          </a>
         </div>
       </div>
       
