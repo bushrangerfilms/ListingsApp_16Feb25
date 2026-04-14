@@ -1565,6 +1565,10 @@ function buildLeadNotificationEmail(data: LeadNotificationData): string {
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
         <h1 style="color: white; margin: 0; font-size: 24px;">New Lead: ${leadName}</h1>
         <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">From ${quizType} Quiz</p>
+        <div style="margin-top: 12px;">
+          <span style="display: inline-block; padding: 4px 10px; background: rgba(255,255,255,0.18); color: white; border-radius: 999px; font-size: 12px; font-weight: 600; margin-right: 6px;">✓ Completed form</span>
+          ${contactRequested ? `<span style="display: inline-block; padding: 4px 10px; background: #ff9800; color: white; border-radius: 999px; font-size: 12px; font-weight: 600;">📞 Requested contact</span>` : ""}
+        </div>
       </div>
 
       <div style="background: #f9f9f9; padding: 20px; border: 1px solid #eee; border-top: none;">
