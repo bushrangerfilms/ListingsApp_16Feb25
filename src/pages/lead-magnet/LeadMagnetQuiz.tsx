@@ -196,14 +196,17 @@ export function LeadMagnetQuiz() {
     const step = steps[currentStep];
     if (!step) return false;
 
-    // Composite step: Property Location (Eircode-first with town/county fallback).
-    // Valid when either: a properly-formatted Eircode OR (town AND county) present.
+    // Property Location: Eircode is recommended but not required.
+    // Accept any of: valid Eircode, (town AND county), or a free-text
+    // address line of at least 4 chars.
     if ((step as any).customRender === "property_location") {
       const eircode = typeof answers.eircode === "string" ? answers.eircode.trim() : "";
       if (eircode && EIRCODE_REGEX.test(eircode)) return true;
       const town = typeof answers.town === "string" ? answers.town.trim() : "";
       const county = typeof answers.county === "string" ? answers.county.trim() : "";
-      return !!(town && county);
+      if (town && county) return true;
+      const address = typeof answers.address === "string" ? answers.address.trim() : "";
+      return address.length >= 4;
     }
 
     const currentQuestions = step.questions || [];
@@ -455,12 +458,14 @@ export function LeadMagnetQuiz() {
     doc.setTextColor(120, 120, 120);
     doc.text(`Report provided by ${org.business_name || "AutoListing"}`, pageWidth / 2, y, { align: "center" });
 
-    // Save — explicit anchor-click so the file goes to the OS downloads
-    // folder instead of inline-opening a new tab (jsPDF's doc.save()
-    // fallback behavior on some browsers).
+    // Force a real file download. Firefox (and some Chromium builds)
+    // will open a blob with application/pdf MIME in the built-in PDF
+    // viewer AS WELL as honoring the download attr — so we wrap the
+    // output in an application/octet-stream blob to bypass the viewer.
     const filename = normalizedType === "READY_TO_SELL" ? "ready-to-sell-report.pdf" : "property-value-report.pdf";
-    const blob = doc.output("blob");
-    const url = URL.createObjectURL(blob);
+    const pdfBlob = doc.output("blob");
+    const downloadBlob = new Blob([pdfBlob], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(downloadBlob);
     const link = document.createElement("a");
     link.href = url;
     link.download = filename;
@@ -696,6 +701,7 @@ export function LeadMagnetQuiz() {
                 eircode={(answers.eircode as string) || ""}
                 town={(answers.town as string) || ""}
                 county={(answers.county as string) || ""}
+                address={(answers.address as string) || ""}
                 setAnswer={handleAnswer}
                 counties={IE_COUNTIES}
               />
@@ -785,33 +791,29 @@ interface PropertyLocationStepProps {
   eircode: string;
   town: string;
   county: string;
+  address: string;
   setAnswer: (key: string, value: string) => void;
   counties: Array<{ value: string; label: string }>;
 }
 
-function PropertyLocationStep({ eircode, town, county, setAnswer, counties }: PropertyLocationStepProps) {
-  // Fallback (Town + County) is revealed when the user taps the disclosure link
-  // OR when they've already entered a town/county (e.g. resume from localStorage).
-  const [fallbackOpen, setFallbackOpen] = useState<boolean>(!!(town || county));
-
+function PropertyLocationStep({ eircode, town, county, address, setAnswer, counties }: PropertyLocationStepProps) {
   const trimmedEircode = eircode.trim();
   const isValidEircode = trimmedEircode.length > 0 && EIRCODE_REGEX.test(trimmedEircode);
-  const hasTypedSomething = trimmedEircode.length > 0;
-  const showFormatError = hasTypedSomething && !isValidEircode;
+  const hasTypedEircode = trimmedEircode.length > 0;
+  const showFormatError = hasTypedEircode && !isValidEircode;
 
-  // Map iframe URL — reuses the free Google Maps embed pattern from PropertyDetails.tsx.
-  // Only rendered when the Eircode format-validates.
+  // Map iframe URL — free Google Maps embed, same pattern as PropertyDetails.tsx.
+  // Rendered when the Eircode format-validates.
   const mapSrc = isValidEircode
     ? `https://maps.google.com/maps?q=${encodeURIComponent(trimmedEircode)}&output=embed`
     : null;
 
   return (
     <div className="space-y-5">
-      {/* Eircode field — primary input */}
+      {/* Eircode — recommended, not required */}
       <div className="space-y-2">
         <Label htmlFor="eircode" className="text-base font-medium">
-          Eircode
-          {!fallbackOpen && <span className="text-destructive ml-1">*</span>}
+          Eircode <span className="text-xs font-normal text-muted-foreground">(recommended for most accurate estimate)</span>
         </Label>
         <Input
           id="eircode"
@@ -824,17 +826,16 @@ function PropertyLocationStep({ eircode, town, county, setAnswer, counties }: Pr
           data-testid="input-eircode"
         />
         <p className="text-xs text-muted-foreground">
-          Your Eircode pinpoints your exact location for a more accurate estimate than a town name alone.
+          Your Eircode pinpoints your exact location — it's optional, but gives the most accurate estimate.
         </p>
         {showFormatError && (
           <p className="text-xs text-destructive">
-            That doesn't look like a valid Eircode. Please check the format (e.g. <span className="font-mono">H53 YA97</span>),
-            or use the fallback below.
+            That doesn't look like a valid Eircode (e.g. <span className="font-mono">H53 YA97</span>). You can leave it blank and fill in the fields below instead.
           </p>
         )}
       </div>
 
-      {/* Live map preview — free Google Maps iframe embed, same pattern as PropertyDetails */}
+      {/* Live map preview when eircode is format-valid */}
       {mapSrc && (
         <div className="space-y-2">
           <Label className="text-sm text-muted-foreground">Location preview</Label>
@@ -854,59 +855,59 @@ function PropertyLocationStep({ eircode, town, county, setAnswer, counties }: Pr
         </div>
       )}
 
-      {/* Disclosure: Town + County fallback */}
-      <div className="pt-2 border-t">
-        {!fallbackOpen ? (
-          <button
-            type="button"
-            onClick={() => setFallbackOpen(true)}
-            className="text-sm text-primary underline underline-offset-2 hover:opacity-80"
-            data-testid="button-reveal-fallback"
+      {/* Alternative location fields — always visible, equal to Eircode */}
+      <div className="pt-4 border-t space-y-4">
+        <p className="text-xs text-muted-foreground">
+          No Eircode? Fill in any of these instead and we'll do our best.
+        </p>
+
+        <div className="space-y-2">
+          <Label htmlFor="address" className="text-base font-medium">
+            Address <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+          </Label>
+          <Input
+            id="address"
+            type="text"
+            value={address}
+            onChange={(e) => setAnswer("address", e.target.value)}
+            placeholder="e.g., 12 Main Street, Townland Name"
+            data-testid="input-address"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="town" className="text-base font-medium">
+            Town or area <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+          </Label>
+          <Input
+            id="town"
+            type="text"
+            value={town}
+            onChange={(e) => setAnswer("town", e.target.value)}
+            placeholder="e.g., Ballinasloe"
+            data-testid="input-town"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="county" className="text-base font-medium">
+            County <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+          </Label>
+          <select
+            id="county"
+            value={county}
+            onChange={(e) => setAnswer("county", e.target.value)}
+            className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+            data-testid="select-county"
           >
-            I don't have my Eircode
-          </button>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              No Eircode? Give us your nearest town and county instead — your estimate will be less precise
-              but we'll do our best.
-            </p>
-            <div className="space-y-2">
-              <Label htmlFor="town" className="text-base font-medium">
-                Town or area
-                <span className="text-destructive ml-1">*</span>
-              </Label>
-              <Input
-                id="town"
-                type="text"
-                value={town}
-                onChange={(e) => setAnswer("town", e.target.value)}
-                placeholder="e.g., Ballinasloe"
-                data-testid="input-town"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="county" className="text-base font-medium">
-                County
-                <span className="text-destructive ml-1">*</span>
-              </Label>
-              <select
-                id="county"
-                value={county}
-                onChange={(e) => setAnswer("county", e.target.value)}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                data-testid="select-county"
-              >
-                <option value="">Select an option</option>
-                {counties.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
+            <option value="">Select an option</option>
+            {counties.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );

@@ -1515,6 +1515,14 @@ interface LeadNotificationData {
 
 function buildLeadNotificationEmail(data: LeadNotificationData): string {
   const { leadName, leadEmail, leadPhone, quizType, orgName, answers, result, submittedAt, contactRequested, contactAdditionalInfo } = data;
+  // Build a Google Maps link for the property location. Email clients
+  // strip iframes, so we render a styled clickable card instead of the
+  // embed used in the quiz UI.
+  const eircode = typeof answers?.eircode === "string" ? answers.eircode.trim() : "";
+  const town = typeof answers?.town === "string" ? answers.town.trim() : "";
+  const county = typeof answers?.county === "string" ? answers.county.trim() : "";
+  const mapQueryRaw = eircode || [town, county].filter(Boolean).join(", ");
+  const mapUrl = mapQueryRaw ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQueryRaw)}` : "";
   
   const formattedDate = new Date(submittedAt).toLocaleDateString("en-IE", {
     weekday: "long",
@@ -1579,6 +1587,22 @@ function buildLeadNotificationEmail(data: LeadNotificationData): string {
             <td style="padding: 8px 0;">${formattedDate}</td>
           </tr>
         </table>
+
+        ${mapUrl ? `
+        <a href="${mapUrl}" target="_blank" rel="noopener" style="display: block; margin-top: 20px; padding: 16px 20px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; text-decoration: none; color: inherit;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="vertical-align: middle; padding-right: 14px; width: 44px;">
+                <div style="width: 44px; height: 44px; background: #4285F4; border-radius: 50%; text-align: center; line-height: 44px; font-size: 22px;">📍</div>
+              </td>
+              <td style="vertical-align: middle;">
+                <div style="font-weight: 600; color: #1a73e8; font-size: 15px;">View property location on Google Maps</div>
+                <div style="color: #666; font-size: 13px; margin-top: 2px;">${escapeHtml(mapQueryRaw)}</div>
+              </td>
+            </tr>
+          </table>
+        </a>
+        ` : ""}
 
         ${contactRequested ? `
         <div style="margin-top: 20px; padding: 16px 20px; background: #fff4e5; border-left: 4px solid #ff9800; border-radius: 4px;">
