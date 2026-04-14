@@ -3305,6 +3305,35 @@ async function handleDeleteOrganizations(
 
 // ==================== BROADCAST HANDLERS ====================
 
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[c]!));
+}
+
+function firstNameOf(name: string | null): string {
+  if (!name) return "there";
+  const first = name.trim().split(/\s+/)[0];
+  return first || "there";
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function personalize(template: string, vars: Record<string, string>): string {
+  let result = template;
+  for (const [key, value] of Object.entries(vars)) {
+    const re = new RegExp(escapeRegExp(`{${key}}`), "g");
+    result = result.replace(re, escapeHtml(value));
+  }
+  return result;
+}
+
 async function handleBroadcastsList(supabase: SupabaseClient, auth: AuthResult) {
   if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
 
@@ -3673,8 +3702,24 @@ async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, c
 
         const unsubscribeUrl = `${siteUrl}/functions/v1/broadcast-unsubscribe?email=${encodeURIComponent(recipient.email)}&token=${token}`;
 
+        // Personalize subject and body per recipient
+        const vars: Record<string, string> = {
+          firstName: firstNameOf(recipient.name),
+          fullName: recipient.name || "there",
+          email: recipient.email,
+        };
+        const personalizedSubject = personalize(campaign.subject, vars);
+        const personalizedBody = personalize(campaign.body_html, vars);
+
+        // Inject hidden preheader (preview text) at the top so email clients
+        // show it in the inbox preview instead of falling back to body text.
+        const previewText = (campaign.preview_text || "").trim();
+        const preheader = previewText
+          ? `<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:transparent;mso-hide:all;">${escapeHtml(previewText)}</div>`
+          : "";
+
         // Build email HTML with tracking and unsubscribe
-        let emailHtml = campaign.body_html;
+        let emailHtml = preheader + personalizedBody;
 
         // Wrap links with click tracking
         emailHtml = emailHtml.replace(
@@ -3702,7 +3747,7 @@ async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, c
         const { data: emailResult, error: emailError } = await resend.emails.send({
           from: `${campaign.from_name} <${campaign.from_email}>`,
           to: [recipient.email],
-          subject: campaign.subject,
+          subject: personalizedSubject,
           html: emailHtml,
         });
 

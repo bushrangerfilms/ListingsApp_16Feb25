@@ -601,10 +601,16 @@ export default function BroadcastsPage() {
                   <Label htmlFor="subject">Subject Line</Label>
                   <Input
                     id="subject"
-                    placeholder="e.g. New Feature: Broadcast Emails"
+                    placeholder="e.g. Hey {firstName}, new feature!"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Personalize with <code className="px-1 bg-muted rounded">{"{firstName}"}</code>
+                    , <code className="px-1 bg-muted rounded">{"{fullName}"}</code>, or{" "}
+                    <code className="px-1 bg-muted rounded">{"{email}"}</code>. Falls back to
+                    "there" when no name is set.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="preview-text">Preview Text (optional)</Label>
@@ -614,9 +620,17 @@ export default function BroadcastsPage() {
                     value={previewText}
                     onChange={(e) => setPreviewText(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Shown next to the subject in the inbox list (Gmail, Outlook, Apple Mail).
+                  </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Body (HTML)</Label>
+                  <Label>Body</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Use the toolbar to format. Type{" "}
+                    <code className="px-1 bg-muted rounded">{"{firstName}"}</code> anywhere to
+                    personalize per recipient.
+                  </p>
                   <Tabs value={previewTab} onValueChange={setPreviewTab}>
                     <TabsList>
                       <TabsTrigger value="edit">Edit</TabsTrigger>
