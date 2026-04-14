@@ -495,8 +495,9 @@ async function sendFormCompletedEmail(supabase: any, submission_id: string): Pro
   const fullResult = getFullResult(type, submission);
   const bundledContact = !!submission.contact_requested_at;
 
-  const subjectPrefix = bundledContact ? "📞 New Lead + Callback Request" : "New Lead";
-  const emailSubject = `${subjectPrefix}: ${submission.name || submission.email} - ${quizType} Quiz`;
+  const emailSubject = bundledContact
+    ? `📞 ${submission.name || submission.email} — Callback Requested (${quizType} Quiz)`
+    : `New Lead: ${submission.name || submission.email} — ${quizType} Quiz`;
 
   const emailHtml = buildLeadNotificationEmail({
     leadName: submission.name || "Not provided",
@@ -1554,20 +1555,11 @@ function buildLeadNotificationEmail(data: LeadNotificationData): string {
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">${contactRequested ? "📞 New Lead + Callback Request" : "New Lead Alert"}</h1>
+        <h1 style="color: white; margin: 0; font-size: 24px;">New Lead: ${leadName}</h1>
         <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">From ${quizType} Quiz</p>
       </div>
 
       <div style="background: #f9f9f9; padding: 20px; border: 1px solid #eee; border-top: none;">
-        ${contactRequested ? `
-        <div style="margin-bottom: 20px; padding: 16px 20px; background: #fff4e5; border-left: 4px solid #ff9800; border-radius: 4px;">
-          <p style="margin: 0 0 6px 0; color: #5d4037; font-size: 15px; font-weight: 600;">
-            📞 This lead has requested a callback.
-          </p>
-          ${contactAdditionalInfo ? `<p style="margin: 0; color: #5d4037; font-size: 14px; white-space: pre-wrap;">"${escapeHtml(contactAdditionalInfo)}"</p>` : `<p style="margin: 0; color: #5d4037; font-size: 14px;">They didn't leave a note — contact them directly.</p>`}
-        </div>
-        ` : ""}
-
         <h2 style="color: #333; margin-top: 0;">Lead Details</h2>
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
@@ -1587,6 +1579,15 @@ function buildLeadNotificationEmail(data: LeadNotificationData): string {
             <td style="padding: 8px 0;">${formattedDate}</td>
           </tr>
         </table>
+
+        ${contactRequested ? `
+        <div style="margin-top: 20px; padding: 16px 20px; background: #fff4e5; border-left: 4px solid #ff9800; border-radius: 4px;">
+          <p style="margin: 0 0 6px 0; color: #5d4037; font-size: 15px; font-weight: 600;">
+            📞 ${leadName} has requested a callback.
+          </p>
+          ${contactAdditionalInfo ? `<p style="margin: 0; color: #5d4037; font-size: 14px; white-space: pre-wrap;">"${escapeHtml(contactAdditionalInfo)}"</p>` : `<p style="margin: 0; color: #5d4037; font-size: 14px;">They didn't leave a note — contact them directly.</p>`}
+        </div>
+        ` : ""}
 
         <h2 style="color: #333; margin-top: 24px;">Quiz Results</h2>
         ${resultSummary}

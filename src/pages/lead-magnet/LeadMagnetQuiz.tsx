@@ -455,9 +455,20 @@ export function LeadMagnetQuiz() {
     doc.setTextColor(120, 120, 120);
     doc.text(`Report provided by ${org.business_name || "AutoListing"}`, pageWidth / 2, y, { align: "center" });
 
-    // Save
+    // Save — explicit anchor-click so the file goes to the OS downloads
+    // folder instead of inline-opening a new tab (jsPDF's doc.save()
+    // fallback behavior on some browsers).
     const filename = normalizedType === "READY_TO_SELL" ? "ready-to-sell-report.pdf" : "property-value-report.pdf";
-    doc.save(filename);
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   if (loading) {
