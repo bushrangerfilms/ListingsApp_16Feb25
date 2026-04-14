@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, AlertCircle, Home, ArrowRight, ArrowLeft, Lock, Unlock, TrendingUp, FileText, Scale, Calendar, Wrench, DollarSign, Download, Phone, MessageSquare } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Home, ArrowRight, ArrowLeft, TrendingUp, FileText, Scale, Calendar, Wrench, DollarSign, Download, Phone, MessageSquare } from "lucide-react";
 import jsPDF from "jspdf";
 import { useLocale } from "@/hooks/useLocale";
 
@@ -274,7 +274,7 @@ export function LeadMagnetQuiz() {
   };
 
   const handleUnlock = async () => {
-    if (!unlockForm.email || !unlockForm.consent || unlocking) return;
+    if (!unlockForm.name.trim() || !unlockForm.email || !unlockForm.consent || unlocking) return;
 
     setUnlocking(true);
     try {
@@ -590,15 +590,22 @@ export function LeadMagnetQuiz() {
           <Header org={org} />
           <Card className="mt-6">
             <CardContent className="pt-6 text-center space-y-4">
-              <Lock className="h-10 w-10 text-primary mx-auto" />
-              <h2 className="text-xl font-semibold">Your Results Are Ready</h2>
-              <GatedResultPreview result={gatedResult} type={normalizedType} />
+              <FileText className="h-10 w-10 text-primary mx-auto" />
+              <h2 className="text-xl font-semibold">Your full report is ready</h2>
+              {normalizedType === "WORTH_ESTIMATE" && gatedResult.resolved_town && gatedResult.resolved_county && (
+                <p className="text-sm text-muted-foreground">
+                  {gatedResult.resolution_confidence === "low" ? (
+                    <>Estimate based on <span className="font-medium">{gatedResult.resolved_town}, Co. {gatedResult.resolved_county}</span> as a best guess.</>
+                  ) : (
+                    <>Based on your Eircode, we found your property near <span className="font-medium">{gatedResult.resolved_town}, Co. {gatedResult.resolved_county}</span>.</>
+                  )}
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">
-                Enter your details to unlock your full personalised report.
+                Add your details below to view it.
               </p>
               <Button onClick={() => setShowUnlockModal(true)} data-testid="button-unlock-report">
-                <Unlock className="h-4 w-4 mr-2" />
-                Unlock Full Report
+                View my report
               </Button>
             </CardContent>
           </Card>
@@ -606,8 +613,6 @@ export function LeadMagnetQuiz() {
           <UnlockModal
             open={showUnlockModal}
             onOpenChange={setShowUnlockModal}
-            gatedResult={gatedResult}
-            type={normalizedType}
             form={unlockForm}
             onFormChange={setUnlockForm}
             onUnlock={handleUnlock}
@@ -731,8 +736,6 @@ export function LeadMagnetQuiz() {
         <UnlockModal
           open={showUnlockModal}
           onOpenChange={setShowUnlockModal}
-          gatedResult={gatedResult}
-          type={normalizedType}
           form={unlockForm}
           onFormChange={setUnlockForm}
           onUnlock={handleUnlock}
@@ -1003,8 +1006,6 @@ function QuestionField({ question, value, onChange }: QuestionFieldProps) {
 interface UnlockModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  gatedResult: GatedResult | null;
-  type: QuizType;
   form: { name: string; email: string; phone: string; consent: boolean };
   onFormChange: (form: any) => void;
   onUnlock: () => void;
@@ -1012,31 +1013,27 @@ interface UnlockModalProps {
   org: OrgConfig | null;
 }
 
-function UnlockModal({ open, onOpenChange, gatedResult, type, form, onFormChange, onUnlock, unlocking, org }: UnlockModalProps) {
+function UnlockModal({ open, onOpenChange, form, onFormChange, onUnlock, unlocking, org }: UnlockModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Get Your Full Report
-          </DialogTitle>
-          <DialogDescription>
-            Enter your details to receive your personalised report
-          </DialogDescription>
+        <DialogHeader className="sr-only">
+          <DialogTitle>Your details</DialogTitle>
+          <DialogDescription>Enter your name and email to view your report.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <GatedResultPreview result={gatedResult} type={type} />
-
           <div className="space-y-3">
             <div>
-              <Label htmlFor="unlock-name">Name</Label>
+              <Label htmlFor="unlock-name">
+                Name <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="unlock-name"
                 value={form.name}
                 onChange={(e) => onFormChange({ ...form, name: e.target.value })}
                 placeholder="Your name"
+                required
                 data-testid="input-unlock-name"
               />
             </div>
@@ -1084,89 +1081,16 @@ function UnlockModal({ open, onOpenChange, gatedResult, type, form, onFormChange
 
           <Button
             onClick={onUnlock}
-            disabled={!form.email || !form.consent || unlocking}
+            disabled={!form.name.trim() || !form.email || !form.consent || unlocking}
             className="w-full"
             data-testid="button-get-report"
           >
-            {unlocking ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <FileText className="h-4 w-4 mr-2" />
-            )}
-            Get My Full Report
+            {unlocking && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            View my report
           </Button>
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function GatedResultPreview({ result, type }: { result: GatedResult | null; type: QuizType }) {
-  if (!result) return null;
-
-  return (
-    <Card className="bg-muted/50">
-      <CardContent className="pt-4">
-        {type === "READY_TO_SELL" ? (
-          <div className="text-center space-y-3">
-            <Badge variant="secondary" className="text-lg px-4 py-1">
-              {result.band}
-            </Badge>
-            <p className="text-sm text-muted-foreground">
-              Score range: {result.score_range}
-            </p>
-            {result.headline_gaps && result.headline_gaps.length > 0 && (
-              <div className="text-left bg-background rounded-md p-3 space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Areas needing attention:</p>
-                {result.headline_gaps.map((gap, i) => (
-                  <p key={i} className="text-sm flex items-start gap-2">
-                    <AlertCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
-                    <span>{gap}</span>
-                  </p>
-                ))}
-              </div>
-            )}
-            <p className="text-sm font-medium text-primary">
-              <Lock className="h-3.5 w-3.5 inline mr-1" />
-              Personalised action plan ready to unlock
-            </p>
-          </div>
-        ) : (
-          <div className="text-center space-y-3">
-            <p className="text-2xl font-bold filter blur-sm select-none" aria-hidden="true">
-              {result.estimate_range}
-            </p>
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              <Badge variant={
-                result.confidence === "High" ? "default" :
-                result.confidence === "Medium" ? "secondary" : "outline"
-              }>
-                {result.confidence} Confidence
-              </Badge>
-            </div>
-            {result.resolved_town && result.resolved_county && (
-              <p className="text-sm text-muted-foreground">
-                {result.resolution_confidence === "low" ? (
-                  <>
-                    Estimate based on <span className="font-medium">{result.resolved_town}, Co. {result.resolved_county}</span> as a best guess.
-                  </>
-                ) : (
-                  <>
-                    Based on your Eircode, we found your property near{" "}
-                    <span className="font-medium">{result.resolved_town}, Co. {result.resolved_county}</span>.
-                  </>
-                )}
-              </p>
-            )}
-            <p className="text-sm font-medium text-primary">
-              <Lock className="h-3.5 w-3.5 inline mr-1" />
-              Full valuation with market insights ready to unlock
-            </p>
-          </div>
-        )}
-        <p className="text-sm text-center mt-4 text-muted-foreground">{result.message}</p>
-      </CardContent>
-    </Card>
   );
 }
 
