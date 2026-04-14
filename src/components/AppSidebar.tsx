@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import { FeedbackDialog } from "@/components/FeedbackDialog";
 import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
 import { AcademySection } from "@/components/sidebar/AcademySection";
+import { useNewSellersCount } from "@/hooks/useNewSellersCount";
 
 interface NavItem {
   path: string;
@@ -76,6 +77,11 @@ export function AppSidebar() {
   
   const [hidePublicSite, setHidePublicSite] = useState(false);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
+
+  // Count of new seller_profiles since the user's last acknowledged CRM
+  // visit. Rendered as a red pill next to the CRM nav item. Clears when
+  // the user lands on /admin/crm (AdminCRM.tsx bumps the ack forward).
+  const { count: newSellersCount } = useNewSellersCount();
 
   // Load hide_public_site setting from organization
   useEffect(() => {
@@ -325,13 +331,22 @@ export function AppSidebar() {
                     <span className="flex items-center gap-2">
                       {t(item.labelKey)}
                       {item.adminOnly && open && (
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className="text-[10px] px-1.5 py-0 h-4 bg-amber-500/10 text-amber-600 border-amber-300/50 font-medium"
                           data-testid={`badge-admin-${item.labelKey.split('.')[1]}`}
                         >
                           <Shield className="h-2.5 w-2.5 mr-0.5" />
                           {t('nav.admin')}
+                        </Badge>
+                      )}
+                      {item.path === '/admin/crm' && newSellersCount > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="text-[10px] px-1.5 py-0 h-4 font-semibold"
+                          data-testid="badge-crm-new-count"
+                        >
+                          {newSellersCount > 99 ? '99+' : newSellersCount}
                         </Badge>
                       )}
                     </span>

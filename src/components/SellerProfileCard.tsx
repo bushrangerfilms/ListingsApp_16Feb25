@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { SequenceControls } from "@/components/SequenceControls";
 import { EmailAnalytics } from "@/components/EmailAnalytics";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useLocale } from "@/hooks/useLocale";
 
 interface SellerProfile {
@@ -27,6 +27,10 @@ interface SellerProfile {
 interface SellerProfileCardProps {
   seller: SellerProfile;
   onUpdate: () => void;
+  /** When true, renders a small red "NEW" badge next to the seller's name.
+   * Set by AdminCRM for contacts created after the user's pre-mount
+   * CRM-visit acknowledgement timestamp. */
+  isNew?: boolean;
 }
 
 const SELLER_STAGES = [
@@ -39,7 +43,7 @@ const SELLER_STAGES = [
   { value: 'lost', label: 'Lost' },
 ];
 
-export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) {
+export function SellerProfileCard({ seller, onUpdate, isNew = false }: SellerProfileCardProps) {
   const { locale } = useLocale();
   const [showTimeline, setShowTimeline] = useState(false);
   const [automationStatus, setAutomationStatus] = useState<{ active: boolean; sequence_name: string } | null>(null);
@@ -71,7 +75,11 @@ export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) 
   const fetchLeadSubmission = async () => {
     const { data } = await supabase
       .from("lead_submissions")
-      .select("id, created_at, score, band, confidence, estimate_low, estimate_high, utm_source, utm_campaign, post_id, lead_magnets(type)")
+      .select(
+        "id, created_at, score, band, confidence, estimate_low, estimate_high, " +
+        "utm_source, utm_campaign, post_id, answers_json, resolved_town, " +
+        "resolved_county, resolution_confidence, lead_magnets(type)"
+      )
       .eq("seller_profile_id", seller.id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -128,6 +136,15 @@ export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) 
           <div className="space-y-2 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-xl font-semibold">{seller.name}</h3>
+              {isNew && (
+                <Badge
+                  variant="destructive"
+                  className="text-[10px] px-1.5 py-0 h-4 font-bold uppercase tracking-wide"
+                  data-testid="badge-new-seller"
+                >
+                  New
+                </Badge>
+              )}
               {getSourceBadge(seller.source)}
               {automationStatus?.active && (
                 <Badge variant="secondary" className="gap-1">
@@ -248,6 +265,15 @@ export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) 
               <div className="text-muted-foreground">Submitted</div>
               <div className="font-medium">{formatDate(leadSubmission.created_at)}</div>
             </div>
+
+            {leadSubmission.answers_json && (
+              <QuizResponsesSection
+                answers={leadSubmission.answers_json as Record<string, unknown>}
+                resolvedTown={leadSubmission.resolved_town}
+                resolvedCounty={leadSubmission.resolved_county}
+                resolutionConfidence={leadSubmission.resolution_confidence}
+              />
+            )}
           </div>
         )}
 
@@ -293,5 +319,94 @@ export function SellerProfileCard({ seller, onUpdate }: SellerProfileCardProps) 
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// Key → display-label mapping mirrored from worthEstimateSteps in
+// LeadMagnetQuiz.tsx. TODO (Issue #6): lift to shared locale config
+// so non-Irish markets can swap labels.
+const QUIZ_FIELD_LABELS: Record<string, string> = {
+  eircode: "Eircode",
+  town: "Town / area (user-typed)",
+  county: "County (user-typed)",
+  property_type: "Property type",
+  bedrooms: "Bedrooms",
+  bathrooms: "Bathrooms",
+  floor_area_sqm: "Floor area (sqm)",
+  land_size_acres: "Land size (acres)",
+  property_condition: "Condition",
+  property_age: "Approximate age",
+  recent_renovations: "Recent renovations",
+  occupancy: "Current occupancy",
+  ber_rating: "BER rating",
+  parking: "Parking",
+  outdoor_space: "Outdoor space",
+};
+
+const QUIZ_FIELD_ORDER = [
+  "eircode",
+  "town",
+  "county",
+  "property_type",
+  "bedrooms",
+  "bathrooms",
+  "floor_area_sqm",
+  "land_size_acres",
+  "property_age",
+  "property_condition",
+  "ber_rating",
+  "parking",
+  "outdoor_space",
+  "recent_renovations",
+  "occupancy",
+];
+
+interface QuizResponsesSectionProps {
+  answers: Record<string, unknown>;
+  resolvedTown?: string | null;
+  resolvedCounty?: string | null;
+  resolutionConfidence?: string | null;
+}
+
+function QuizResponsesSection({
+  answers,
+  resolvedTown,
+  resolvedCounty,
+  resolutionConfidence,
+}: QuizResponsesSectionProps) {
+  const renderedKeys = QUIZ_FIELD_ORDER.filter((k) => {
+    const v = answers[k];
+    return v !== undefined && v !== null && v !== "";
+  });
+
+  if (renderedKeys.length === 0 && !resolvedTown) return null;
+
+  return (
+    <div className="space-y-2 pt-4 mt-3 border-t">
+      <h4 className="text-sm font-semibold">Quiz Responses</h4>
+      {resolvedTown && resolvedCounty && (
+        <div className="p-3 rounded-md bg-muted/40 space-y-1">
+          <p className="text-xs text-muted-foreground">AI-resolved location</p>
+          <p className="text-sm font-medium">
+            {resolvedTown}, Co. {resolvedCounty}
+            {resolutionConfidence && (
+              <Badge variant="outline" className="ml-2 text-[10px]">
+                {resolutionConfidence} confidence
+              </Badge>
+            )}
+          </p>
+        </div>
+      )}
+      {renderedKeys.length > 0 && (
+        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
+          {renderedKeys.map((key) => (
+            <Fragment key={key}>
+              <dt className="text-muted-foreground">{QUIZ_FIELD_LABELS[key] ?? key}</dt>
+              <dd className="font-medium">{String(answers[key])}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      )}
+    </div>
   );
 }

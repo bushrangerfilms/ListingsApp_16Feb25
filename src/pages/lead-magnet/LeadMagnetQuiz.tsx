@@ -63,7 +63,13 @@ interface FullResult {
   drivers?: Array<{ factor: string; impact: string; direction: string }>;
   market_trend?: string;
   market_insights?: string;
-  comparable_sales?: Array<{ address: string; price: number; bedrooms: number }>;
+  comparable_sales?: Array<{
+    description: string;
+    sale_price: number;
+    approx_sqm: number;
+    price_per_sqm: number;
+    distance_km: number;
+  }>;
   research_source?: string;
 }
 
@@ -1260,16 +1266,33 @@ function FullResultsView({ type, result, org, onDownloadPDF, onContactAgent }: F
           <CardContent>
             <div className="space-y-2">
               {result.comparable_sales.map((sale, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-md bg-muted/50">
-                  <div>
-                    <p className="font-medium text-sm">{sale.address}</p>
-                    <p className="text-xs text-muted-foreground">{sale.bedrooms} bed</p>
+                <div key={i} className="p-3 rounded-md bg-muted/50 space-y-1.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-medium text-sm leading-snug">{sale.description}</p>
+                    <Badge variant="outline" className="font-semibold shrink-0">
+                      {new Intl.NumberFormat(locale, {
+                        style: "currency",
+                        currency: currency,
+                        maximumFractionDigits: 0,
+                      }).format(sale.sale_price)}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="font-semibold">
-                    {typeof sale.price === "number"
-                      ? new Intl.NumberFormat(locale, { style: "currency", currency: currency, maximumFractionDigits: 0 }).format(sale.price)
-                      : sale.price}
-                  </Badge>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                    {sale.approx_sqm ? <span>~{Math.round(sale.approx_sqm)} sqm</span> : null}
+                    {sale.price_per_sqm ? (
+                      <span>
+                        {new Intl.NumberFormat(locale, {
+                          style: "currency",
+                          currency: currency,
+                          maximumFractionDigits: 0,
+                        }).format(sale.price_per_sqm)}
+                        /sqm
+                      </span>
+                    ) : null}
+                    {typeof sale.distance_km === "number" && sale.distance_km > 0 ? (
+                      <span>{sale.distance_km.toFixed(1)} km away</span>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
