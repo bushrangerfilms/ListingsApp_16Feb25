@@ -1017,13 +1017,26 @@ async function calculateWorthEstimate(supabase: any, answers: any): Promise<any>
     estimate_high,
     confidence,
     drivers_json: drivers,
-    market_trend: research.trend || "Stable",
+    market_trend: normalizeMarketTrend(research.trend),
     market_insights: research.market_insights || null,
     comparable_sales: research.comparable_sales || null,
     research_source: researchSource,
     research_snapshot_id: research.id || null,
     valuation_model_version: "v1",
   };
+}
+
+// The `lead_submissions.market_trend` CHECK constraint permits exactly
+// 'Rising' | 'Stable' | 'Declining'. Upstream data (AI responses,
+// cached research, hard-coded defaults) may arrive in any case or as a
+// synonym — normalise to a valid value here so an INSERT can never fail
+// on this column.
+function normalizeMarketTrend(raw: unknown): "Rising" | "Stable" | "Declining" {
+  if (typeof raw !== "string") return "Stable";
+  const v = raw.trim().toLowerCase();
+  if (v === "rising" || v === "up" || v === "growing") return "Rising";
+  if (v === "declining" || v === "falling" || v === "down") return "Declining";
+  return "Stable";
 }
 
 function normalizePropertyType(type: string | undefined): string {
