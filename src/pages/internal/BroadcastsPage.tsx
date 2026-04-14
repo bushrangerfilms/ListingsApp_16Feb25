@@ -327,6 +327,130 @@ export default function BroadcastsPage() {
     return `${Math.round((campaign.total_clicked / campaign.total_sent) * 100)}%`;
   }
 
+  // Recipient review dialog — rendered in both compose and list views so it
+  // mounts regardless of which view is active when the user opens it.
+  const reviewDialog = (
+    <Dialog
+      open={reviewDialogOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          setReviewDialogOpen(false);
+          setReviewCampaignId(null);
+        }
+      }}
+    >
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>
+            {reviewCampaignId ? "Review Recipients" : "Recipient List"}
+          </DialogTitle>
+          <DialogDescription>
+            {reviewCampaignId
+              ? "Uncheck anyone you want to skip. Only checked recipients will receive this broadcast."
+              : "Uncheck test accounts or anyone you want to exclude. Your choices are saved for when you send."}
+          </DialogDescription>
+        </DialogHeader>
+
+        {previewLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : previewData?.recipients && previewData.recipients.length > 0 ? (
+          <>
+            <div className="flex items-center justify-between pb-2 border-b">
+              <p className="text-sm text-muted-foreground">
+                {previewData.recipients.length - excludedEmails.size} of {previewData.recipients.length} selected
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setExcludedEmails(new Set())}
+                >
+                  Select all
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setExcludedEmails(new Set(previewData.recipients.map((r) => r.email)))
+                  }
+                >
+                  Deselect all
+                </Button>
+              </div>
+            </div>
+            <ScrollArea className="flex-1 max-h-[400px]">
+              <div className="space-y-1 pr-4">
+                {previewData.recipients.map((r) => {
+                  const isExcluded = excludedEmails.has(r.email);
+                  return (
+                    <label
+                      key={r.user_id}
+                      className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={!isExcluded}
+                        onCheckedChange={() => toggleExclude(r.email)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {r.name || r.email}
+                        </p>
+                        {r.name && (
+                          <p className="text-xs text-muted-foreground truncate">{r.email}</p>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>No recipients match these filters</p>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setReviewDialogOpen(false);
+              setReviewCampaignId(null);
+            }}
+          >
+            {reviewCampaignId ? "Cancel" : "Done"}
+          </Button>
+          {reviewCampaignId && (
+            <Button
+              onClick={() => {
+                sendMutation.mutate({
+                  id: reviewCampaignId,
+                  excluded: Array.from(excludedEmails),
+                });
+              }}
+              disabled={
+                sendMutation.isPending ||
+                !previewData?.recipients?.length ||
+                previewData.recipients.length - excludedEmails.size === 0
+              }
+            >
+              {sendMutation.isPending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Send to {previewData?.recipients ? previewData.recipients.length - excludedEmails.size : 0}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   // Aggregate stats
   const totalCampaigns = campaigns?.length || 0;
   const totalSent = campaigns?.reduce((sum, c) => sum + c.total_sent, 0) || 0;
@@ -685,6 +809,8 @@ export default function BroadcastsPage() {
             </Card>
           </div>
         </div>
+
+        {reviewDialog}
       </div>
     );
   }
@@ -840,127 +966,7 @@ export default function BroadcastsPage() {
         </CardContent>
       </Card>
 
-      {/* Recipient Review Dialog */}
-      <Dialog
-        open={reviewDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setReviewDialogOpen(false);
-            setReviewCampaignId(null);
-            setExcludedEmails(new Set());
-          }
-        }}
-      >
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>
-              {reviewCampaignId ? "Review Recipients" : "Recipient List"}
-            </DialogTitle>
-            <DialogDescription>
-              {reviewCampaignId
-                ? "Uncheck anyone you want to skip. Only checked recipients will receive this broadcast."
-                : "Uncheck test accounts or anyone you want to exclude. Your choices are saved for when you send."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {previewLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : previewData?.recipients && previewData.recipients.length > 0 ? (
-            <>
-              <div className="flex items-center justify-between pb-2 border-b">
-                <p className="text-sm text-muted-foreground">
-                  {previewData.recipients.length - excludedEmails.size} of {previewData.recipients.length} selected
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setExcludedEmails(new Set())}
-                  >
-                    Select all
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setExcludedEmails(new Set(previewData.recipients.map((r) => r.email)))
-                    }
-                  >
-                    Deselect all
-                  </Button>
-                </div>
-              </div>
-              <ScrollArea className="flex-1 max-h-[400px]">
-                <div className="space-y-1 pr-4">
-                  {previewData.recipients.map((r) => {
-                    const isExcluded = excludedEmails.has(r.email);
-                    return (
-                      <label
-                        key={r.user_id}
-                        className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={!isExcluded}
-                          onCheckedChange={() => toggleExclude(r.email)}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {r.name || r.email}
-                          </p>
-                          {r.name && (
-                            <p className="text-xs text-muted-foreground truncate">{r.email}</p>
-                          )}
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            </>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No recipients match these filters</p>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setReviewDialogOpen(false);
-                setReviewCampaignId(null);
-              }}
-            >
-              {reviewCampaignId ? "Cancel" : "Done"}
-            </Button>
-            {reviewCampaignId && (
-              <Button
-                onClick={() => {
-                  sendMutation.mutate({
-                    id: reviewCampaignId,
-                    excluded: Array.from(excludedEmails),
-                  });
-                }}
-                disabled={
-                  sendMutation.isPending ||
-                  !previewData?.recipients?.length ||
-                  previewData.recipients.length - excludedEmails.size === 0
-                }
-              >
-                {sendMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4 mr-2" />
-                )}
-                Send to {previewData?.recipients ? previewData.recipients.length - excludedEmails.size : 0}
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {reviewDialog}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!confirmDeleteId} onOpenChange={() => setConfirmDeleteId(null)}>
