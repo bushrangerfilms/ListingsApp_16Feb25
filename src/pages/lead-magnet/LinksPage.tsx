@@ -72,7 +72,7 @@ export default function LinksPage() {
         // Fetch org
         const { data: orgData, error: orgError } = await supabase
           .from("organizations")
-          .select("id, slug, business_name, logo_url, domain")
+          .select("id, slug, business_name, logo_url, domain, custom_domain_status")
           .eq("slug", resolvedOrgSlug)
           .single();
 
@@ -122,7 +122,12 @@ export default function LinksPage() {
   }, [resolvedOrgSlug]);
 
   const getQuizUrl = (typeKey: string) => {
-    if (org?.domain) {
+    // Only route through the custom domain form when the org's custom
+    // domain is actually verified. Protects against stale `domain` values
+    // that pre-date the verification flow.
+    const hasVerifiedDomain =
+      !!org?.domain && (org as any)?.custom_domain_status === "verified";
+    if (hasVerifiedDomain) {
       return `/q/${typeKey}?s=linkinbio`;
     }
     return `/q/${org?.slug}/${typeKey}?s=linkinbio`;
