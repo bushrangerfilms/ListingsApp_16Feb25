@@ -242,22 +242,16 @@ export function normalizeEircode(input: string): string {
 
 ---
 
-### 🔴 3. Unlock modal reframing — "consent signature", not gated preview
+### 🟢 3. Unlock modal reframing — **SHIPPED**
 
-**Problem.** The current unlock modal shows a blurred estimate range with "🔒 Full valuation with market insights ready to unlock", which reads as aggressive upsell. User prefers a softer framing: the name/email aren't a gate, they're a consent signature so the agent can contact you with the report.
-
-**Fix sketch.**
-- Drop the blurred preview image entirely.
-- Reframe headline: something like *"Send me my report"* or *"Confirm your details to get your report"* — not "Unlock".
-- Make the form feel like signing a consent form for the report, not a paywall.
-- **Require Name** (currently optional). Email is already required.
-- Consent checkbox copy stays ("I agree to receive my report and property updates from {org}. You can unsubscribe at any time.").
-
-**Files likely touched.** `src/pages/lead-magnet/LeadMagnetQuiz.tsx` unlock modal block.
-
-**Open questions.**
-- Exact copy for the modal headline + subtitle.
-- Does the name field go before or after email? (I'd keep name first per current layout, but bold the "required" indicator.)
+The gated results page and unlock modal were reframed as a consent signature, not a paywall:
+- Dropped the blurred preview card (`GatedResultPreview`) entirely — no more blurred estimate, no more `🔒 … ready to unlock` copy.
+- Replaced the gated results page with a plain "Your full report is ready. Add your details below to view it." card + a `View my report` button. For `WORTH_ESTIMATE`, the Eircode trust moment (`Based on your Eircode, we found your property near …`) is preserved at the top of the card.
+- Modal has no visible headline — uses an `sr-only` `DialogTitle` / `DialogDescription` to satisfy Radix a11y. Submit button is `View my report`, no lock icon.
+- Name is now required (asterisk + `required` attr + validation in `handleUnlock` + disabled state on the submit button).
+- Field order unchanged: Name → Email → Phone. Consent checkbox copy unchanged.
+- `GatedResultPreview` component removed entirely along with `Lock` / `Unlock` imports.
+- PDF is still generated in-app on the next screen — no "we'll email your report" framing.
 
 ---
 
@@ -329,7 +323,7 @@ export function normalizeEircode(input: string): string {
 **Round 1 — UX correctness (blocking real usage):**
 1. **Issue 1 (Eircode-drives-location)** — fixing this makes downstream estimates actually accurate
 2. **Issue 2 (Comparable properties rendering)** — visible broken UI, trust-killer, tiny fix
-3. **Issue 3 (Unlock modal reframing)** — conversion lift + better legal framing (name required, consent signature UX)
+3. 🟢 **Issue 3 (Unlock modal reframing)** — SHIPPED
 
 **Round 2 — Agent experience:**
 4. **Issue 4 (CRM details + real-time notification)** — agent can actually act on leads
