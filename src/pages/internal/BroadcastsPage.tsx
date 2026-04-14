@@ -159,21 +159,32 @@ export default function BroadcastsPage() {
     },
   });
 
-  // Load recipient preview when review dialog opens
+  // Load recipient preview when review dialog opens.
+  // In compose mode, use the in-flight audienceFilters; when reviewing an existing
+  // campaign, use that campaign's saved filters.
   const { data: previewData, isLoading: previewLoading } = useQuery({
-    queryKey: ["admin", "broadcasts", "audience-preview", reviewCampaignId],
+    queryKey: [
+      "admin",
+      "broadcasts",
+      "audience-preview",
+      reviewCampaignId || "compose",
+      audienceFilters,
+    ],
     queryFn: async () => {
-      // Get filters from the campaign being reviewed
-      const campaign = campaigns?.find((c) => c.id === reviewCampaignId);
-      if (!campaign) return { recipients: [] };
-      return adminApi.broadcasts.audiencePreview(campaign.audience_filters || {});
+      if (reviewCampaignId) {
+        const campaign = campaigns?.find((c) => c.id === reviewCampaignId);
+        if (campaign) {
+          return adminApi.broadcasts.audiencePreview(campaign.audience_filters || {});
+        }
+      }
+      return adminApi.broadcasts.audiencePreview(audienceFilters);
     },
-    enabled: reviewDialogOpen && !!reviewCampaignId,
+    enabled: reviewDialogOpen,
   });
 
-  function openReviewDialog(campaignId: string) {
+  function openReviewDialog(campaignId: string | null, keepExclusions = false) {
     setReviewCampaignId(campaignId);
-    setExcludedEmails(new Set());
+    if (!keepExclusions) setExcludedEmails(new Set());
     setReviewDialogOpen(true);
   }
 
@@ -216,6 +227,7 @@ export default function BroadcastsPage() {
     setFilterCountries([]);
     setFilterStatuses([]);
     setFilterEngagement([]);
+    setExcludedEmails(new Set());
     setEditingId(null);
     setPreviewTab("edit");
   }
@@ -272,7 +284,7 @@ export default function BroadcastsPage() {
       };
       updateMutation.mutate({ id: editingId, data }, {
         onSuccess: () => {
-          openReviewDialog(editingId);
+          openReviewDialog(editingId, true);
           setView("list");
         },
       });
@@ -286,7 +298,7 @@ export default function BroadcastsPage() {
       };
       createMutation.mutate(data, {
         onSuccess: (created) => {
-          openReviewDialog(created.id);
+          openReviewDialog(created.id, true);
           setView("list");
         },
       });
@@ -522,10 +534,31 @@ export default function BroadcastsPage() {
                 <CardTitle className="flex items-center justify-between">
                   Audience
                   <Badge variant="outline" className="text-lg px-3">
-                    {audienceData?.count ?? "..."} recipients
+                    {audienceData?.count !== undefined
+                      ? `${Math.max(0, audienceData.count - excludedEmails.size)} recipients`
+                      : "... recipients"}
                   </Badge>
                 </CardTitle>
-                <CardDescription>Leave all empty to send to everyone</CardDescription>
+                <CardDescription className="flex items-center justify-between gap-2">
+                  <span>Leave all empty to send to everyone</span>
+                  {(audienceData?.count ?? 0) > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto py-1 px-2 text-xs"
+                      onClick={() => openReviewDialog(null, true)}
+                    >
+                      <Users className="h-3 w-3 mr-1" />
+                      View & exclude
+                      {excludedEmails.size > 0 && (
+                        <span className="ml-1 text-muted-foreground">
+                          ({excludedEmails.size} excluded)
+                        </span>
+                      )}
+                    </Button>
+                  )}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -822,9 +855,13 @@ export default function BroadcastsPage() {
       >
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Review Recipients</DialogTitle>
+            <DialogTitle>
+              {reviewCampaignId ? "Review Recipients" : "Recipient List"}
+            </DialogTitle>
             <DialogDescription>
-              Uncheck anyone you want to skip. Only checked recipients will receive this broadcast.
+              {reviewCampaignId
+                ? "Uncheck anyone you want to skip. Only checked recipients will receive this broadcast."
+                : "Uncheck test accounts or anyone you want to exclude. Your choices are saved for when you send."}
             </DialogDescription>
           </DialogHeader>
 
@@ -897,32 +934,32 @@ export default function BroadcastsPage() {
               onClick={() => {
                 setReviewDialogOpen(false);
                 setReviewCampaignId(null);
-                setExcludedEmails(new Set());
               }}
             >
-              Cancel
+              {reviewCampaignId ? "Cancel" : "Done"}
             </Button>
-            <Button
-              onClick={() => {
-                if (!reviewCampaignId) return;
-                sendMutation.mutate({
-                  id: reviewCampaignId,
-                  excluded: Array.from(excludedEmails),
-                });
-              }}
-              disabled={
-                sendMutation.isPending ||
-                !previewData?.recipients?.length ||
-                previewData.recipients.length - excludedEmails.size === 0
-              }
-            >
-              {sendMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4 mr-2" />
-              )}
-              Send to {previewData?.recipients ? previewData.recipients.length - excludedEmails.size : 0}
-            </Button>
+            {reviewCampaignId && (
+              <Button
+                onClick={() => {
+                  sendMutation.mutate({
+                    id: reviewCampaignId,
+                    excluded: Array.from(excludedEmails),
+                  });
+                }}
+                disabled={
+                  sendMutation.isPending ||
+                  !previewData?.recipients?.length ||
+                  previewData.recipients.length - excludedEmails.size === 0
+                }
+              >
+                {sendMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Send to {previewData?.recipients ? previewData.recipients.length - excludedEmails.size : 0}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
