@@ -92,9 +92,9 @@ export function LeadMagnetQuiz() {
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [gatedResult, setGatedResult] = useState<GatedResult | null>(null);
   const [fullResult, setFullResult] = useState<FullResult | null>(null);
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [unlocking, setUnlocking] = useState(false);
-  const [unlockForm, setUnlockForm] = useState({ name: "", email: "", phone: "", consent: false });
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [submittingDetails, setSubmittingDetails] = useState(false);
+  const [detailsForm, setDetailsForm] = useState({ name: "", email: "", phone: "", consent: false });
   const [showContactModal, setShowContactModal] = useState(false);
   const [contactAdditionalInfo, setContactAdditionalInfo] = useState("");
   const [sendingContact, setSendingContact] = useState(false);
@@ -265,7 +265,7 @@ export function LeadMagnetQuiz() {
 
       setSubmissionId(data.submission_id);
       setGatedResult(data.result);
-      setShowUnlockModal(true);
+      setShowDetailsModal(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit quiz");
     } finally {
@@ -273,32 +273,32 @@ export function LeadMagnetQuiz() {
     }
   };
 
-  const handleUnlock = async () => {
-    if (!unlockForm.name.trim() || !unlockForm.email || !unlockForm.consent || unlocking) return;
+  const handleSubmitDetails = async () => {
+    if (!detailsForm.name.trim() || !detailsForm.email || !detailsForm.consent || submittingDetails) return;
 
-    setUnlocking(true);
+    setSubmittingDetails(true);
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/lead-magnet-api/unlock`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/lead-magnet-api/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           submission_id: submissionId,
-          ...unlockForm,
+          ...detailsForm,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to unlock results");
+        throw new Error(data.error || "Failed to submit details");
       }
 
       setFullResult(data.result);
-      setShowUnlockModal(false);
+      setShowDetailsModal(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to unlock results");
+      setError(err instanceof Error ? err.message : "Failed to submit details");
     } finally {
-      setUnlocking(false);
+      setSubmittingDetails(false);
     }
   };
 
@@ -307,7 +307,7 @@ export function LeadMagnetQuiz() {
 
     setSendingContact(true);
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/lead-magnet-api/contact-agent`, {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/lead-magnet-api/contact-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -582,7 +582,7 @@ export function LeadMagnetQuiz() {
     );
   }
 
-  // After submission: show gated results with unlock button (instead of quiz form)
+  // After submission: show gated results card + details modal
   if (gatedResult && submissionId && !fullResult) {
     return (
       <div className="min-h-screen bg-background py-8 px-4">
@@ -604,19 +604,19 @@ export function LeadMagnetQuiz() {
               <p className="text-sm text-muted-foreground">
                 Add your details below to view it.
               </p>
-              <Button onClick={() => setShowUnlockModal(true)} data-testid="button-unlock-report">
+              <Button onClick={() => setShowDetailsModal(true)} data-testid="button-view-report">
                 View my report
               </Button>
             </CardContent>
           </Card>
 
-          <UnlockModal
-            open={showUnlockModal}
-            onOpenChange={setShowUnlockModal}
-            form={unlockForm}
-            onFormChange={setUnlockForm}
-            onUnlock={handleUnlock}
-            unlocking={unlocking}
+          <DetailsModal
+            open={showDetailsModal}
+            onOpenChange={setShowDetailsModal}
+            form={detailsForm}
+            onFormChange={setDetailsForm}
+            onSubmit={handleSubmitDetails}
+            submitting={submittingDetails}
             org={org}
           />
         </div>
@@ -733,13 +733,13 @@ export function LeadMagnetQuiz() {
           </CardContent>
         </Card>
 
-        <UnlockModal
-          open={showUnlockModal}
-          onOpenChange={setShowUnlockModal}
-          form={unlockForm}
-          onFormChange={setUnlockForm}
-          onUnlock={handleUnlock}
-          unlocking={unlocking}
+        <DetailsModal
+          open={showDetailsModal}
+          onOpenChange={setShowDetailsModal}
+          form={detailsForm}
+          onFormChange={setDetailsForm}
+          onSubmit={handleSubmitDetails}
+          submitting={submittingDetails}
           org={org}
         />
       </div>
@@ -1003,17 +1003,17 @@ function QuestionField({ question, value, onChange }: QuestionFieldProps) {
   );
 }
 
-interface UnlockModalProps {
+interface DetailsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   form: { name: string; email: string; phone: string; consent: boolean };
   onFormChange: (form: any) => void;
-  onUnlock: () => void;
-  unlocking: boolean;
+  onSubmit: () => void;
+  submitting: boolean;
   org: OrgConfig | null;
 }
 
-function UnlockModal({ open, onOpenChange, form, onFormChange, onUnlock, unlocking, org }: UnlockModalProps) {
+function DetailsModal({ open, onOpenChange, form, onFormChange, onSubmit, submitting, org }: DetailsModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -1025,43 +1025,43 @@ function UnlockModal({ open, onOpenChange, form, onFormChange, onUnlock, unlocki
         <div className="space-y-4">
           <div className="space-y-3">
             <div>
-              <Label htmlFor="unlock-name">
+              <Label htmlFor="details-name">
                 Name <span className="text-destructive">*</span>
               </Label>
               <Input
-                id="unlock-name"
+                id="details-name"
                 value={form.name}
                 onChange={(e) => onFormChange({ ...form, name: e.target.value })}
                 placeholder="Your name"
                 required
-                data-testid="input-unlock-name"
+                data-testid="input-details-name"
               />
             </div>
 
             <div>
-              <Label htmlFor="unlock-email">
+              <Label htmlFor="details-email">
                 Email <span className="text-destructive">*</span>
               </Label>
               <Input
-                id="unlock-email"
+                id="details-email"
                 type="email"
                 value={form.email}
                 onChange={(e) => onFormChange({ ...form, email: e.target.value })}
                 placeholder="your@email.com"
                 required
-                data-testid="input-unlock-email"
+                data-testid="input-details-email"
               />
             </div>
 
             <div>
-              <Label htmlFor="unlock-phone">Phone (optional)</Label>
+              <Label htmlFor="details-phone">Phone (optional)</Label>
               <Input
-                id="unlock-phone"
+                id="details-phone"
                 type="tel"
                 value={form.phone}
                 onChange={(e) => onFormChange({ ...form, phone: e.target.value })}
                 placeholder="Your phone number"
-                data-testid="input-unlock-phone"
+                data-testid="input-details-phone"
               />
             </div>
 
@@ -1080,12 +1080,12 @@ function UnlockModal({ open, onOpenChange, form, onFormChange, onUnlock, unlocki
           </div>
 
           <Button
-            onClick={onUnlock}
-            disabled={!form.name.trim() || !form.email || !form.consent || unlocking}
+            onClick={onSubmit}
+            disabled={!form.name.trim() || !form.email || !form.consent || submitting}
             className="w-full"
-            data-testid="button-get-report"
+            data-testid="button-view-report"
           >
-            {unlocking && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             View my report
           </Button>
         </div>

@@ -155,16 +155,16 @@ serve(async (req: Request) => {
       return await handleSubmit(supabase, body);
     }
 
-    // Route: POST /unlock
-    if (req.method === "POST" && pathParts[1] === "unlock") {
+    // Route: POST /complete (formerly /unlock — lead submits name/email/consent)
+    if (req.method === "POST" && (pathParts[1] === "complete" || pathParts[1] === "unlock")) {
       const body = await req.json();
-      return await handleUnlock(supabase, body);
+      return await handleFormCompleted(supabase, body);
     }
 
-    // Route: POST /contact-agent
-    if (req.method === "POST" && pathParts[1] === "contact-agent") {
+    // Route: POST /contact-request (formerly /contact-agent)
+    if (req.method === "POST" && (pathParts[1] === "contact-request" || pathParts[1] === "contact-agent")) {
       const body = await req.json();
-      return await handleContactAgent(supabase, body);
+      return await handleContactRequest(supabase, body);
     }
 
     // Route: GET /market-insights/:orgSlug/:area — AI-generated market insights
@@ -382,8 +382,15 @@ async function handleSubmit(supabase: any, body: any): Promise<Response> {
   );
 }
 
-// Unlock full results with contact info
-async function handleUnlock(supabase: any, body: any): Promise<Response> {
+// Window in which a contact-request gets bundled into the form-completed
+// notification email instead of firing its own separate email.
+const BUNDLE_WINDOW_MS = 60_000;
+
+// Form-completed handler — the lead submitted their name/email/consent.
+// Updates the submission, upserts the CRM seller profile, and schedules
+// the notification email to be sent 60 seconds later via a background
+// task so we can bundle a same-session contact-request into one email.
+async function handleFormCompleted(supabase: any, body: any): Promise<Response> {
   const { submission_id, name, email, phone, consent } = body;
 
   if (!submission_id || !email || !consent) {
@@ -393,7 +400,6 @@ async function handleUnlock(supabase: any, body: any): Promise<Response> {
     );
   }
 
-  // Get submission
   const { data: submission, error: fetchError } = await supabase
     .from("lead_submissions")
     .select("*, lead_magnets!inner(type), organizations!inner(id, slug, business_name, contact_email)")
@@ -407,7 +413,6 @@ async function handleUnlock(supabase: any, body: any): Promise<Response> {
     );
   }
 
-  // Update submission with contact info
   const { error: updateError } = await supabase
     .from("lead_submissions")
     .update({ name, email, phone, consent })
@@ -421,7 +426,6 @@ async function handleUnlock(supabase: any, body: any): Promise<Response> {
     );
   }
 
-  // Create/update CRM seller profile
   const sellerProfileId = await upsertSellerProfile(supabase, {
     organization_id: submission.organization_id,
     name,
@@ -431,7 +435,6 @@ async function handleUnlock(supabase: any, body: any): Promise<Response> {
     submission,
   });
 
-  // Link seller profile to submission
   if (sellerProfileId) {
     await supabase
       .from("lead_submissions")
@@ -439,49 +442,25 @@ async function handleUnlock(supabase: any, body: any): Promise<Response> {
       .eq("id", submission_id);
   }
 
-  // Get full result
   const type = submission.lead_magnets?.type;
   const fullResult = getFullResult(type, submission);
-
-  // Send email notification to agent/org
-  const orgEmail = submission.organizations?.contact_email;
   const orgName = submission.organizations?.business_name || "Your Organization";
-  
-  if (orgEmail) {
-    const quizType = type === "READY_TO_SELL" ? "Ready to Sell" : "Worth Estimate";
-    const emailSubject = `New Lead: ${name || email} - ${quizType} Quiz`;
-    
-    const emailHtml = buildLeadNotificationEmail({
-      leadName: name || "Not provided",
-      leadEmail: email,
-      leadPhone: phone || "Not provided",
-      quizType,
-      orgName,
-      answers: submission.answers_json,
-      result: fullResult,
-      submittedAt: new Date().toISOString(),
-    });
-    
-    const emailSent = await sendEmail(orgEmail, emailSubject, emailHtml);
+  const orgEmail = submission.organizations?.contact_email;
 
-    // Update submission with email status
-    if (emailSent) {
-      await supabase
-        .from("lead_submissions")
-        .update({ email_sent: true, email_sent_at: new Date().toISOString() })
-        .eq("id", submission_id);
-    } else {
-      // Log email failure for monitoring visibility
-      console.error(`   ❌ Lead notification email failed for submission ${submission_id} to ${orgEmail}`);
-      await supabase.from("automation_logs").insert({
-        organization_id: submission.organization_id,
-        event_type: "email_failure",
-        status: "error",
-        message: `Lead magnet email failed for submission ${submission_id}`,
-        metadata: { submission_id, recipient: orgEmail, quiz_type: type },
-      }).then(({ error }) => {
-        if (error) console.error("Failed to log email failure:", error);
-      });
+  // Defer the email by BUNDLE_WINDOW_MS so a fast contact-request can
+  // bundle into the same notification. EdgeRuntime.waitUntil keeps the
+  // worker alive past response return.
+  if (orgEmail) {
+    const deferredTask = (async () => {
+      await new Promise((r) => setTimeout(r, BUNDLE_WINDOW_MS));
+      await sendFormCompletedEmail(supabase, submission_id);
+    })();
+    try {
+      // @ts-ignore — EdgeRuntime is injected by Supabase's Deno runtime
+      EdgeRuntime.waitUntil(deferredTask);
+    } catch {
+      // Fallback: fire-and-forget if EdgeRuntime isn't present (local dev)
+      void deferredTask;
     }
   }
 
@@ -490,13 +469,57 @@ async function handleUnlock(supabase: any, body: any): Promise<Response> {
       success: true,
       result: fullResult,
       is_gated: false,
-      org: {
-        name: orgName,
-        email: orgEmail,
-      },
+      org: { name: orgName, email: orgEmail },
     }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
+}
+
+// Re-reads the submission at send time so a contact-request that
+// arrived in the bundle window gets folded into the same email.
+async function sendFormCompletedEmail(supabase: any, submission_id: string): Promise<void> {
+  const { data: submission, error } = await supabase
+    .from("lead_submissions")
+    .select("*, lead_magnets!inner(type), organizations!inner(business_name, contact_email)")
+    .eq("id", submission_id)
+    .single();
+
+  if (error || !submission || submission.email_sent) return;
+
+  const orgEmail = submission.organizations?.contact_email;
+  const orgName = submission.organizations?.business_name || "Your Organization";
+  if (!orgEmail) return;
+
+  const type = submission.lead_magnets?.type;
+  const quizType = type === "READY_TO_SELL" ? "Ready to Sell" : "Worth Estimate";
+  const fullResult = getFullResult(type, submission);
+  const bundledContact = !!submission.contact_requested_at;
+
+  const subjectPrefix = bundledContact ? "📞 New Lead + Callback Request" : "New Lead";
+  const emailSubject = `${subjectPrefix}: ${submission.name || submission.email} - ${quizType} Quiz`;
+
+  const emailHtml = buildLeadNotificationEmail({
+    leadName: submission.name || "Not provided",
+    leadEmail: submission.email,
+    leadPhone: submission.phone || "Not provided",
+    quizType,
+    orgName,
+    answers: submission.answers_json,
+    result: fullResult,
+    submittedAt: submission.created_at,
+    contactRequested: bundledContact,
+    contactAdditionalInfo: submission.contact_additional_info || undefined,
+  });
+
+  const sent = await sendEmail(orgEmail, emailSubject, emailHtml);
+  if (sent) {
+    await supabase
+      .from("lead_submissions")
+      .update({ email_sent: true, email_sent_at: new Date().toISOString() })
+      .eq("id", submission_id);
+  } else {
+    console.error(`❌ Form-completed email failed for submission ${submission_id} to ${orgEmail}`);
+  }
 }
 
 // ============================================
@@ -1485,10 +1508,12 @@ interface LeadNotificationData {
   answers: Record<string, unknown>;
   result: Record<string, unknown>;
   submittedAt: string;
+  contactRequested?: boolean;
+  contactAdditionalInfo?: string;
 }
 
 function buildLeadNotificationEmail(data: LeadNotificationData): string {
-  const { leadName, leadEmail, leadPhone, quizType, orgName, answers, result, submittedAt } = data;
+  const { leadName, leadEmail, leadPhone, quizType, orgName, answers, result, submittedAt, contactRequested, contactAdditionalInfo } = data;
   
   const formattedDate = new Date(submittedAt).toLocaleDateString("en-IE", {
     weekday: "long",
@@ -1529,11 +1554,20 @@ function buildLeadNotificationEmail(data: LeadNotificationData): string {
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">New Lead Alert</h1>
+        <h1 style="color: white; margin: 0; font-size: 24px;">${contactRequested ? "📞 New Lead + Callback Request" : "New Lead Alert"}</h1>
         <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">From ${quizType} Quiz</p>
       </div>
-      
+
       <div style="background: #f9f9f9; padding: 20px; border: 1px solid #eee; border-top: none;">
+        ${contactRequested ? `
+        <div style="margin-bottom: 20px; padding: 16px 20px; background: #fff4e5; border-left: 4px solid #ff9800; border-radius: 4px;">
+          <p style="margin: 0 0 6px 0; color: #5d4037; font-size: 15px; font-weight: 600;">
+            📞 This lead has requested a callback.
+          </p>
+          ${contactAdditionalInfo ? `<p style="margin: 0; color: #5d4037; font-size: 14px; white-space: pre-wrap;">"${escapeHtml(contactAdditionalInfo)}"</p>` : `<p style="margin: 0; color: #5d4037; font-size: 14px;">They didn't leave a note — contact them directly.</p>`}
+        </div>
+        ` : ""}
+
         <h2 style="color: #333; margin-top: 0;">Lead Details</h2>
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
@@ -1580,30 +1614,38 @@ function buildLeadNotificationEmail(data: LeadNotificationData): string {
   `;
 }
 
-function buildContactRequestEmail(data: {
+// Lightweight "late callback requested" email — fires when a lead
+// clicks Contact Agent more than 60s after the form-completed email
+// has already been sent. Doesn't re-dump quiz fields (the agent
+// already has them from the first notification).
+function buildCallbackRequestedEmail(data: {
   leadName: string;
   leadEmail: string;
   leadPhone: string;
+  quizType: string;
   orgName: string;
   additionalInfo?: string;
 }): string {
-  const { leadName, leadEmail, leadPhone, orgName, additionalInfo } = data;
-  
+  const { leadName, leadEmail, leadPhone, quizType, additionalInfo } = data;
+
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
-      <title>Contact Request</title>
+      <title>Callback Requested</title>
     </head>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <div style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); padding: 20px; border-radius: 8px 8px 0 0;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">Contact Request</h1>
-        <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">A lead would like to speak with you</p>
+      <div style="background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">📞 Callback Requested</h1>
+        <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0;">${leadName} would like you to call them back</p>
       </div>
-      
+
       <div style="background: #f9f9f9; padding: 20px; border: 1px solid #eee; border-top: none;">
-        <h2 style="color: #333; margin-top: 0;">Lead Details</h2>
+        <p style="margin: 0 0 16px 0; color: #555;">
+          This lead previously completed the <strong>${quizType}</strong> quiz. The full details are already in your CRM.
+        </p>
+
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
             <td style="padding: 8px 0; border-bottom: 1px solid #eee;"><strong>Name:</strong></td>
@@ -1620,19 +1662,22 @@ function buildContactRequestEmail(data: {
         </table>
 
         ${additionalInfo ? `
-          <h2 style="color: #333; margin-top: 24px;">Additional Information</h2>
-          <div style="background: white; padding: 15px; border-radius: 4px; border: 1px solid #eee;">
+          <div style="margin-top: 16px; padding: 15px; background: white; border-radius: 4px; border: 1px solid #eee;">
+            <p style="margin: 0 0 6px 0; color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Their note</p>
             <p style="margin: 0; white-space: pre-wrap;">${escapeHtml(additionalInfo)}</p>
           </div>
         ` : ""}
 
-        <div style="margin-top: 24px; padding: 15px; background: #d4edda; border-radius: 4px;">
-          <p style="margin: 0; color: #155724;">
-            <strong>Action Required:</strong> Please contact this lead as soon as possible.
+        <div style="margin-top: 24px; padding: 20px; background: #e8f5e9; border-left: 4px solid #34a853; border-radius: 4px;">
+          <p style="margin: 0 0 12px 0; color: #1e4620; font-size: 15px;">
+            <strong>Action required:</strong> Contact this lead as soon as possible. Full quiz details are in your CRM.
           </p>
+          <a href="https://app.autolisting.io/admin/crm" style="display: inline-block; margin-top: 4px; padding: 10px 20px; background: #34a853; color: white; text-decoration: none; border-radius: 4px; font-weight: 600; font-size: 14px;">
+            View in CRM &rarr;
+          </a>
         </div>
       </div>
-      
+
       <div style="padding: 15px; text-align: center; color: #999; font-size: 12px;">
         <p style="margin: 0;">Sent via AutoListing.io</p>
       </div>
@@ -1642,9 +1687,14 @@ function buildContactRequestEmail(data: {
 }
 
 // ============================================
-// Contact Agent Handler
+// Contact Request Handler (formerly handleContactAgent)
 // ============================================
-async function handleContactAgent(supabase: any, body: any): Promise<Response> {
+// Marks the submission with `contact_requested_at` + optional note.
+// If the form-completed email hasn't been sent yet (we're inside the
+// 60s bundle window), the deferred task will fold this into a single
+// bundled email. If it's already been sent (>60s later), fires a
+// separate lighter "Callback Requested" email.
+async function handleContactRequest(supabase: any, body: any): Promise<Response> {
   const { submission_id, additional_info } = body;
 
   if (!submission_id) {
@@ -1654,10 +1704,9 @@ async function handleContactAgent(supabase: any, body: any): Promise<Response> {
     );
   }
 
-  // Get submission with org details
   const { data: submission, error: fetchError } = await supabase
     .from("lead_submissions")
-    .select("*, organizations!inner(id, slug, business_name, contact_email)")
+    .select("*, lead_magnets!inner(type), organizations!inner(id, slug, business_name, contact_email)")
     .eq("id", submission_id)
     .single();
 
@@ -1671,33 +1720,18 @@ async function handleContactAgent(supabase: any, body: any): Promise<Response> {
   const orgEmail = submission.organizations?.contact_email;
   const orgName = submission.organizations?.business_name || "Your Organization";
 
-  if (!orgEmail) {
-    return new Response(
-      JSON.stringify({ error: "Organization contact email not configured" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
+  // Always record the contact request on the row so the bundled email
+  // (or CRM view) can show it, regardless of whether we send a second
+  // email here.
+  await supabase
+    .from("lead_submissions")
+    .update({
+      contact_requested_at: new Date().toISOString(),
+      contact_additional_info: additional_info || null,
+    })
+    .eq("id", submission_id);
 
-  const emailSubject = `Contact Request: ${submission.name || submission.email} would like to speak with you`;
-  
-  const emailHtml = buildContactRequestEmail({
-    leadName: submission.name || "Not provided",
-    leadEmail: submission.email,
-    leadPhone: submission.phone || "Not provided",
-    orgName,
-    additionalInfo: additional_info,
-  });
-
-  const emailSent = await sendEmail(orgEmail, emailSubject, emailHtml);
-
-  if (!emailSent) {
-    return new Response(
-      JSON.stringify({ error: "Failed to send contact request" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
-  // Log CRM activity + update last_contact_at
+  // CRM activity + seller profile touch
   if (submission.seller_profile_id) {
     await supabase
       .from("crm_activities")
@@ -1718,8 +1752,47 @@ async function handleContactAgent(supabase: any, body: any): Promise<Response> {
       .eq("id", submission.seller_profile_id);
   }
 
+  // If the form-completed email hasn't fired yet, the deferred task
+  // will pick up the contact_requested_at + additional info and send a
+  // single bundled email. Return success without sending anything here.
+  if (!submission.email_sent) {
+    return new Response(
+      JSON.stringify({ success: true, bundled: true }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Form-completed email already sent — this is a late callback
+  // request. Send a separate lighter notification.
+  if (!orgEmail) {
+    return new Response(
+      JSON.stringify({ error: "Organization contact email not configured" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const type = submission.lead_magnets?.type;
+  const quizType = type === "READY_TO_SELL" ? "Ready to Sell" : "Worth Estimate";
+  const emailSubject = `📞 Callback Requested: ${submission.name || submission.email}`;
+  const emailHtml = buildCallbackRequestedEmail({
+    leadName: submission.name || "Not provided",
+    leadEmail: submission.email,
+    leadPhone: submission.phone || "Not provided",
+    quizType,
+    orgName,
+    additionalInfo: additional_info,
+  });
+
+  const emailSent = await sendEmail(orgEmail, emailSubject, emailHtml);
+  if (!emailSent) {
+    return new Response(
+      JSON.stringify({ error: "Failed to send callback request" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   return new Response(
-    JSON.stringify({ success: true, message: "Contact request sent" }),
+    JSON.stringify({ success: true, bundled: false }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 }
