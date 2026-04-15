@@ -1392,6 +1392,24 @@ function ContactCTA({ org, onDownloadPDF, onContactAgent }: ContactCTAProps) {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Safeguard: second Download PDF card at the very bottom so
+          users who scroll all the way through the results still see a
+          clear way to save a copy without scrolling back up. */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h3 className="font-semibold">Want a copy for later?</h3>
+              <p className="text-sm text-muted-foreground">Save the full report as a PDF</p>
+            </div>
+            <Button variant="outline" onClick={onDownloadPDF} data-testid="button-download-pdf-bottom">
+              <Download className="h-4 w-4 mr-2" />
+              Download PDF
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
