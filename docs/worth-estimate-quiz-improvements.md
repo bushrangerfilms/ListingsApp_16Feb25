@@ -289,33 +289,36 @@ Bundled with Issue 2 in one PR. Plan agreed:
 
 Scope: covers **all new seller_profiles** regardless of source (lead_magnet, manual, converted enquiry). Buyers not covered (separate table, separate nav tab — same pattern applies later if wanted).
 
-**Part B: Real-time agent notification email — STILL OWED.** Separate investigation needed:
-- Is the existing `handleUnlock` notification path actually firing?
-- Trace `supabase/functions/lead-magnet-api/index.ts` around line 425 (handleUnlock)
-- Is the template in `email_templates` for platform-default?
-- Are there silent errors in the call?
-- Does the template include enough quiz field context to be useful to the agent?
-
-Deferred for its own PR — needs log tracing and template review, not just a code change.
+**Part B: Real-time agent notification email — 🟢 SHIPPED (PRs #162–#163, 2026-04-15).** Bundled email flow now fires reliably with rich context:
+- 60s `waitUntil` bundling so a single email is sent if the lead completes the form AND clicks "contact agent" within the window
+- Header pills: `✓ Completed form` and `📞 Requested contact`
+- Google Maps link card embedded in the email
+- Lead name surfaced in subject + header
+- DB columns added: `contact_requested_at`, `contact_additional_info`
+- Renames: `unlock` → `form completed`, `contact-agent` → `contact-request`
+- Eircode demoted from required → recommended-but-optional, with Address / Town / County visible by default
 
 ---
 
-### 🔴 5. PDF report: logo + design styling
+### 🟢 5. PDF report: server-side render + branding — **SHIPPED (Socials PR #182, Listings PRs #168, #169, and brand-colour PR — 2026-04-15)**
 
-**Problem.** The generated PDF is plain-text Times New Roman with no branding, logo, or visual polish. Agents share this with their leads — it reflects on their brand, which reflects on AutoListing's.
+**What shipped.** PDF generation is now server-side via a Puppeteer endpoint on the Socials Express server (`POST /api/lead-magnet-pdf` in `server/routes/lead-magnet-routes.ts`, render logic in `server/services/lead-magnet-pdf-service.ts`). The endpoint returns the PDF with `Content-Disposition: attachment` so Firefox no longer auto-opens the downloaded file in its built-in PDF.js viewer (the original Issue 1 bug from `lead-magnet-outstanding-issues.md`).
 
-**Fix sketch.**
-- Add the org's logo at the top (from `organizations.logo_url`).
-- Use the org's `primary_color` / `secondary_color` for headings and accents (same branding variables already used by `send-email`).
-- Section cards with rounded corners + subtle shadows for the estimate, value drivers, market insights, next steps.
-- Better typography — system sans (Inter / SF Pro / Helvetica).
-- Cover page? Footer with org contact info?
+The renderer is system Chromium (apt-installed in the Socials Dockerfile, `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium`) plus an HTML template using Google Fonts (Inter + Playfair Display), fixed A4 height, no shadows, `-webkit-print-color-adjust: exact` — same patterns as the Shearfest Sponsors Prospectus stack the user has used before.
 
-**Files likely touched.** Wherever the PDF is generated — need to trace. Likely a frontend jsPDF / html2canvas path or a server-side template. (Investigation step: find the PDF generation code path.)
+**Branding now applied:**
+- Org logo at the top (from `organizations.logo_url`), with a coloured-initials fallback when missing
+- Org `primary_color` and `secondary_color` are fetched server-side via the slug and threaded through CSS custom properties — used for the brand bar, header rule, stat-card backgrounds, section title underlines, todo numbering bullets, comp-table headers, and footer accent. Hex validated; falls back to slate (`#0f172a` / `#475569`) when missing or malformed.
+- Sections: branded header with org name + report title, stat cards (Score+Band for READY_TO_SELL or Estimated Value for WORTH_ESTIMATE), Key Areas to Address, Action Plan with numbered bullets, Value Drivers, Market Insights, Comparable Sales, Recommended Next Steps, footer with org contact + AutoListing.io tagline.
+- Frontend now sends only `{type, orgSlug, result, locale, generatedAt}` — no client-supplied org branding (server fetches authoritatively from the database).
 
-**Open questions.**
-- Client-side (jsPDF) or server-side (puppeteer edge function)? Current implementation unknown.
-- Reuse the email template's HTML as the PDF source? Would keep brand consistency across email and PDF.
+**Reference PRs:**
+- Socials PR #182 — initial server-side endpoint + Puppeteer setup
+- Listings PR #168 — frontend swap from jsPDF to fetch
+- Listings PR #169 — hotfix restoring jspdf as a dep (transitive `pako` resolution trap; see `memory/lead-magnet-pdf-architecture.md`)
+- Socials + Listings brand-colour polish PRs — fetch org from DB, thread brand colours through template
+
+**Still open under this issue:** none. Future polish ideas (cover page, comparable-sales map thumbnails, multi-page templates) can become follow-up issues if/when needed.
 
 ---
 
@@ -354,8 +357,8 @@ Deferred for its own PR — needs log tracing and template review, not just a co
 
 **Round 2 — Agent experience:**
 4. 🟡 **Issue 4 Part A (CRM quiz details)** — IN PROGRESS
-   🔴 **Issue 4 Part B (real-time agent notification email)** — deferred to its own PR; needs log tracing
-5. 🔴 **Issue 5 (PDF branding)** — logo + styling + brand colours
+   🟢 **Issue 4 Part B (real-time agent notification email)** — SHIPPED via PRs #162–#163 (bundled email + pills + map + rename)
+5. 🟢 **Issue 5 (PDF branding + server-side render)** — SHIPPED via Socials PR #182 + Listings PRs #168, #169, and brand-colour follow-up
 
 **Round 3 — Market expansion:**
 6. 🔴 **Issue 6 (International locale)** — blocker for UK/US/CA/AU/NZ; not blocking Irish pilot

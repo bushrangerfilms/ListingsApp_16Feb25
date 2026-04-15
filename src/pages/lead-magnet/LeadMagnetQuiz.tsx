@@ -351,11 +351,7 @@ export function LeadMagnetQuiz() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: normalizedType,
-          org: {
-            businessName: org.business_name,
-            logoUrl: org.logo_url,
-            contactEmail: org.contact_email,
-          },
+          orgSlug: org.slug,
           result: fullResult,
           locale,
           generatedAt: new Date().toISOString(),
