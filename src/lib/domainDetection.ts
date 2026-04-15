@@ -24,8 +24,21 @@ export type DomainType = 'marketing' | 'admin' | 'org-public';
  * - 'org-public': custom organization domains (public listings for an org)
  */
 export function getDomainType(): DomainType {
+  // Prerender escape hatch: the build-time prerender plugin sets
+  // `window.__PRERENDER_INJECTED.marketing = true` before page scripts run,
+  // so the captured HTML gets marketing-domain SEO tags (canonical, og:url,
+  // JSON-LD) even though the headless browser is serving from localhost.
+  // Never true at runtime in production.
+  if (
+    typeof window !== 'undefined' &&
+    (window as unknown as { __PRERENDER_INJECTED?: { marketing?: boolean } })
+      .__PRERENDER_INJECTED?.marketing
+  ) {
+    return 'marketing';
+  }
+
   const hostname = window.location.hostname;
-  
+
   // Marketing site: root domain autolisting.io or www.autolisting.io
   if (
     hostname === 'autolisting.io' ||

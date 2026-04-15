@@ -73,6 +73,17 @@ export function SEO({
     const marketing = isMarketingSite();
     const admin = isAdminSite();
 
+    // During build-time prerender the headless browser serves from localhost,
+    // so window.location.origin is e.g. `http://127.0.0.1:8000`. We must NOT
+    // bake that into canonical/og:url — use the real production marketing
+    // origin instead. Never used at runtime in production.
+    const isPrerender = !!(
+      window as unknown as { __PRERENDER_INJECTED?: unknown }
+    ).__PRERENDER_INJECTED;
+    const marketingOrigin = isPrerender
+      ? 'https://autolisting.io'
+      : window.location.origin;
+
     document.title = finalTitle;
 
     const updateMetaTag = (name: string, content: string, isProperty = false) => {
@@ -109,7 +120,7 @@ export function SEO({
     } else if (marketing) {
       updateMetaTag(
         'og:url',
-        window.location.origin + window.location.pathname,
+        marketingOrigin + window.location.pathname,
         true,
       );
     } else {
@@ -127,7 +138,7 @@ export function SEO({
     // autolisting.io as their canonical.
     const desiredCanonical =
       canonical ||
-      (marketing ? window.location.origin + window.location.pathname : null);
+      (marketing ? marketingOrigin + window.location.pathname : null);
 
     let canonicalEl = document.querySelector(
       'link[rel="canonical"]',
