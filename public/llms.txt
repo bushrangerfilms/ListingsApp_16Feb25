@@ -1,0 +1,35 @@
+# AutoListing.io
+
+> AutoListing.io is an automated lead generation and social media platform built for auctioneers, estate agents, and letting agents. It turns every property listing into a steady stream of branded social posts, qualified seller leads, and buyer enquiries — without manual posting, an agency, or guesswork.
+
+AutoListing.io operates across six markets: Ireland, the United Kingdom, the United States, Canada, Australia, and New Zealand, with a particular focus on the Irish and UK auctioneer markets.
+
+## What it does
+
+- **Automated social posting**: Every listing is automatically turned into a recurring schedule of branded social media posts (Instagram, Facebook, TikTok, LinkedIn) across the listing lifecycle — new, for sale, sale agreed, sold.
+- **Lead generation**: Public-facing property landing pages with built-in lead capture forms, conversion quizzes, and lead magnets. Seller and buyer profiles flow straight into the CRM.
+- **CRM**: Lightweight pipeline for tracking seller and buyer leads, activity log, email sequences, and automated nudges.
+- **Multi-branch support**: Agencies with multiple branches get centralised management with per-branch content and branding.
+- **Multi-currency / multi-locale**: EUR, GBP, USD, CAD, AUD, NZD with locale-aware terminology (e.g. "solicitor" vs "attorney", "flat" vs "apartment").
+
+## Who it's for
+
+- Independent auctioneers and estate agents
+- Multi-branch agencies
+- Letting agents
+- Property professionals who want consistent, automated marketing without hiring an in-house content team
+
+## Pricing
+
+Free tier available. Paid plans start at around €40/week (Essentials) and scale up through Growth, Professional, and Multi-Branch tiers. Pricing is localised per market. See [pricing](https://autolisting.io/pricing) for the current published plans.
+
+## Key pages
+
+- [Home](https://autolisting.io/) — Product overview
+- [Features](https://autolisting.io/features) — Full feature breakdown
+- [Pricing](https://autolisting.io/pricing) — Plans and pricing
+- [Support](https://autolisting.io/support) — Help and contact
+
+## Company
+
+AutoListing.io is operated by Streamlined Digital Tech Ltd. Contact: via the support page above.
