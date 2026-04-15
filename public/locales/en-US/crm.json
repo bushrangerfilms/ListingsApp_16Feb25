@@ -1,0 +1,23 @@
+{
+  "_note": "en-US overrides for CRM namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "contact": {
+    "postcode": "Zip Code",
+    "county": "State"
+  },
+
+  "buyers": {
+    "leadHint": "New leads appear here when visitors submit property inquiries or sign up for alerts"
+  },
+
+  "sources": {
+    "property_enquiry": "Property Inquiry"
+  },
+
+  "property": {
+    "preferences": {
+      "energyRating": "Energy Rating"
+    }
+  }
+}

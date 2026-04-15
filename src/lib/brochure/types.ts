@@ -1,0 +1,234 @@
+export interface BrochureCover {
+  headline: string;
+  address: string;
+  price: string;
+  saleMethod: string;
+  heroPhotoUrl: string;
+  energyRating?: string;
+  backCoverPhotoUrl?: string;
+}
+
+export interface BrochureDescription {
+  marketingText: string;
+  keyFeatures: string[];
+  sectionTitle?: string;
+  keyFeaturesTitle?: string;
+}
+
+export interface BrochureRoom {
+  id: string;
+  name: string;
+  floor: string;
+  dimensions?: string;
+  description?: string;
+  photoUrl?: string;
+}
+
+export interface BrochureFeatures {
+  services: string[];
+  external: string[];
+  nearby: string[];
+  servicesTitle?: string;
+  externalTitle?: string;
+  nearbyTitle?: string;
+}
+
+export interface BrochureLocation {
+  text: string;
+  amenities: string[];
+  sectionTitle?: string;
+}
+
+export interface BrochureFloorPlan {
+  id: string;
+  label: string;
+  imageUrl: string;
+}
+
+export interface BrochureGalleryItem {
+  id: string;
+  url: string;
+  caption?: string;
+}
+
+export interface BrochureLegal {
+  disclaimer: string;
+  psrLicenceNumber?: string;
+}
+
+export interface BrochureContent {
+  cover: BrochureCover;
+  description: BrochureDescription;
+  rooms: BrochureRoom[];
+  features: BrochureFeatures;
+  location: BrochureLocation;
+  floorPlans: BrochureFloorPlan[];
+  gallery: BrochureGalleryItem[];
+  legal: BrochureLegal;
+  visibleSections: Record<string, boolean>;
+  sectionOrder: string[];
+}
+
+export interface CertificationLogo {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+}
+
+export interface BrochureStyleOptions {
+  templateId: string;
+  frameStyle: 'classic' | 'minimal';
+  imageCornerRadius: 'rounded' | 'square';
+  imageBorder: boolean;
+  certificationLogos: CertificationLogo[];
+  showInnerPrice: boolean;
+  showBackCoverPrice: boolean;
+  pageFormat: 'a4' | 'a5';
+}
+
+export const DEFAULT_STYLE_OPTIONS: BrochureStyleOptions = {
+  templateId: 'classic-1',
+  frameStyle: 'classic',
+  imageCornerRadius: 'rounded',
+  imageBorder: true,
+  certificationLogos: [],
+  showInnerPrice: false,
+  showBackCoverPrice: false,
+  pageFormat: 'a5',
+};
+
+export type BrochureExportFormat = 'standard' | 'reader' | 'print-ready';
+
+export interface BrochureBranding {
+  businessName: string;
+  logoUrl: string | null;
+  primaryColor: string;
+  secondaryColor: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  businessAddress: string;
+  psrLicenceNumber: string | null;
+  licenceDisplayLabel: string;
+  locale: string;
+  currency: string;
+  countryCode: string;
+  styleOptions?: BrochureStyleOptions;
+}
+
+export interface ListingBrochure {
+  id: string;
+  listing_id: string;
+  organization_id: string;
+  template_id: string;
+  content: BrochureContent;
+  branding: BrochureBranding;
+  pdf_url: string | null;
+  pdf_generated_at: string | null;
+  ai_generated_at: string | null;
+  status: 'draft' | 'generating' | 'ready' | 'error';
+  created_at: string;
+  updated_at: string;
+  is_archived: boolean;
+}
+
+/** Default section headings per template (used as placeholders in editors) */
+export const TEMPLATE_HEADING_DEFAULTS: Record<string, {
+  descriptionTitle: string;
+  keyFeaturesTitle: string;
+  servicesTitle: string;
+  externalTitle: string;
+  nearbyTitle: string;
+  locationTitle: string;
+}> = {
+  'classic-1': {
+    descriptionTitle: 'Accommodation',
+    keyFeaturesTitle: 'Key Features',
+    servicesTitle: 'Services',
+    externalTitle: 'Features',
+    nearbyTitle: 'Nearby',
+    locationTitle: 'Location',
+  },
+  'modern-luxury': {
+    descriptionTitle: 'About This Property',
+    keyFeaturesTitle: 'Key Features',
+    servicesTitle: 'Services',
+    externalTitle: 'Features',
+    nearbyTitle: 'Nearby',
+    locationTitle: 'Location',
+  },
+  'elegant-traditional': {
+    descriptionTitle: '',
+    keyFeaturesTitle: 'Home Features',
+    servicesTitle: 'Services',
+    externalTitle: 'Features',
+    nearbyTitle: 'Nearby',
+    locationTitle: 'Location',
+  },
+  'architectural': {
+    descriptionTitle: "What\u2019s Special",
+    keyFeaturesTitle: '',
+    servicesTitle: 'Property Details',
+    externalTitle: 'Features',
+    nearbyTitle: 'Nearby',
+    locationTitle: 'Location',
+  },
+};
+
+export function getHeadingDefaults(templateId?: string) {
+  return TEMPLATE_HEADING_DEFAULTS[templateId || 'classic-1'] || TEMPLATE_HEADING_DEFAULTS['classic-1'];
+}
+
+export const DEFAULT_SECTION_ORDER = [
+  'cover',
+  'description',
+  'rooms',
+  'features',
+  'location',
+  'gallery',
+  'floorPlans',
+  'legal',
+];
+
+export const DEFAULT_VISIBLE_SECTIONS: Record<string, boolean> = {
+  cover: true,
+  description: true,
+  rooms: true,
+  features: true,
+  location: true,
+  gallery: true,
+  floorPlans: true,
+  legal: true,
+};
+
+export const DEFAULT_BROCHURE_CONTENT: BrochureContent = {
+  cover: {
+    headline: '',
+    address: '',
+    price: '',
+    saleMethod: 'For Sale by Private Treaty',
+    heroPhotoUrl: '',
+  },
+  description: {
+    marketingText: '',
+    keyFeatures: [],
+  },
+  rooms: [],
+  features: {
+    services: [],
+    external: [],
+    nearby: [],
+  },
+  location: {
+    text: '',
+    amenities: [],
+  },
+  floorPlans: [],
+  gallery: [],
+  legal: {
+    disclaimer: '',
+  },
+  visibleSections: { ...DEFAULT_VISIBLE_SECTIONS },
+  sectionOrder: [...DEFAULT_SECTION_ORDER],
+};

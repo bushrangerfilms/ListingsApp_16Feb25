@@ -1,0 +1,100 @@
+{
+  "_note": "en-US overrides for marketing namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "hero": {
+    "subtitle": "The all-in-one platform for US real estate agents"
+  },
+
+  "home": {
+    "trust": {
+      "multiTenant": {
+        "description": "Each organization gets their own branded site with custom domain support."
+      }
+    },
+    "features": {
+      "analytics": {
+        "description": "Track performance, monitor engagement, and optimize your marketing."
+      }
+    }
+  },
+
+  "features": {
+    "propertyManagement": {
+      "description": "List and manage properties with energy ratings, MLS integration, and US address lookup"
+    },
+    "categories": {
+      "property": {
+        "features": {
+          "photos": {
+            "description": "Organize, reorder, and manage property photos with drag-and-drop ease."
+          }
+        }
+      },
+      "email": {
+        "features": {
+          "campaigns": {
+            "description": "Create automated email sequences with customizable delays between messages."
+          }
+        }
+      },
+      "branding": {
+        "title": "Branding & Customization",
+        "features": {
+          "logo": {
+            "description": "Upload your logo and customize colors to match your brand."
+          },
+          "site": {
+            "description": "A beautiful, SEO-optimized website for your property listings."
+          },
+          "sharing": {
+            "description": "Optimized previews when properties are shared on social media."
+          }
+        }
+      }
+    }
+  },
+
+  "pricing": {
+    "currency": "USD",
+    "vatNote": "Prices exclude applicable taxes",
+    "credits": {
+      "example": {
+        "costPerWeek": "costing around $60/week including subscription."
+      }
+    }
+  },
+
+  "support": {
+    "email": {
+      "intro": "For general inquiries and technical support, email us at:"
+    },
+    "gdpr": {
+      "title": "Data Protection Requests",
+      "description": "Exercise your rights under applicable privacy laws",
+      "intro": "Under applicable state and federal privacy laws, you have the right to access, correct, delete, or export your personal data. You can also object to processing or request restrictions on how we use your data.",
+      "response": "We will respond to your request within 30 days as required by applicable law. In complex cases, we may extend this by up to 60 days with notice.",
+      "rights": {
+        "title": "Your Privacy Rights:",
+        "access": "Right of Access: Request a copy of your personal data",
+        "rectification": "Right to Correction: Correct inaccurate data",
+        "erasure": "Right to Deletion: Request deletion of your data",
+        "restriction": "Right to Restriction: Limit how we use your data",
+        "portability": "Right to Portability: Receive your data in a portable format",
+        "object": "Right to Object: Object to certain types of processing"
+      },
+      "complaint": "If you are not satisfied with our response, you may lodge a complaint with the",
+      "dpa": "Federal Trade Commission (FTC)"
+    },
+    "docs": {
+      "comingSoon": "Documentation Center Coming Soon"
+    },
+    "contact": {
+      "email": "General Inquiries"
+    }
+  },
+
+  "footer": {
+    "help": "Help Center"
+  }
+}

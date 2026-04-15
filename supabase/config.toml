@@ -1,0 +1,80 @@
+project_id = "sjcfcxjpukgeaxxkffpq"
+
+[functions.fix-hero-photos]
+verify_jwt = false
+
+[functions.send-listing-webhook]
+verify_jwt = false
+
+[functions.fix-listing-addresses]
+verify_jwt = false
+
+[functions.send-test-webhook]
+verify_jwt = false
+
+[functions.migrate-airtable-clients-to-supabase]
+verify_jwt = false
+
+[functions.query-ai-assistant]
+verify_jwt = false
+
+[functions.train-ai-assistant]
+verify_jwt = false
+
+[functions.get-listings]
+verify_jwt = false
+
+[functions.check-rate-limit]
+verify_jwt = false
+
+[functions.process-images]
+verify_jwt = false
+
+[functions.create-listing]
+verify_jwt = false
+
+[functions.extract-property-details]
+verify_jwt = false
+
+[functions.auto-archive-sold-listings]
+verify_jwt = false
+
+[functions.auto-expire-new-status]
+verify_jwt = false
+
+[functions.submit-valuation-request]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.match-buyers-to-listing]
+verify_jwt = false
+
+[functions.update-alert-preferences]
+verify_jwt = false
+
+[functions.process-email-sequences]
+verify_jwt = false
+
+[functions.check-email-replies]
+verify_jwt = false
+
+[functions.track-email-event]
+verify_jwt = false
+
+[functions.update-email-preferences]
+verify_jwt = false
+
+[functions.migrate-airtable-to-supabase]
+verify_jwt = false
+
+[functions.fix-existing-photos]
+verify_jwt = false
+
+[functions.create-organization]
+verify_jwt = false
+
+[functions.topaz-webhook]
+verify_jwt = false
+

@@ -1,0 +1,30 @@
+{
+  "_note": "en-US overrides for billing namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+
+  "page": {
+    "loadingOrganization": "Loading organization..."
+  },
+
+  "pricing": {
+    "vat": "Sales Tax",
+    "vatIncluded": "Tax included",
+    "vatExcluded": "excl. tax"
+  },
+
+  "plans": {
+    "starter": {
+      "description": "Perfect for independent real estate agents"
+    },
+    "pro": {
+      "description": "For growing real estate brokerages"
+    },
+    "enterprise": {
+      "description": "Custom solutions for large organizations"
+    }
+  },
+
+  "manage": {
+    "organizationNotFound": "Organization not found"
+  }
+}

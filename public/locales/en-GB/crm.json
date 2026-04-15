@@ -1,0 +1,15 @@
+{
+  "_note": "en-GB overrides for CRM namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+  
+  "contact": {
+    "postcode": "Postcode",
+    "county": "County"
+  },
+  
+  "property": {
+    "preferences": {
+      "energyRating": "EPC Rating"
+    }
+  }
+}

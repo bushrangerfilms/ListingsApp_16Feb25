@@ -458,37 +458,22 @@ export function LeadMagnetQuiz() {
     doc.setTextColor(120, 120, 120);
     doc.text(`Report provided by ${org.business_name || "AutoListing"}`, pageWidth / 2, y, { align: "center" });
 
-    // Trigger the download using the FileSaver.js pattern exactly:
-    // detached anchor (never appended to DOM), dispatch a non-bubbling
-    // MouseEvent instead of .click(), and defer via setTimeout(0).
-    //
-    // Why not the straightforward link.click() approach: .click() fires
-    // a bubbling click event that gets caught by document-level click
-    // handlers (React Router's NavigationProvider intercepts anchor
-    // clicks across the whole app to do client-side routing). That
-    // interception ends up navigating the current tab to the blob URL
-    // and — on top of the actual download firing — the browser opens
-    // the PDF in a new viewer tab because the blob: navigation gets
-    // rewritten by the click handler. Non-bubbling dispatchEvent
-    // bypasses all document-level listeners, so the download is the
-    // only thing that fires.
+    // Force a real file download. Firefox (and some Chromium builds)
+    // will open a blob with application/pdf MIME in the built-in PDF
+    // viewer AS WELL as honoring the download attr — so we wrap the
+    // output in an application/octet-stream blob to bypass the viewer.
     const filename = normalizedType === "READY_TO_SELL" ? "ready-to-sell-report.pdf" : "property-value-report.pdf";
     const pdfBlob = doc.output("blob");
-    const url = URL.createObjectURL(pdfBlob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.rel = "noopener";
-    setTimeout(() => {
-      a.dispatchEvent(
-        new MouseEvent("click", {
-          bubbles: false,
-          cancelable: true,
-          view: window,
-        })
-      );
-    }, 0);
-    setTimeout(() => URL.revokeObjectURL(url), 40_000);
+    const downloadBlob = new Blob([pdfBlob], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(downloadBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   if (loading) {
@@ -1390,24 +1375,6 @@ function ContactCTA({ org, onDownloadPDF, onContactAgent }: ContactCTAProps) {
             Request a Call Back
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
-        </CardContent>
-      </Card>
-
-      {/* Safeguard: second Download PDF card at the very bottom so
-          users who scroll all the way through the results still see a
-          clear way to save a copy without scrolling back up. */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <h3 className="font-semibold">Want a copy for later?</h3>
-              <p className="text-sm text-muted-foreground">Save the full report as a PDF</p>
-            </div>
-            <Button variant="outline" onClick={onDownloadPDF} data-testid="button-download-pdf-bottom">
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

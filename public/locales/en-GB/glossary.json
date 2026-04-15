@@ -1,0 +1,30 @@
+{
+  "_note": "en-GB overrides for glossary namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+  
+  "legal": {
+    "stampDuty": "Stamp Duty Land Tax (SDLT)",
+    "landRegistry": "HM Land Registry",
+    "localAuthority": "Local Authority"
+  },
+  
+  "property": {
+    "ber": "Energy Performance Certificate (EPC)",
+    "berCertificate": "EPC Certificate",
+    "energyRating": "EPC Rating",
+    "councilTax": "Council Tax",
+    "councilTaxBand": "Council Tax Band"
+  },
+  
+  "professionals": {
+    "estateAgent": "Estate Agent",
+    "surveyorRICS": "RICS Surveyor"
+  },
+  
+  "tenure": {
+    "freehold": "Freehold",
+    "leasehold": "Leasehold",
+    "shareOfFreehold": "Share of Freehold",
+    "commonhold": "Commonhold"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "legal": {
+    "solicitor": "Solicitor",
+    "conveyancing": "Conveyancing",
+    "stampDuty": "Stamp Duty",
+    "contracts": "Contracts",
+    "completion": "Completion",
+    "exchange": "Exchange of Contracts",
+    "survey": "Survey",
+    "valuation": "Valuation",
+    "mortgage": "Mortgage",
+    "deposit": "Deposit",
+    "freehold": "Freehold",
+    "leasehold": "Leasehold",
+    "groundRent": "Ground Rent",
+    "serviceCharge": "Service Charge",
+    "managementCompany": "Management Company",
+    "titleDeeds": "Title Deeds",
+    "landRegistry": "Land Registry",
+    "searches": "Searches",
+    "enquiries": "Enquiries"
+  },
+  
+  "property": {
+    "ber": "Building Energy Rating (BER)",
+    "berCertificate": "BER Certificate",
+    "energyRating": "Energy Rating",
+    "floorArea": "Floor Area",
+    "siteArea": "Site Area",
+    "planningPermission": "Planning Permission",
+    "buildingRegulations": "Building Regulations",
+    "fireCompliance": "Fire Safety Compliance"
+  },
+  
+  "professionals": {
+    "estateAgent": "Estate Agent",
+    "auctioneer": "Auctioneer",
+    "valuer": "Valuer",
+    "surveyor": "Surveyor",
+    "architect": "Architect",
+    "engineer": "Engineer",
+    "mortgageBroker": "Mortgage Broker",
+    "financialAdvisor": "Financial Adviser"
+  },
+  
+  "transactions": {
+    "askingPrice": "Asking Price",
+    "guidePrice": "Guide Price",
+    "reservePrice": "Reserve Price",
+    "offer": "Offer",
+    "counterOffer": "Counter Offer",
+    "acceptedOffer": "Accepted Offer",
+    "saleAgreed": "Sale Agreed",
+    "subjectToContract": "Subject to Contract",
+    "closingDate": "Closing Date"
+  }
+}

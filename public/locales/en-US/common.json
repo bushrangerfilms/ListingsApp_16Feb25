@@ -1,0 +1,8 @@
+{
+  "_note": "en-US overrides for common namespace - inherits from en-IE with US spelling",
+  "_fallback": "en-IE",
+  
+  "labels": {
+    "organisation": "Organization"
+  }
+}

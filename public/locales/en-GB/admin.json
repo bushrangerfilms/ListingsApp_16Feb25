@@ -1,0 +1,14 @@
+{
+  "_note": "en-GB overrides for admin namespace - inherits from en-IE",
+  "_fallback": "en-IE",
+  
+  "organization": {
+    "vatNumber": "VAT Number",
+    "postcode": "Postcode"
+  },
+  
+  "region": {
+    "uk": "United Kingdom",
+    "currency": "GBP - British Pound"
+  }
+}
