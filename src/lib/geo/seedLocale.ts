@@ -12,6 +12,16 @@ import { getCachedCountry, countryToLocale, getTimezoneLocale, fetchCountryFromI
 const LOCALE_KEY = 'autolisting_locale';
 
 export function seedLocaleFromGeo(): void {
+  // Skip entirely during build-time prerender. The async IP fetch below can
+  // trigger `window.location.reload()`, which would break the prerender
+  // capture (the headless browser reloads mid-snapshot).
+  if (
+    typeof window !== 'undefined' &&
+    (window as unknown as { __PRERENDER_INJECTED?: unknown }).__PRERENDER_INJECTED
+  ) {
+    return;
+  }
+
   // If user/org already set a locale preference, respect it
   try {
     if (localStorage.getItem(LOCALE_KEY)) return;

@@ -88,13 +88,18 @@ Note: all of these still only help crawlers that execute JavaScript (mainly Goog
 
 **This is the real fix.** Everything above is cosmetic compared to this step.
 
-- [ ] Add [`vite-plugin-prerender`](https://github.com/chenxch/vite-plugin-prerender) (or `react-snap` — pick whichever plays nicest with the current Vite config).
-- [ ] Configure it to prerender the seven marketing routes (`/`, `/pricing`, `/features`, `/support`, `/privacy-policy`, `/terms-conditions`, `/cookie-policy`).
-- [ ] At build time the plugin spins up a headless Chromium, visits each route **with hostname forced to `autolisting.io`** (this matters — the domain detection must resolve to `marketing` during prerender, not `localhost` → `admin`), waits for React to hydrate, and writes the fully-rendered HTML into `dist/pricing/index.html`, `dist/features/index.html`, etc.
-- [ ] No Dockerfile changes. `serve dist -s` already serves `dist/pricing/index.html` for `/pricing` requests before falling back to the SPA shell.
-- [ ] **Watch out for:** client-only APIs (`window`, `localStorage`, Supabase session reads) must be guarded with `typeof window !== 'undefined'` or moved inside `useEffect`, otherwise the prerender crashes. The [src/lib/geo/seedLocale.ts](src/lib/geo/seedLocale.ts) IP-geolocation code that runs before React mounts is the most likely offender — audit carefully.
-- [ ] **Once prerender is in place**, the `<noscript>` branding block from the original Phase 1 plan becomes safe — add it into the marketing-route template component, and it'll only end up in the prerendered marketing HTML, not the admin or org-public shells.
-- [ ] **Verify:** `curl -s https://autolisting.io/pricing | grep -i "per week"` returns pricing copy from raw HTML, not an empty `<div id="root">`. Repeat for each route.
+- [x] Added [`@prerenderer/rollup-plugin`](https://github.com/Tofandel/prerenderer) + `puppeteer` (picked over `vite-plugin-prerender` because the former is actively maintained and slots cleanly into Vite's Rollup build).
+- [x] Configured to prerender the seven marketing routes (`/`, `/pricing`, `/features`, `/support`, `/privacy-policy`, `/terms-conditions`, `/cookie-policy`).
+- [x] At build time the plugin spins up a headless Chromium, visits each route, waits 3s for React to hydrate, and writes rendered HTML into `dist/pricing/index.html` etc.
+- [x] **Hostname forcing** via `window.__PRERENDER_INJECTED.marketing = true` — set by the plugin's `inject` option before page scripts run, checked at the top of [src/lib/domainDetection.ts](src/lib/domainDetection.ts)'s `getDomainType()`. Forces the marketing branch even though the headless browser serves from localhost.
+- [x] **Canonical/og:url origin override** — [src/components/SEO.tsx](src/components/SEO.tsx) substitutes `https://autolisting.io` for `window.location.origin` during prerender, so canonical/og:url don't get baked in as `http://127.0.0.1:8000/...`.
+- [x] **Multi-stage Dockerfile** — build stage has full Debian + Chromium deps + puppeteer; runtime stage is `node:20-bookworm-slim` + `serve` + `dist/` only. Runtime image stays lean, build image gets whatever it needs. See [Dockerfile](Dockerfile).
+- [x] **Pre-mount code audited:**
+  - [src/lib/geo/seedLocale.ts](src/lib/geo/seedLocale.ts) skips entirely during prerender (the fire-and-forget IP lookup could trigger `window.location.reload()` mid-capture).
+  - [src/App.tsx](src/App.tsx) `MarketingRoutes` skips the pilot-mode `window.location.href = '...'` redirect during prerender (found the hard way — "Promise was collected" puppeteer error).
+- [ ] **`<noscript>` branding block** — deferred to a follow-up. The infrastructure is in place; adding a noscript block to the marketing route template is a small cosmetic improvement, not urgent now that the prerender itself is the non-JS crawler story.
+- [x] **Local verification:** all 7 `dist/<route>/index.html` files contain unique titles, real `<h1>`s, full body copy, correct `https://autolisting.io/...` canonicals, JSON-LD, and no `robots: noindex`.
+- [ ] **Post-deploy verify:** `curl -s https://autolisting.io/pricing | grep -i "per week"` after Railway deploy.
 
 **This single change closes roughly 80% of the audit's real complaints** — non-JS crawlers now see full content, unique titles, unique descriptions, real H1s, and real body copy, and none of it leaks onto admin or org-public domains because only the marketing routes are prerendered.
 

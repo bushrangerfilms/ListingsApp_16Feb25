@@ -142,9 +142,16 @@ function GlobalLoadingFallback() {
 
 function MarketingRoutes() {
   const { isEnabled: isMarketingVisible, isLoading } = useMarketingVisibleFlag();
-  
+
+  // Skip the pilot-mode redirect during build-time prerender. Navigating
+  // the headless browser mid-capture invalidates puppeteer evaluate handles
+  // and crashes the Prerender plugin with "Promise was collected".
+  const isPrerender =
+    typeof window !== 'undefined' &&
+    (window as unknown as { __PRERENDER_INJECTED?: unknown }).__PRERENDER_INJECTED;
+
   // During pilot mode (marketing not visible), redirect to login
-  if (!isLoading && !isMarketingVisible) {
+  if (!isPrerender && !isLoading && !isMarketingVisible) {
     // Redirect to the admin login page
     window.location.href = 'https://app.autolisting.io/admin/login';
     return null;

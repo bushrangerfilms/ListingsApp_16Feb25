@@ -1,6 +1,40 @@
-FROM node:20-slim
+# ---- Build stage ----
+# Full Debian-based node image — needed because the build runs headless
+# Chromium (via puppeteer) at the `vite build` step to prerender the
+# marketing routes. See vite.config.ts + SEO_ROADMAP.md Phase 3.
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
+
+# Chromium runtime dependencies required by puppeteer's bundled browser.
+# Keeping this list tight: just what Chromium needs to start, nothing more.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libdrm2 \
+    libgbm1 \
+    libglib2.0-0 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    wget \
+    xdg-utils \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -22,7 +56,17 @@ ARG SENTRY_PROJECT
 
 RUN npm run build
 
+# ---- Runtime stage ----
+# Slim image; only needs `serve` and the built dist/.
+FROM node:20-bookworm-slim AS runtime
+
+WORKDIR /app
+
+RUN npm install -g serve@14
+
+COPY --from=builder /app/dist ./dist
+
 ENV PORT=5000
 EXPOSE 5000
 
-CMD ["npx", "serve", "dist", "-s", "-l", "5000"]
+CMD ["serve", "dist", "-s", "-l", "5000"]
