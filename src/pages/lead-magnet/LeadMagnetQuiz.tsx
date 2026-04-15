@@ -13,10 +13,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle, AlertCircle, Home, ArrowRight, ArrowLeft, TrendingUp, FileText, Scale, Calendar, Wrench, DollarSign, Download, Phone, MessageSquare } from "lucide-react";
-import jsPDF from "jspdf";
 import { useLocale } from "@/hooks/useLocale";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SOCIALS_HUB_URL =
+  import.meta.env.VITE_SOCIALS_HUB_URL || "https://socials.autolisting.io";
 
 interface OrgConfig {
   id: string;
@@ -342,138 +343,49 @@ export function LeadMagnetQuiz() {
     }
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     if (!fullResult || !org) return;
-
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-    let y = 20;
-
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(100, 100, 100);
-    doc.text(org.business_name || "Property Report", pageWidth / 2, y, { align: "center" });
-    y += 15;
-
-    // Title
-    doc.setFontSize(16);
-    doc.setTextColor(0, 0, 0);
-    const title = normalizedType === "READY_TO_SELL" ? "Ready to Sell Assessment" : "Property Value Estimate";
-    doc.text(title, pageWidth / 2, y, { align: "center" });
-    y += 15;
-
-    // Date
-    doc.setFontSize(10);
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Generated: ${new Date().toLocaleDateString(locale)}`, pageWidth / 2, y, { align: "center" });
-    y += 15;
-
-    // Results
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-
-    if (normalizedType === "READY_TO_SELL") {
-      doc.setFontSize(14);
-      doc.text(`Score: ${fullResult.score || "N/A"}`, 20, y);
-      y += 10;
-      doc.text(`Band: ${fullResult.band || "N/A"}`, 20, y);
-      y += 15;
-
-      if (fullResult.headline_gaps && fullResult.headline_gaps.length > 0) {
-        doc.setFontSize(12);
-        doc.text("Key Areas to Address:", 20, y);
-        y += 8;
-        doc.setFontSize(10);
-        fullResult.headline_gaps.forEach((gap) => {
-          doc.text(`• ${gap}`, 25, y);
-          y += 7;
-        });
-        y += 5;
+    try {
+      const resp = await fetch(`${SOCIALS_HUB_URL}/api/lead-magnet-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: normalizedType,
+          org: {
+            businessName: org.business_name,
+            logoUrl: org.logo_url,
+            contactEmail: org.contact_email,
+          },
+          result: fullResult,
+          locale,
+          generatedAt: new Date().toISOString(),
+        }),
+      });
+      if (!resp.ok) {
+        throw new Error(`PDF render failed (${resp.status})`);
       }
-
-      if (fullResult.todo_list && fullResult.todo_list.length > 0) {
-        doc.setFontSize(12);
-        doc.text("Action Plan:", 20, y);
-        y += 8;
-        doc.setFontSize(10);
-        fullResult.todo_list.forEach((item, i) => {
-          const text = `${i + 1}. ${item.task}`;
-          const lines = doc.splitTextToSize(text, pageWidth - 45);
-          doc.text(lines, 25, y);
-          y += lines.length * 6 + 3;
-        });
-      }
-    } else {
-      doc.setFontSize(14);
-      doc.text(`Estimated Value: ${fullResult.estimate_display || "N/A"}`, 20, y);
-      y += 10;
-      doc.text(`Confidence: ${fullResult.confidence || "N/A"}`, 20, y);
-      y += 10;
-      if (fullResult.market_trend) {
-        doc.text(`Market Trend: ${fullResult.market_trend}`, 20, y);
-        y += 15;
-      }
-
-      if (fullResult.drivers && fullResult.drivers.length > 0) {
-        doc.setFontSize(12);
-        doc.text("Value Drivers:", 20, y);
-        y += 8;
-        doc.setFontSize(10);
-        fullResult.drivers.forEach((driver) => {
-          doc.text(`• ${driver.factor}: ${driver.impact}`, 25, y);
-          y += 7;
-        });
-        y += 5;
-      }
-
-      // Market insights if available
-      if (fullResult.market_insights) {
-        doc.setFontSize(12);
-        doc.text("Market Insights:", 20, y);
-        y += 8;
-        doc.setFontSize(10);
-        const insightLines = doc.splitTextToSize(fullResult.market_insights, pageWidth - 45);
-        doc.text(insightLines, 25, y);
-        y += insightLines.length * 6 + 5;
-      }
-    }
-
-    // Next steps
-    if (fullResult.next_steps && fullResult.next_steps.length > 0) {
-      y += 10;
-      doc.setFontSize(12);
-      doc.text("Next Steps:", 20, y);
-      y += 8;
-      doc.setFontSize(10);
-      fullResult.next_steps.forEach((step) => {
-        const lines = doc.splitTextToSize(`• ${step}`, pageWidth - 45);
-        doc.text(lines, 25, y);
-        y += lines.length * 6 + 2;
+      const blob = await resp.blob();
+      const filename =
+        normalizedType === "READY_TO_SELL"
+          ? "ready-to-sell-report.pdf"
+          : "property-value-report.pdf";
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("[LeadMagnetQuiz] PDF download error", err);
+      toast({
+        title: "Download failed",
+        description: "Couldn't generate the report PDF. Please try again.",
+        variant: "destructive",
       });
     }
-
-    // Footer
-    y = doc.internal.pageSize.getHeight() - 20;
-    doc.setFontSize(9);
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Report provided by ${org.business_name || "AutoListing"}`, pageWidth / 2, y, { align: "center" });
-
-    // Force a real file download. Firefox (and some Chromium builds)
-    // will open a blob with application/pdf MIME in the built-in PDF
-    // viewer AS WELL as honoring the download attr — so we wrap the
-    // output in an application/octet-stream blob to bypass the viewer.
-    const filename = normalizedType === "READY_TO_SELL" ? "ready-to-sell-report.pdf" : "property-value-report.pdf";
-    const pdfBlob = doc.output("blob");
-    const downloadBlob = new Blob([pdfBlob], { type: "application/octet-stream" });
-    const url = URL.createObjectURL(downloadBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.rel = "noopener";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   if (loading) {
@@ -1375,24 +1287,6 @@ function ContactCTA({ org, onDownloadPDF, onContactAgent }: ContactCTAProps) {
             Request a Call Back
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
-        </CardContent>
-      </Card>
-
-      {/* Safeguard: second Download PDF card at the very bottom so
-          users who scroll all the way through the results still see a
-          clear way to save a copy without scrolling back up. */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <h3 className="font-semibold">Want a copy for later?</h3>
-              <p className="text-sm text-muted-foreground">Save the full report as a PDF</p>
-            </div>
-            <Button variant="outline" onClick={onDownloadPDF} data-testid="button-download-pdf-bottom">
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
