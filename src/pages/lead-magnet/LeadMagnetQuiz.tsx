@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle, AlertCircle, Home, ArrowRight, ArrowLeft, TrendingUp, FileText, Scale, Calendar, Wrench, DollarSign, Download, Phone, MessageSquare } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
+import { getPostcodeConfig, type PostcodeConfig } from "@/lib/regionConfig/postcodes";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SOCIALS_HUB_URL =
@@ -86,6 +87,8 @@ export function LeadMagnetQuiz() {
   const [error, setError] = useState<string | null>(null);
   const [org, setOrg] = useState<OrgConfig | null>(null);
   const [config, setConfig] = useState<LeadMagnetConfig | null>(null);
+  const [quizCountryCode, setQuizCountryCode] = useState<string>("IE");
+  const postcodeConfig: PostcodeConfig = useMemo(() => getPostcodeConfig(quizCountryCode), [quizCountryCode]);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<QuizAnswer>({});
@@ -162,6 +165,9 @@ export function LeadMagnetQuiz() {
 
       setOrg(data.org);
       setConfig(data.config);
+      if (data.countryCode) {
+        setQuizCountryCode(data.countryCode);
+      }
 
       // Check for saved progress
       try {
@@ -201,8 +207,8 @@ export function LeadMagnetQuiz() {
     // Accept any of: valid Eircode, (town AND county), or a free-text
     // address line of at least 4 chars.
     if ((step as any).customRender === "property_location") {
-      const eircode = typeof answers.eircode === "string" ? answers.eircode.trim() : "";
-      if (eircode && EIRCODE_REGEX.test(eircode)) return true;
+      const rawPostcode = typeof answers.eircode === "string" ? (answers.eircode as string).trim() : "";
+      if (rawPostcode && postcodeConfig.regex.test(rawPostcode)) return true;
       const town = typeof answers.town === "string" ? answers.town.trim() : "";
       const county = typeof answers.county === "string" ? answers.county.trim() : "";
       if (town && county) return true;
@@ -611,7 +617,8 @@ export function LeadMagnetQuiz() {
                 county={(answers.county as string) || ""}
                 address={(answers.address as string) || ""}
                 setAnswer={handleAnswer}
-                counties={IE_COUNTIES}
+                counties={quizCountryCode === "IE" ? IE_COUNTIES : []}
+                postcodeConfig={postcodeConfig}
               />
             ) : (
               steps[currentStep]?.questions.map((question: any) => (
@@ -702,26 +709,27 @@ interface PropertyLocationStepProps {
   address: string;
   setAnswer: (key: string, value: string) => void;
   counties: Array<{ value: string; label: string }>;
+  postcodeConfig: PostcodeConfig;
 }
 
-function PropertyLocationStep({ eircode, town, county, address, setAnswer, counties }: PropertyLocationStepProps) {
-  const trimmedEircode = eircode.trim();
-  const isValidEircode = trimmedEircode.length > 0 && EIRCODE_REGEX.test(trimmedEircode);
-  const hasTypedEircode = trimmedEircode.length > 0;
-  const showFormatError = hasTypedEircode && !isValidEircode;
+function PropertyLocationStep({ eircode, town, county, address, setAnswer, counties, postcodeConfig }: PropertyLocationStepProps) {
+  const trimmedPostcode = eircode.trim();
+  const isValidPostcode = trimmedPostcode.length > 0 && postcodeConfig.regex.test(trimmedPostcode);
+  const hasTypedPostcode = trimmedPostcode.length > 0;
+  const showFormatError = hasTypedPostcode && !isValidPostcode;
 
   // Map iframe URL — free Google Maps embed, same pattern as PropertyDetails.tsx.
-  // Rendered when the Eircode format-validates.
-  const mapSrc = isValidEircode
-    ? `https://maps.google.com/maps?q=${encodeURIComponent(trimmedEircode)}&output=embed`
+  // Rendered when the postcode format-validates.
+  const mapSrc = isValidPostcode
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(trimmedPostcode)}&output=embed`
     : null;
 
   return (
     <div className="space-y-5">
-      {/* Eircode — recommended, not required */}
+      {/* Postcode / Eircode — recommended, not required */}
       <div className="space-y-2">
         <Label htmlFor="eircode" className="text-base font-medium">
-          Eircode <span className="text-xs font-normal text-muted-foreground">(recommended for most accurate estimate)</span>
+          {postcodeConfig.label} <span className="text-xs font-normal text-muted-foreground">(recommended for most accurate estimate)</span>
         </Label>
         <Input
           id="eircode"
@@ -729,16 +737,16 @@ function PropertyLocationStep({ eircode, town, county, address, setAnswer, count
           autoCapitalize="characters"
           value={eircode}
           onChange={(e) => setAnswer("eircode", e.target.value)}
-          placeholder="e.g., H53 YA97"
+          placeholder={postcodeConfig.placeholder}
           className={showFormatError ? "border-destructive" : ""}
           data-testid="input-eircode"
         />
         <p className="text-xs text-muted-foreground">
-          Your Eircode pinpoints your exact location — it's optional, but gives the most accurate estimate.
+          {postcodeConfig.helperText}
         </p>
         {showFormatError && (
           <p className="text-xs text-destructive">
-            That doesn't look like a valid Eircode (e.g. <span className="font-mono">H53 YA97</span>). You can leave it blank and fill in the fields below instead.
+            That doesn't look like a valid {postcodeConfig.label}. You can leave it blank and fill in the fields below instead.
           </p>
         )}
       </div>
@@ -763,10 +771,10 @@ function PropertyLocationStep({ eircode, town, county, address, setAnswer, count
         </div>
       )}
 
-      {/* Alternative location fields — always visible, equal to Eircode */}
+      {/* Alternative location fields — always visible, equal to postcode */}
       <div className="pt-4 border-t space-y-4">
         <p className="text-xs text-muted-foreground">
-          No Eircode? Fill in any of these instead and we'll do our best.
+          No {postcodeConfig.label}? Fill in any of these instead and we'll do our best.
         </p>
 
         <div className="space-y-2">
@@ -799,22 +807,33 @@ function PropertyLocationStep({ eircode, town, county, address, setAnswer, count
 
         <div className="space-y-2">
           <Label htmlFor="county" className="text-base font-medium">
-            County <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+            County / Region <span className="text-xs font-normal text-muted-foreground">(optional)</span>
           </Label>
-          <select
-            id="county"
-            value={county}
-            onChange={(e) => setAnswer("county", e.target.value)}
-            className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-            data-testid="select-county"
-          >
-            <option value="">Select an option</option>
-            {counties.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+          {counties.length > 0 ? (
+            <select
+              id="county"
+              value={county}
+              onChange={(e) => setAnswer("county", e.target.value)}
+              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+              data-testid="select-county"
+            >
+              <option value="">Select an option</option>
+              {counties.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <Input
+              id="county"
+              type="text"
+              value={county}
+              onChange={(e) => setAnswer("county", e.target.value)}
+              placeholder="e.g., Greater London"
+              data-testid="input-county"
+            />
+          )}
         </div>
       </div>
     </div>
