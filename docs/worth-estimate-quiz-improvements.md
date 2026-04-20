@@ -322,29 +322,37 @@ The renderer is system Chromium (apt-installed in the Socials Dockerfile, `PUPPE
 
 ---
 
-### 🔴 6. International locale readiness
+### 🟢 6. International locale — **SHIPPED (all 6 markets active)**
 
-**Problem.** The Worth Estimate quiz is built around Irish conventions:
-- Currency hardcoded to €
-- "Eircode" label hardcoded (UK = postcode, US = ZIP, etc.)
-- "County" label hardcoded (US = state, UK = borough/city, AU = state)
-- Valuation prompt hardcoded to "Ireland" context
-- Default market research numbers are EUR/sqm, Irish-centric
-- `formatNumber` / currency formatting hardcoded
+**Delivered in two PRs:**
+- Phase 1 (GB rollout + architecture): Listings PR #172, Socials PR #184, lead-magnet-api edge function deploy — 2026-04-20
+- Phase 2 (activate all 6 markets + seed US/CA/AU/NZ tables): see PR links in merge log — 2026-04-20
 
-**Fix sketch.** Leverage the existing 6-market locale infrastructure (`src/lib/regionConfig/`, `src/lib/locale/legalConfig.ts`, `useLocale` hook, edge-side `_shared/locale-config.ts`). Key tasks:
-- Label strings (Eircode/Postcode/ZIP, County/State/Borough) driven by org locale
-- Currency symbol + formatting driven by org currency
-- Claude market research prompt includes `{country}` + `{currency}` as locale params
-- Default fallback market research tables per locale (not hardcoded Irish semi-detached numbers)
-- `area_key` normalization must not assume Irish postcode format
-- PDF + email templates localised
+**What's live for ALL 6 markets:**
+- **Postcode/ZIP field** drives its label, placeholder, regex and routing-key extraction off `org.locale` via the new `postcodes.ts` helper (frontend + edge-side twin)
+- **County/State/Region field** uses the existing `regionConfig.address.states[]` where populated (IE/US/CA/AU/NZ) or free-text (GB)
+- **Currency + area units** on the gated preview, full result, and PDF comparables table all read from `edgeLocale` — € / £ / $ / C$ / A$ / NZ$ and m² / sqft as appropriate
+- **Claude prompt** is a single parameterised template — `{country}`, `{postcodeLabel}`, `{currency}`, `{areaSymbol}` fill per request. Works for any of the 6 markets in one deploy
+- **Fallback market research tables** are tiered by postcode area per country: GB tiered by outward code, US by ZIP3, CA by FSA, AU/NZ by 2-digit prefix. Claude remains the primary path; tables are cold-start safety nets only
+- **Cache key** is `{countryCode}:{routingKey}` — IE stays `IE:H53` (no migration), GB becomes `GB:SW`, US `US:902`, CA `CA:M5V`, etc.
+- **Floor area field** label adapts to sqft for US/CA (data column keeps `floor_area_sqm` name for backwards-compat — values are sqft for those rows)
+- **Energy rating field** label localised: BER (IE), EPC (GB), HERS (US), EnerGuide (CA), NatHERS (AU), HER (NZ)
+- **No launch-flag gating** for the quiz path — the `{country}_launch` flags still exist for other features, but lead magnet quiz works for all supported locales regardless
 
-**Files likely touched.** `src/pages/lead-magnet/LeadMagnetQuiz.tsx`, `supabase/functions/lead-magnet-api/index.ts` (prompt + defaults + `calculateWorthEstimate`), the relevant region config files.
+**Known rough edges (fix via feedback loop, not blocking):**
+- Seed tables are coarse national-average tiers; local markets may deviate significantly. Mitigated by Claude being primary.
+- Canadian FSA tiering is the least certain given the geography spread.
+- NZ postcode tiering is by first 2 digits — less precise than UK outward codes.
+- BER/EPC/etc options still use the A-G scale with a "Don't know" fallback — the scales technically differ per country (e.g. US HERS is numeric) but the A-G + "Don't know" covers the majority case.
 
-**Open questions.**
-- Launch markets for Worth Estimate: does this need to work for all 6 markets day 1, or gated per `{country}_launch` feature flag?
-- Default market research tables for UK / US / CA / AU / NZ — can Claude populate these on first use (per-area cache), or do we seed defaults?
+**Reference files:**
+- `src/lib/regionConfig/postcodes.ts` (frontend)
+- `supabase/functions/_shared/postcodes.ts` (edge-side twin)
+- `supabase/functions/_shared/market-defaults.ts` (tiered seed tables)
+- `supabase/functions/_shared/locale-config.ts` (parameterised Claude prompt helpers)
+- `supabase/functions/lead-magnet-api/index.ts` (handleGetConfig, handleSubmit, calculateWorthEstimate, performAIMarketResearch)
+- `src/pages/lead-magnet/LeadMagnetQuiz.tsx` (localizeQuestion + dynamic postcodeConfig)
+- `Socials/server/services/lead-magnet-pdf-service.ts` (locale-aware currency/area unit in PDF)
 
 ---
 
@@ -361,7 +369,7 @@ The renderer is system Chromium (apt-installed in the Socials Dockerfile, `PUPPE
 5. 🟢 **Issue 5 (PDF branding + server-side render)** — SHIPPED via Socials PR #182 + Listings PRs #168, #169, and brand-colour follow-up
 
 **Round 3 — Market expansion:**
-6. 🔴 **Issue 6 (International locale)** — blocker for UK/US/CA/AU/NZ; not blocking Irish pilot
+6. 🟢 **Issue 6 (International locale)** — SHIPPED for all 6 markets. Irish users unaffected (bit-identical cache key + fallback table). Non-IE markets active in the quiz regardless of broader `{country}_launch` flag state.
 
 ## In-flight work snapshot (for context resumption)
 

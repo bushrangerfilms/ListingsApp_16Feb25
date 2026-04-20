@@ -229,17 +229,8 @@ async function handleGetOrg(supabase: any, slug: string): Promise<Response> {
 }
 
 // Get lead magnet config
-// Per-locale launch feature flag. IE is always on; non-IE locales are gated
-// behind `uk_launch` / `us_launch` / etc. When the flag is off, we coerce the
-// org back to en-IE for the quiz so it degrades gracefully instead of 404ing.
-const LOCALE_LAUNCH_FLAGS: Record<string, string> = {
-  "en-GB": "uk_launch",
-  "en-US": "us_launch",
-  "en-CA": "ca_launch",
-  "en-AU": "au_launch",
-  "en-NZ": "nz_launch",
-};
-
+// The lead magnet quiz supports all 6 markets directly — no per-locale launch
+// flag gating. Unknown locales fall back to en-IE.
 const LOCALE_TO_COUNTRY_EDGE: Record<string, string> = {
   "en-IE": "IE",
   "en-GB": "GB",
@@ -249,34 +240,13 @@ const LOCALE_TO_COUNTRY_EDGE: Record<string, string> = {
   "en-NZ": "NZ",
 };
 
-async function isLaunchFlagOn(supabase: any, flagKey: string): Promise<boolean> {
-  try {
-    const { data } = await supabase
-      .from("feature_flags")
-      .select("is_active, default_state")
-      .eq("key", flagKey)
-      .maybeSingle();
-    return !!(data?.is_active && (data?.default_state ?? false));
-  } catch {
-    return false;
-  }
-}
-
-async function resolveOrgLocale(supabase: any, rawLocale: string | null | undefined): Promise<{ locale: string; countryCode: string }> {
+async function resolveOrgLocale(_supabase: any, rawLocale: string | null | undefined): Promise<{ locale: string; countryCode: string }> {
   const candidate = (rawLocale as string) || "en-IE";
-  if (candidate === "en-IE") {
-    return { locale: "en-IE", countryCode: "IE" };
+  const countryCode = LOCALE_TO_COUNTRY_EDGE[candidate];
+  if (countryCode) {
+    return { locale: candidate, countryCode };
   }
-  const flag = LOCALE_LAUNCH_FLAGS[candidate];
-  if (!flag) {
-    return { locale: "en-IE", countryCode: "IE" };
-  }
-  const enabled = await isLaunchFlagOn(supabase, flag);
-  if (!enabled) {
-    console.warn(`[lead-magnet-api] Locale ${candidate} requested but ${flag} is off; coercing to en-IE`);
-    return { locale: "en-IE", countryCode: "IE" };
-  }
-  return { locale: candidate, countryCode: LOCALE_TO_COUNTRY_EDGE[candidate] || "IE" };
+  return { locale: "en-IE", countryCode: "IE" };
 }
 
 async function handleGetConfig(supabase: any, orgSlug: string, type: string): Promise<Response> {
