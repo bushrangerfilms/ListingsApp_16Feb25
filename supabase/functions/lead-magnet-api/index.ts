@@ -4,6 +4,8 @@ import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.75.0";
 import { publicCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { getEdgeLocaleConfig, formatEdgePrice } from '../_shared/locale-config.ts';
+import { getPostcodeConfig as getEdgePostcodeConfig, normalizePostcode as normalizeEdgePostcode, routingKeyFor as edgeRoutingKeyFor } from '../_shared/postcodes.ts';
+import { getDefaultMarketResearch as getEdgeDefaultMarketResearch } from '../_shared/market-defaults.ts';
 
 const corsHeaders = {
   ...publicCorsHeaders,
@@ -227,13 +229,63 @@ async function handleGetOrg(supabase: any, slug: string): Promise<Response> {
 }
 
 // Get lead magnet config
+// Per-locale launch feature flag. IE is always on; non-IE locales are gated
+// behind `uk_launch` / `us_launch` / etc. When the flag is off, we coerce the
+// org back to en-IE for the quiz so it degrades gracefully instead of 404ing.
+const LOCALE_LAUNCH_FLAGS: Record<string, string> = {
+  "en-GB": "uk_launch",
+  "en-US": "us_launch",
+  "en-CA": "ca_launch",
+  "en-AU": "au_launch",
+  "en-NZ": "nz_launch",
+};
+
+const LOCALE_TO_COUNTRY_EDGE: Record<string, string> = {
+  "en-IE": "IE",
+  "en-GB": "GB",
+  "en-US": "US",
+  "en-CA": "CA",
+  "en-AU": "AU",
+  "en-NZ": "NZ",
+};
+
+async function isLaunchFlagOn(supabase: any, flagKey: string): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from("feature_flags")
+      .select("is_active, default_state")
+      .eq("key", flagKey)
+      .maybeSingle();
+    return !!(data?.is_active && (data?.default_state ?? false));
+  } catch {
+    return false;
+  }
+}
+
+async function resolveOrgLocale(supabase: any, rawLocale: string | null | undefined): Promise<{ locale: string; countryCode: string }> {
+  const candidate = (rawLocale as string) || "en-IE";
+  if (candidate === "en-IE") {
+    return { locale: "en-IE", countryCode: "IE" };
+  }
+  const flag = LOCALE_LAUNCH_FLAGS[candidate];
+  if (!flag) {
+    return { locale: "en-IE", countryCode: "IE" };
+  }
+  const enabled = await isLaunchFlagOn(supabase, flag);
+  if (!enabled) {
+    console.warn(`[lead-magnet-api] Locale ${candidate} requested but ${flag} is off; coercing to en-IE`);
+    return { locale: "en-IE", countryCode: "IE" };
+  }
+  return { locale: candidate, countryCode: LOCALE_TO_COUNTRY_EDGE[candidate] || "IE" };
+}
+
 async function handleGetConfig(supabase: any, orgSlug: string, type: string): Promise<Response> {
   const normalizedType = type.toUpperCase().replace(/-/g, "_");
-  
+
   // Get org first
   const { data: org, error: orgError } = await supabase
     .from("organizations")
-    .select("id, slug, business_name, logo_url, contact_email")
+    .select("id, slug, business_name, logo_url, contact_email, locale")
     .eq("slug", orgSlug)
     .eq("is_active", true)
     .single();
@@ -261,8 +313,10 @@ async function handleGetConfig(supabase: any, orgSlug: string, type: string): Pr
     );
   }
 
+  const { locale, countryCode } = await resolveOrgLocale(supabase, org.locale);
+
   return new Response(
-    JSON.stringify({ org, config }),
+    JSON.stringify({ org, config, locale, countryCode }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 }
@@ -325,12 +379,20 @@ async function handleSubmit(supabase: any, body: any): Promise<Response> {
     );
   }
 
+  // Resolve org locale (gated by launch flag for non-IE markets — falls back to en-IE).
+  const { data: orgRow } = await supabase
+    .from("organizations")
+    .select("locale")
+    .eq("id", organization_id)
+    .maybeSingle();
+  const { locale, countryCode } = await resolveOrgLocale(supabase, orgRow?.locale);
+
   let result: any = {};
 
   if (type === "READY_TO_SELL") {
     result = calculateReadinessScore(answers);
   } else if (type === "WORTH_ESTIMATE") {
-    result = await calculateWorthEstimate(supabase, answers);
+    result = await calculateWorthEstimate(supabase, answers, countryCode, locale);
   }
 
   // Handle refusal case (Worth Estimate with no usable location data)
@@ -370,7 +432,7 @@ async function handleSubmit(supabase: any, body: any): Promise<Response> {
   }
 
   // Return basic result (gated version)
-  const gatedResult = getGatedResult(type, result);
+  const gatedResult = getGatedResult(type, result, locale);
 
   return new Response(
     JSON.stringify({
@@ -402,7 +464,7 @@ async function handleFormCompleted(supabase: any, body: any): Promise<Response> 
 
   const { data: submission, error: fetchError } = await supabase
     .from("lead_submissions")
-    .select("*, lead_magnets!inner(type), organizations!inner(id, slug, business_name, contact_email)")
+    .select("*, lead_magnets!inner(type), organizations!inner(id, slug, business_name, contact_email, locale)")
     .eq("id", submission_id)
     .single();
 
@@ -412,6 +474,8 @@ async function handleFormCompleted(supabase: any, body: any): Promise<Response> 
       { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
+  const { locale: orgLocale } = await resolveOrgLocale(supabase, submission.organizations?.locale);
 
   const { error: updateError } = await supabase
     .from("lead_submissions")
@@ -443,7 +507,7 @@ async function handleFormCompleted(supabase: any, body: any): Promise<Response> 
   }
 
   const type = submission.lead_magnets?.type;
-  const fullResult = getFullResult(type, submission);
+  const fullResult = getFullResult(type, submission, orgLocale);
   const orgName = submission.organizations?.business_name || "Your Organization";
   const orgEmail = submission.organizations?.contact_email;
 
@@ -480,7 +544,7 @@ async function handleFormCompleted(supabase: any, body: any): Promise<Response> 
 async function sendFormCompletedEmail(supabase: any, submission_id: string): Promise<void> {
   const { data: submission, error } = await supabase
     .from("lead_submissions")
-    .select("*, lead_magnets!inner(type), organizations!inner(business_name, contact_email)")
+    .select("*, lead_magnets!inner(type), organizations!inner(business_name, contact_email, locale)")
     .eq("id", submission_id)
     .single();
 
@@ -490,9 +554,11 @@ async function sendFormCompletedEmail(supabase: any, submission_id: string): Pro
   const orgName = submission.organizations?.business_name || "Your Organization";
   if (!orgEmail) return;
 
+  const { locale: orgLocale } = await resolveOrgLocale(supabase, submission.organizations?.locale);
+
   const type = submission.lead_magnets?.type;
   const quizType = type === "READY_TO_SELL" ? "Ready to Sell" : "Worth Estimate";
-  const fullResult = getFullResult(type, submission);
+  const fullResult = getFullResult(type, submission, orgLocale);
   const bundledContact = !!submission.contact_requested_at;
 
   const emailSubject = bundledContact
@@ -755,27 +821,33 @@ function normalizeEircode(raw: string): string {
   return raw.trim().toUpperCase().replace(/\s+/g, "");
 }
 
-function buildAreaKeyFromAnswers(answers: any): string {
-  const eircode = answers.eircode ? normalizeEircode(answers.eircode) : "";
-  if (eircode.length >= 3) {
-    return `IE:${eircode.slice(0, 3)}`;
+function buildAreaKeyFromAnswers(answers: any, countryCode: string = "IE"): string {
+  const rawPostcode = (answers.postcode || answers.eircode || "").trim();
+  if (rawPostcode) {
+    const normalized = normalizeEdgePostcode(rawPostcode);
+    const config = getEdgePostcodeConfig(countryCode);
+    if (config.regex.test(rawPostcode) || config.regex.test(normalized)) {
+      const key = edgeRoutingKeyFor(countryCode, normalized);
+      if (key) return `${countryCode}:${key}`;
+    }
   }
-  // Fallback: user typed a town/county instead of an Eircode
   const town = (answers.town || answers.area || "").toLowerCase().replace(/\s+/g, "_");
   const county = (answers.county || "").toLowerCase().replace(/\s+/g, "_");
-  return `IE:${town}_${county}`;
+  return `${countryCode}:${town}_${county}`;
 }
 
-async function calculateWorthEstimate(supabase: any, answers: any): Promise<any> {
-  const hasEircode = !!answers.eircode && answers.eircode.trim().length > 0;
+async function calculateWorthEstimate(supabase: any, answers: any, countryCode: string = "IE", locale: string = "en-IE"): Promise<any> {
+  const postcodeConfig = getEdgePostcodeConfig(countryCode);
+  const rawPostcode = (answers.postcode || answers.eircode || "").trim();
+  const hasPostcode = rawPostcode.length > 0;
   const hasFallbackLocation = !!(answers.town || answers.area || answers.county);
   const propertyType = normalizePropertyType(answers.property_type);
 
-  // STEP 8: Refusal Rule — need at least eircode OR town/county
-  if (!hasEircode && !hasFallbackLocation) {
+  // STEP 8: Refusal Rule — need at least postcode OR town/county
+  if (!hasPostcode && !hasFallbackLocation) {
     return {
       refused: true,
-      refusal_message: "We can't estimate without a location. Please provide your Eircode or town.",
+      refusal_message: `We can't estimate without a location. Please provide your ${postcodeConfig.label} or town.`,
       estimate_low: null,
       estimate_high: null,
       confidence: null,
@@ -784,7 +856,8 @@ async function calculateWorthEstimate(supabase: any, answers: any): Promise<any>
     };
   }
 
-  const areaKey = buildAreaKeyFromAnswers(answers);
+  const areaKey = buildAreaKeyFromAnswers(answers, countryCode);
+  const routingKey = areaKey.includes(":") ? areaKey.split(":")[1] : "";
 
   // STEP 1: Get market research (cached, AI-generated, or default)
   let research = await getCachedResearch(supabase, areaKey, propertyType);
@@ -792,9 +865,8 @@ async function calculateWorthEstimate(supabase: any, answers: any): Promise<any>
   let researchSource = "cached";
 
   if (!research) {
-    // No cache - try AI research
     console.log(`No cached research for ${areaKey}/${propertyType}, attempting AI research...`);
-    research = await performAIMarketResearch(supabase, areaKey, propertyType, answers);
+    research = await performAIMarketResearch(supabase, areaKey, propertyType, answers, countryCode, locale);
 
     if (research) {
       researchSource = "ai";
@@ -802,15 +874,15 @@ async function calculateWorthEstimate(supabase: any, answers: any): Promise<any>
     } else {
       // Fallback to defaults — synthesise resolution from user input
       research = {
-        ...getDefaultMarketResearch(propertyType),
+        ...getEdgeDefaultMarketResearch(countryCode as any, propertyType, routingKey),
         resolved_town: answers.town || answers.area || "Unknown",
         resolved_county: answers.county || "Unknown",
         resolution_confidence: "low",
         resolution_failed: true,
       };
-      researchWeak = true; // No cached/AI research = weak confidence
+      researchWeak = true;
       researchSource = "default";
-      console.log(`Using default research for ${areaKey}/${propertyType}`);
+      console.log(`Using default research for ${areaKey}/${propertyType} (country=${countryCode})`);
     }
   }
 
@@ -1246,11 +1318,125 @@ const MARKET_RESEARCH_TOOL = {
   strict: true,
 } as const;
 
+function buildMarketResearchTool(edgeLocale: ReturnType<typeof getEdgeLocaleConfig>, postcodeCfg: ReturnType<typeof getEdgePostcodeConfig>): any {
+  const { country, currency, measurements } = edgeLocale;
+  const unit = measurements.areaSymbol;
+  return {
+    name: "report_market_research",
+    description:
+      `Report market research findings for a specific property in ${country}. Call this once with your complete analysis.`,
+    input_schema: {
+      type: "object",
+      properties: {
+        price_per_sqm_low: {
+          type: "number",
+          description: `Conservative low estimate in ${currency.code} per ${unit}`,
+        },
+        price_per_sqm_high: {
+          type: "number",
+          description: `Conservative high estimate in ${currency.code} per ${unit}`,
+        },
+        avg_price_sqm: {
+          type: "number",
+          description: `Average price per ${unit} in ${currency.code}`,
+        },
+        comparable_sales: {
+          type: "array",
+          description: "List of 3-5 comparable recent sales in the area",
+          items: {
+            type: "object",
+            properties: {
+              description: { type: "string" },
+              sale_price: { type: "number" },
+              approx_sqm: { type: "number" },
+              price_per_sqm: { type: "number" },
+              distance_km: { type: "number" },
+            },
+            required: [
+              "description",
+              "sale_price",
+              "approx_sqm",
+              "price_per_sqm",
+              "distance_km",
+            ],
+            additionalProperties: false,
+          },
+        },
+        market_insights: {
+          type: "string",
+          description: "1-2 sentence summary of local market conditions",
+        },
+        volatility: {
+          type: "string",
+          enum: ["low", "medium", "high"],
+        },
+        trend: {
+          type: "string",
+          enum: ["Rising", "Stable", "Declining"],
+          description: "Use exact title-case values — constrained by DB CHECK constraint",
+        },
+        research_confidence: {
+          type: "string",
+          enum: ["strong", "moderate", "weak"],
+        },
+        area_premium_notes: {
+          type: "string",
+          description: "Notes about location premiums or discounts",
+        },
+        resolved_town: {
+          type: "string",
+          description:
+            `The town or nearest settlement you determined the ${postcodeCfg.label} resolves to. ` +
+            `If the user provided a town fallback instead of a ${postcodeCfg.label}, echo that back.`,
+        },
+        resolved_county: {
+          type: "string",
+          description: `The county / state / region for the resolved area in ${country}.`,
+        },
+        resolution_confidence: {
+          type: "string",
+          enum: ["high", "medium", "low"],
+          description:
+            "high = you recognize the exact routing key and identify a specific area; " +
+            "medium = you can infer the general area; " +
+            `low = best guess, or user provided a town fallback instead of a ${postcodeCfg.label}.`,
+        },
+        resolution_failed: {
+          type: "boolean",
+          description:
+            `Set true only if you cannot resolve the ${postcodeCfg.label} to an area at all. ` +
+            "When true, still populate resolved_town/resolved_county with your best guess " +
+            "and set resolution_confidence to 'low'.",
+        },
+      },
+      required: [
+        "price_per_sqm_low",
+        "price_per_sqm_high",
+        "avg_price_sqm",
+        "comparable_sales",
+        "market_insights",
+        "volatility",
+        "trend",
+        "research_confidence",
+        "area_premium_notes",
+        "resolved_town",
+        "resolved_county",
+        "resolution_confidence",
+        "resolution_failed",
+      ],
+      additionalProperties: false,
+    },
+    strict: true,
+  };
+}
+
 async function performAIMarketResearch(
   supabase: any,
   areaKey: string,
   propertyType: string,
-  answers: any
+  answers: any,
+  countryCode: string = "IE",
+  locale: string = "en-IE",
 ): Promise<any> {
   const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY_AUTOLISTING");
 
@@ -1259,14 +1445,16 @@ async function performAIMarketResearch(
     return null;
   }
 
-  const eircode = answers.eircode ? String(answers.eircode).trim() : "";
+  const edgeLocale = getEdgeLocaleConfig(locale);
+  const postcodeCfg = getEdgePostcodeConfig(countryCode);
+  const rawPostcode = (answers.postcode || answers.eircode || "").trim();
   const fallbackTown = answers.town || answers.area || "";
   const fallbackCounty = answers.county || "";
   const propertyTypeLabel = {
     detached: "detached house",
-    semi: "semi-detached house",
-    terrace: "terraced house",
-    apartment: "apartment",
+    semi: countryCode === "GB" ? "semi-detached house" : "semi-detached house",
+    terrace: countryCode === "GB" ? "terraced house" : "terraced house",
+    apartment: edgeLocale.terminology.apartment,
     bungalow: "bungalow",
   }[propertyType] || "residential property";
 
@@ -1276,30 +1464,25 @@ async function performAIMarketResearch(
     ? `${answers.land_size_acres} acres`
     : "standard plot";
 
-  // TODO: Make country/market context dynamic when quiz expands beyond Ireland.
-  // The Eircode is the authoritative location when present — it pinpoints
-  // the property regardless of what free-text town the user typed.
-  // Claude resolves the Eircode → town/county inline and returns the
-  // resolution alongside the market research in one tool call.
-  const locationBlock = eircode
-    ? `- Eircode: ${eircode}  ← AUTHORITATIVE LOCATION (ignore any typed town that conflicts)
+  const locationBlock = rawPostcode
+    ? `- ${postcodeCfg.label}: ${rawPostcode}  ← AUTHORITATIVE LOCATION (ignore any typed town that conflicts)
 - User-typed town (may be wrong): ${fallbackTown || "not provided"}
-- User-typed county (may be wrong): ${fallbackCounty || "not provided"}`
-    : `- No Eircode provided, using user-typed fallback:
+- User-typed county/region (may be wrong): ${fallbackCounty || "not provided"}`
+    : `- No ${postcodeCfg.label} provided, using user-typed fallback:
 - Town: ${fallbackTown || "unknown"}
-- County: ${fallbackCounty || "unknown"}`;
+- County/region: ${fallbackCounty || "unknown"}`;
 
-  const resolutionTask = eircode
-    ? `TASK 1 — Resolve the Eircode to an actual location:
-  • Identify the exact town/settlement the Eircode corresponds to. Irish Eircode routing keys (first 3 chars) map to specific areas — for example, H53 = Ballinasloe area in Co. Galway/Roscommon.
+  const resolutionTask = rawPostcode
+    ? `TASK 1 — Resolve the ${postcodeCfg.label} to an actual location:
+  • Identify the exact town/settlement the ${postcodeCfg.label} corresponds to. ${postcodeCfg.resolutionHint}
   • Return your determination in \`resolved_town\` and \`resolved_county\`.
   • Set \`resolution_confidence\` to "high" if you recognize the exact routing key and identify a specific area, "medium" if you can infer only the general area, "low" if you are guessing.
-  • If you genuinely cannot resolve the Eircode at all, set \`resolution_failed: true\` and provide your best-guess resolved_town/resolved_county with resolution_confidence: "low".
-  • If the Eircode and user-typed town disagree, trust the Eircode.`
+  • If you genuinely cannot resolve the ${postcodeCfg.label} at all, set \`resolution_failed: true\` and provide your best-guess resolved_town/resolved_county with resolution_confidence: "low".
+  • If the ${postcodeCfg.label} and user-typed town disagree, trust the ${postcodeCfg.label}.`
     : `TASK 1 — Echo the user's town/county:
-  • The user did not provide an Eircode. Return \`resolved_town: "${fallbackTown}"\`, \`resolved_county: "${fallbackCounty}"\`, \`resolution_confidence: "low"\`, \`resolution_failed: false\`.`;
+  • The user did not provide a ${postcodeCfg.label}. Return \`resolved_town: "${fallbackTown}"\`, \`resolved_county: "${fallbackCounty}"\`, \`resolution_confidence: "low"\`, \`resolution_failed: false\`.`;
 
-  const userPrompt = `Research current market data for a ${propertyTypeLabel} in Ireland.
+  const userPrompt = `Research current market data for a ${propertyTypeLabel} in ${edgeLocale.country}.
 
 Location:
 ${locationBlock}
@@ -1313,7 +1496,7 @@ ${resolutionTask}
 
 TASK 2 — Research current market comparables for the resolved area:
   • Recent sales (last 6–12 months) in this area and nearby comparable areas
-  • Price per square metre for similar properties
+  • Price per ${edgeLocale.measurements.areaSymbol} for similar properties (report figures in ${edgeLocale.currency.code})
   • Impact of age and land size, distance from town centre, and current market trends
   • 3–5 comparable sales with description, sale_price, approx_sqm, price_per_sqm, distance_km
 
@@ -1321,13 +1504,14 @@ Call the \`report_market_research\` tool exactly once with your complete finding
 
   try {
     const client = new Anthropic({ apiKey: anthropicApiKey });
+    const tool = buildMarketResearchTool(edgeLocale, postcodeCfg);
 
     const response = await client.messages.create({
       model: "claude-opus-4-6",
       max_tokens: 4096,
       system:
-        "You are a property valuation expert in Ireland. Use the report_market_research tool to return structured research findings.",
-      tools: [MARKET_RESEARCH_TOOL as any],
+        `You are a property valuation expert in ${edgeLocale.country}. Use the report_market_research tool to return structured research findings. All monetary figures must be in ${edgeLocale.currency.code}; all areas in ${edgeLocale.measurements.areaSymbol}.`,
+      tools: [tool as any],
       tool_choice: { type: "tool", name: "report_market_research" },
       messages: [{ role: "user", content: userPrompt }],
     });
@@ -1374,7 +1558,7 @@ Call the \`report_market_research\` tool exactly once with your complete finding
 // ============================================
 // Gating Logic
 // ============================================
-function getGatedResult(type: string, result: any): any {
+function getGatedResult(type: string, result: any, locale: string = "en-IE"): any {
   if (type === "READY_TO_SELL") {
     return {
       band: result.band,
@@ -1387,14 +1571,12 @@ function getGatedResult(type: string, result: any): any {
     const range = result.estimate_high - result.estimate_low;
     const widerLow = result.estimate_low - range * 0.2;
     const widerHigh = result.estimate_high + range * 0.2;
+    const edgeLocale = getEdgeLocaleConfig(locale);
 
     return {
-      // TODO: Use org currency when quiz expands beyond Ireland
-      estimate_range: `€${formatNumber(widerLow)} - €${formatNumber(widerHigh)}`,
+      estimate_range: `${formatEdgePrice(widerLow, edgeLocale)} - ${formatEdgePrice(widerHigh, edgeLocale)}`,
       confidence: "Preliminary",
       message: "Get your full valuation report for a refined estimate and market insights.",
-      // Resolution data is exposed in the gated preview too — the trust moment
-      // ("we found your property near X") happens BEFORE the email gate.
       resolved_town: result.resolved_town || null,
       resolved_county: result.resolved_county || null,
       resolution_confidence: result.resolution_confidence || null,
@@ -1402,7 +1584,7 @@ function getGatedResult(type: string, result: any): any {
   }
 }
 
-function getFullResult(type: string, submission: any): any {
+function getFullResult(type: string, submission: any, locale: string = "en-IE"): any {
   if (type === "READY_TO_SELL") {
     return {
       score: submission.score,
@@ -1412,11 +1594,11 @@ function getFullResult(type: string, submission: any): any {
       next_steps: getNextSteps(submission.band),
     };
   } else {
+    const edgeLocale = getEdgeLocaleConfig(locale);
     return {
       estimate_low: submission.estimate_low,
       estimate_high: submission.estimate_high,
-      // TODO: Use org currency when quiz expands beyond Ireland
-      estimate_display: `€${formatNumber(submission.estimate_low)} - €${formatNumber(submission.estimate_high)}`,
+      estimate_display: `${formatEdgePrice(submission.estimate_low, edgeLocale)} - ${formatEdgePrice(submission.estimate_high, edgeLocale)}`,
       confidence: submission.confidence,
       drivers: submission.drivers_json,
       market_trend: submission.market_trend,
