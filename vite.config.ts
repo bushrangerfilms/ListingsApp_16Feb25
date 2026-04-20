@@ -67,6 +67,36 @@ export default defineConfig(() => ({
           ],
         },
       },
+      // The prerender output for `/` overwrites `dist/index.html`, which is
+      // ALSO the SPA fallback served on every custom org domain (because
+      // `serve` rewrites unknown paths to `/index.html`). Baking
+      // autolisting.io identity tags into that file leaks them onto
+      // customer white-label domains — e.g. bridgeauctioneers.ie/ would
+      // serve an autolisting.io canonical to non-JS crawlers, which Google
+      // would read as "bridgeauctioneers.ie is a duplicate of
+      // autolisting.io" and destroy their SEO.
+      //
+      // So for the `/` route only, strip identity-declaring tags from the
+      // rendered HTML. Runtime SEO.tsx re-injects them on the marketing
+      // domain once JS runs. The body copy and H1 are preserved — they're
+      // benign on any domain.
+      //
+      // Per-route HTML at /pricing, /features etc. keeps its full tags
+      // because those paths are only ever hit on the marketing domain;
+      // custom org domains fall back to /index.html via the serve.json
+      // rewrite rule and never reach those files.
+      postProcess(renderedRoute) {
+        if (renderedRoute.route === "/") {
+          renderedRoute.html = renderedRoute.html
+            .replace(/<link[^>]*rel=["']canonical["'][^>]*>/gi, "")
+            .replace(/<meta[^>]*property=["']og:url["'][^>]*>/gi, "")
+            .replace(
+              /<script[^>]*data-seo-jsonld[^>]*>[\s\S]*?<\/script>/gi,
+              "",
+            );
+        }
+        return renderedRoute;
+      },
     }),
   ],
   resolve: {

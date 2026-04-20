@@ -57,16 +57,19 @@ ARG SENTRY_PROJECT
 RUN npm run build
 
 # ---- Runtime stage ----
-# Slim image; only needs `serve` and the built dist/.
+# Slim image; only needs Node + the built dist/ + the serve script.
 FROM node:20-bookworm-slim AS runtime
 
 WORKDIR /app
 
-RUN npm install -g serve@14
-
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/scripts/serve.mjs ./scripts/serve.mjs
 
 ENV PORT=5000
 EXPOSE 5000
 
-CMD ["serve", "dist", "-s", "-l", "5000"]
+# Custom static server (see scripts/serve.mjs). vercel/serve can't express
+# the combination we need in one config: prerendered /pricing.html served
+# at /pricing AND SPA fallback for everything else AND no `autolisting.io`
+# identity leak into the index.html served on custom org domains.
+CMD ["node", "scripts/serve.mjs"]
