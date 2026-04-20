@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/flatten-prerendered-routes.mjs",
     "build:dev": "vite build --mode development",
-    "start": "serve dist -s -l 5000",
+    "start": "node scripts/serve.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "setup-db": "node setup-database.js",
