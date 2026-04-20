@@ -624,7 +624,7 @@ export function LeadMagnetQuiz() {
               steps[currentStep]?.questions.map((question: any) => (
                 <QuestionField
                   key={question.key}
-                  question={question}
+                  question={localizeQuestion(question, quizCountryCode)}
                   value={answers[question.key]}
                   onChange={(value) => handleAnswer(question.key, value)}
                 />
@@ -1514,6 +1514,43 @@ const readyToSellSteps = [
 // Used for client-side validation before enabling the Next button.
 // TODO (Issue #6): lift to locale-aware regionConfig so UK/US/etc. drop in.
 const EIRCODE_REGEX = /^[AC-FHKNPRTV-Y]\d{2}\s?[0-9AC-FHKNPRTV-Y]{4}$/i;
+
+// Swap sqm-based labels/placeholders to sqft for US/CA. The quiz question
+// key stays `floor_area_sqm` for backwards-compat with existing submissions
+// and the DB column — values for US/CA rows are in sqft despite the name.
+function localizeQuestion(question: any, countryCode: string): any {
+  if (!question?.label) return question;
+  let q = question;
+
+  // Floor-area unit swap. Data column keeps the `floor_area_sqm` name for
+  // backwards-compat — values for US/CA rows are in sqft despite the name.
+  if (countryCode === "US" || countryCode === "CA") {
+    const label = String(q.label).replace(/sqm/gi, "sqft");
+    const placeholder = q.placeholder
+      ? String(q.placeholder).replace(/sqm/gi, "sqft")
+      : q.placeholder;
+    if (label !== q.label || placeholder !== q.placeholder) {
+      q = { ...q, label, placeholder };
+    }
+  }
+
+  // Energy rating label adapt. IE BER and GB EPC both use A-G; others use
+  // different scales, but the "Don't know" fallback covers everyone.
+  if (q.key === "ber_rating") {
+    const energyLabels: Record<string, string> = {
+      IE: "BER Rating",
+      GB: "EPC Rating",
+      US: "Energy Rating",
+      CA: "EnerGuide Rating",
+      AU: "NatHERS Rating",
+      NZ: "Home Energy Rating",
+    };
+    const label = energyLabels[countryCode] || "Energy Rating";
+    if (label !== q.label) q = { ...q, label };
+  }
+
+  return q;
+}
 
 const IE_COUNTIES = [
   { value: "dublin", label: "Dublin" },
