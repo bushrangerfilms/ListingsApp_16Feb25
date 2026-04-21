@@ -13,6 +13,7 @@ export interface OrganizationInfo {
   hide_public_site?: boolean;
   primary_color?: string | null;
   secondary_color?: string | null;
+  locale?: string | null;
 }
 
 export type DomainType = 'marketing' | 'admin' | 'org-public';
@@ -85,7 +86,7 @@ export async function detectOrganizationFromDomain(): Promise<OrganizationInfo |
     // stale `domain` value can't route real visitors to a dead domain.
     const { data, error } = await supabase
       .from('organizations')
-      .select('id, business_name, slug, domain, logo_url, favicon_url, contact_email, contact_phone, business_address, hide_public_site, primary_color, secondary_color, custom_domain_status')
+      .select('id, business_name, slug, domain, logo_url, favicon_url, contact_email, contact_phone, business_address, hide_public_site, primary_color, secondary_color, locale, custom_domain_status')
       .eq('domain', hostname)
       .eq('custom_domain_status', 'verified')
       .eq('is_active', true)

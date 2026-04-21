@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { name, email, phone, propertyAddress, message, clientSlug, utm_source, utm_campaign, utm_content, post_id } = await req.json();
+    const { name, email, phone, propertyAddress, postcode, message, clientSlug, utm_source, utm_campaign, utm_content, post_id } = await req.json();
 
     if (!name || !email || !phone || !propertyAddress || !clientSlug) {
       return new Response(
@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
         email,
         phone,
         property_address: propertyAddress,
+        postcode: postcode || null,
         message: message || null,
         status: 'new',
         utm_source: utm_source || null,
