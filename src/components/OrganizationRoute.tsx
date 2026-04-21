@@ -99,6 +99,21 @@ export function OrganizationRoute({ children }: OrganizationRouteProps) {
     loadOrg();
   }, [orgSlug, setOrganizationBySlug, location.pathname]);
 
+  // Self-heal against cross-tenant leakage: if something else (auth loader,
+  // saved-org rehydrate, impersonation switch) overwrites the global org
+  // context to a different slug than the URL, snap it back to the URL's org.
+  // Without this guard, a super admin logged in with their own org selected
+  // would see their branding on a customer's public URL.
+  useEffect(() => {
+    if (!orgSlug || !organization) return;
+    if (organization.slug === orgSlug) return;
+    console.warn(
+      '[OrganizationRoute] Org context out of sync with URL slug — reloading',
+      { urlSlug: orgSlug, contextSlug: organization.slug },
+    );
+    setOrganizationBySlug(orgSlug);
+  }, [organization, orgSlug, setOrganizationBySlug]);
+
   // Redirect to login for admin domain without slug
   if (shouldRedirectToLogin) {
     return <Navigate to="/admin/login" replace />;
