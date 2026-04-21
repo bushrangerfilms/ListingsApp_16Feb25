@@ -1,7 +1,8 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useOrganizationView } from "@/contexts/OrganizationViewContext";
 
 // localStorage key for the per-org "last acknowledged" timestamp. When the
 // user visits /admin/crm, we bump this forward to now() — the sidebar badge
@@ -47,23 +48,28 @@ export function setCrmLastAck(orgId: string | undefined): void {
  */
 export function useNewSellersCount(): { count: number; lastAck: string } {
   const { organization } = useOrganization();
-  const orgId = organization?.id;
+  const { isOrganizationView, selectedOrganization } = useOrganizationView();
   const queryClient = useQueryClient();
 
-  // Snapshot the ack timestamp per org so the query key is stable within a
-  // render tree. If localStorage changes (e.g. on CRM page mount), we rely
-  // on manual invalidation to pick up the new timestamp — see AdminCRM.tsx.
-  const lastAck = useMemo(() => getCrmLastAck(orgId), [orgId]);
+  // Mirror AdminCRM's org resolution so the sidebar badge counts against
+  // the same org whose ack timestamp gets bumped on CRM page mount.
+  const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
+  const orgId = targetOrg?.id;
+
+  // Read lastAck inside queryFn (not in the key) so invalidation after
+  // setCrmLastAck picks up the updated timestamp on the next fetch.
+  const lastAck = getCrmLastAck(orgId);
 
   const { data: count = 0 } = useQuery({
-    queryKey: ["crm-new-sellers-count", orgId, lastAck],
+    queryKey: ["crm-new-sellers-count", orgId],
     queryFn: async () => {
       if (!orgId) return 0;
+      const ack = getCrmLastAck(orgId);
       const { count: rowCount, error } = await supabase
         .from("seller_profiles")
         .select("*", { count: "exact", head: true })
         .eq("organization_id", orgId)
-        .gt("created_at", lastAck);
+        .gt("created_at", ack);
       if (error) {
         console.error("[useNewSellersCount] query failed:", error);
         return 0;
