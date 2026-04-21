@@ -106,10 +106,22 @@ export function SEO({
     // Standard meta tags
     updateMetaTag('description', finalDescription);
 
+    // og:image / twitter:image must be ABSOLUTE URLs for LinkedIn, Facebook,
+    // Slack, iMessage, email preview renderers etc. to fetch them. On the
+    // marketing domain the logo lives at https://autolisting.io/autolisting-logo.png;
+    // elsewhere we leave the relative path alone (org-public pages serve their
+    // own branding and don't want autolisting.io's logo URL baked in).
+    const absolutiseImage = (src: string) => {
+      if (/^https?:\/\//i.test(src) || src.startsWith('//')) return src;
+      if (marketing && src.startsWith('/')) return marketingOrigin + src;
+      return src;
+    };
+    const absoluteOgImage = absolutiseImage(ogImage);
+
     // Open Graph tags
     updateMetaTag('og:title', ogTitle || finalTitle, true);
     updateMetaTag('og:description', ogDescription || finalDescription, true);
-    updateMetaTag('og:image', ogImage, true);
+    updateMetaTag('og:image', absoluteOgImage, true);
     updateMetaTag('og:type', 'website', true);
 
     // og:url — explicit prop wins; otherwise auto-inject on marketing only.
@@ -131,7 +143,7 @@ export function SEO({
     updateMetaTag('twitter:card', 'summary_large_image');
     updateMetaTag('twitter:title', ogTitle || finalTitle);
     updateMetaTag('twitter:description', ogDescription || finalDescription);
-    updateMetaTag('twitter:image', ogImage);
+    updateMetaTag('twitter:image', absoluteOgImage);
 
     // Canonical link — explicit prop wins; otherwise auto-inject on marketing.
     // Removed on admin / org-public so custom domains never declare
