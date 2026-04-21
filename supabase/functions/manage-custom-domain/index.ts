@@ -1,5 +1,42 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import {
+  createResendDomain,
+  getResendDomain,
+  deleteResendDomain,
+  summariseResendDomainStatus,
+  type ResendDomain,
+} from '../_shared/resend-domains.ts';
+
+/**
+ * Best-effort Resend sender-subdomain provisioning. The public custom-domain
+ * flow must never fail because Resend was flaky — we log and persist partial
+ * state so the UI can surface a retry button.
+ */
+async function provisionResendSender(
+  supabase: any,
+  organizationId: string,
+  publicDomain: string,
+): Promise<{ domain: ResendDomain | null; emailSenderDomain: string | null }> {
+  const emailSenderDomain = `em.${publicDomain}`;
+  try {
+    const domain = await createResendDomain(emailSenderDomain);
+    await supabase
+      .from('organizations')
+      .update({
+        email_sender_domain: emailSenderDomain,
+        email_sender_resend_id: domain.id,
+        email_sender_status: summariseResendDomainStatus(domain),
+        email_sender_dns_records: domain.records ?? [],
+      })
+      .eq('id', organizationId);
+    console.log('[RESEND] Sender domain created:', emailSenderDomain, 'id:', domain.id);
+    return { domain, emailSenderDomain };
+  } catch (err: any) {
+    console.error('[RESEND] Sender provisioning failed (continuing without email sender):', err.message);
+    return { domain: null, emailSenderDomain: null };
+  }
+}
 
 const RAILWAY_API_URL = 'https://backboard.railway.app/graphql/v2';
 const RAILWAY_PROJECT_ID = '469dd6ee-631f-431a-9544-4a4d777de9c0';
@@ -132,6 +169,9 @@ async function handleCreate(
 
   console.log('[SUCCESS] Domain created:', domain, 'CNAME target:', cnameTarget);
 
+  // Best-effort Resend sender provisioning — errors here don't fail the request.
+  const { domain: resendDomain, emailSenderDomain } = await provisionResendSender(supabase, organizationId, domain);
+
   return new Response(
     JSON.stringify({
       success: true,
@@ -143,6 +183,9 @@ async function handleCreate(
         status: r.status,
       })),
       railwayDomainId: created.id,
+      emailSenderDomain,
+      emailSenderStatus: resendDomain ? summariseResendDomainStatus(resendDomain) : null,
+      emailSenderRecords: resendDomain?.records ?? null,
     }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
   );
@@ -156,7 +199,7 @@ async function handleVerify(
   // Get org's current domain config
   const { data: org, error: orgError } = await supabase
     .from('organizations')
-    .select('custom_domain, custom_domain_cname_target, custom_domain_verification_token, custom_domain_status')
+    .select('custom_domain, custom_domain_cname_target, custom_domain_verification_token, custom_domain_status, email_sender_domain, email_sender_resend_id, email_sender_status, email_sender_dns_records, from_email')
     .eq('id', organizationId)
     .single();
 
@@ -167,9 +210,52 @@ async function handleVerify(
     );
   }
 
+  // Refresh email sender status out-of-band — independent of the public domain state
+  // so the UI can reflect progress on both sides of the setup in a single poll.
+  let currentEmailSenderStatus = org.email_sender_status;
+  let currentEmailSenderRecords = org.email_sender_dns_records;
+  if (org.email_sender_resend_id && org.email_sender_status !== 'verified') {
+    try {
+      const resendDomain = await getResendDomain(org.email_sender_resend_id);
+      currentEmailSenderStatus = summariseResendDomainStatus(resendDomain);
+      currentEmailSenderRecords = resendDomain.records ?? [];
+      await supabase
+        .from('organizations')
+        .update({
+          email_sender_status: currentEmailSenderStatus,
+          email_sender_dns_records: currentEmailSenderRecords,
+        })
+        .eq('id', organizationId);
+    } catch (err: any) {
+      console.error('[RESEND] Verify query failed (continuing):', err.message);
+    }
+  }
+
+  // Populate from_email on first time both sides are verified — Phase 1 resolver
+  // will then pick up the org-branded sender instead of mail.autolisting.io.
+  if (
+    org.custom_domain_status === 'verified' &&
+    currentEmailSenderStatus === 'verified' &&
+    org.email_sender_domain &&
+    !org.from_email
+  ) {
+    const autoFromEmail = `noreply@${org.email_sender_domain}`;
+    await supabase
+      .from('organizations')
+      .update({ from_email: autoFromEmail })
+      .eq('id', organizationId);
+    console.log('[SUCCESS] Auto-populated from_email:', autoFromEmail);
+  }
+
   if (org.custom_domain_status === 'verified') {
     return new Response(
-      JSON.stringify({ status: 'verified', domain: org.custom_domain }),
+      JSON.stringify({
+        status: 'verified',
+        domain: org.custom_domain,
+        emailSenderStatus: currentEmailSenderStatus,
+        emailSenderDomain: org.email_sender_domain,
+        emailSenderRecords: currentEmailSenderRecords,
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
@@ -251,6 +337,53 @@ async function handleVerify(
         status: r.status,
       })),
       certificateStatus: domainStatus?.certificateStatus,
+      emailSenderStatus: currentEmailSenderStatus,
+      emailSenderDomain: org.email_sender_domain,
+      emailSenderRecords: currentEmailSenderRecords,
+    }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+  );
+}
+
+async function handleRetryEmailSender(
+  supabase: any,
+  organizationId: string,
+  corsHeaders: Record<string, string>,
+): Promise<Response> {
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('custom_domain, email_sender_resend_id')
+    .eq('id', organizationId)
+    .single();
+
+  if (!org?.custom_domain) {
+    return new Response(
+      JSON.stringify({ error: 'No custom domain configured — add one first.' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
+
+  if (org.email_sender_resend_id) {
+    return new Response(
+      JSON.stringify({ error: 'Email sender already provisioned — use verify to poll status.' }),
+      { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
+
+  const { domain: resendDomain, emailSenderDomain } = await provisionResendSender(supabase, organizationId, org.custom_domain);
+  if (!resendDomain) {
+    return new Response(
+      JSON.stringify({ error: 'Resend provisioning is still unavailable — please try again shortly.' }),
+      { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    );
+  }
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      emailSenderDomain,
+      emailSenderStatus: summariseResendDomainStatus(resendDomain),
+      emailSenderRecords: resendDomain.records ?? [],
     }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
   );
@@ -264,7 +397,7 @@ async function handleDelete(
   // Get org's current domain config
   const { data: org } = await supabase
     .from('organizations')
-    .select('custom_domain, custom_domain_verification_token, domain')
+    .select('custom_domain, custom_domain_verification_token, domain, email_sender_domain, email_sender_resend_id, from_email')
     .eq('id', organizationId)
     .single();
 
@@ -286,6 +419,21 @@ async function handleDelete(
     }
   }
 
+  // Delete Resend sender domain (best effort)
+  if (org.email_sender_resend_id) {
+    try {
+      await deleteResendDomain(org.email_sender_resend_id);
+      console.log('[RESEND] Sender domain deleted:', org.email_sender_domain);
+    } catch (err: any) {
+      console.error('[RESEND] Delete failed (continuing cleanup):', err.message);
+    }
+  }
+
+  // Only clear from_email when it was auto-populated by Phase 2 — preserves
+  // manually-configured rows (Bridge Auctioneers in particular).
+  const autoFromEmail = org.email_sender_domain ? `noreply@${org.email_sender_domain}` : null;
+  const clearFromEmail = autoFromEmail && org.from_email === autoFromEmail;
+
   // Clear DB fields
   const clearDomain = org.domain === org.custom_domain ? null : org.domain;
   await supabase
@@ -296,6 +444,11 @@ async function handleDelete(
       custom_domain_verification_token: null,
       custom_domain_status: null,
       domain: clearDomain,
+      email_sender_domain: null,
+      email_sender_resend_id: null,
+      email_sender_status: null,
+      email_sender_dns_records: null,
+      ...(clearFromEmail ? { from_email: null } : {}),
     })
     .eq('id', organizationId);
 
@@ -400,6 +553,9 @@ Deno.serve(async (req) => {
 
       case 'verify':
         return handleVerify(supabase, organizationId, corsHeaders);
+
+      case 'retry_email_sender':
+        return handleRetryEmailSender(supabase, organizationId, corsHeaders);
 
       case 'delete':
         return handleDelete(supabase, organizationId, corsHeaders);
