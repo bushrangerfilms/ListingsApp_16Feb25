@@ -22,7 +22,7 @@ export const POSTCODE_CONFIGS: Record<MarketCountry, PostcodeConfig> = {
     countryCode: "IE",
     countryName: "Ireland",
     label: "Eircode",
-    placeholder: "e.g., H53 YA97",
+    placeholder: "e.g., D01 F5P2",
     helperText: "Your Eircode pinpoints your exact location for a more accurate estimate.",
     regex: /^[AC-FHKNPRTV-Y]\d{2}\s?[0-9AC-FHKNPRTV-Y]{4}$/i,
     normalize: (raw) => normalizeUpperNoSpace(raw),

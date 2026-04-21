@@ -31,7 +31,7 @@ export const POSTCODE_CONFIGS: Record<MarketCountry, PostcodeConfig> = {
     countryCode: "IE",
     countryName: "Ireland",
     label: "Eircode",
-    placeholder: "H53 YA97",
+    placeholder: "D01 F5P2",
     helperText: "Irish Eircode (routing key + unique identifier).",
     regex: /^[AC-FHKNPRTV-Y]\d{2}\s?[0-9AC-FHKNPRTV-Y]{4}$/i,
     resolutionHint:
