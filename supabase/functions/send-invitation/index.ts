@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
 import { Resend } from 'https://esm.sh/resend@4.0.0';
+import { resolveSender } from '../_shared/resolve-sender.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -148,8 +149,7 @@ Deno.serve(async (req) => {
 
     const resend = new Resend(resendApiKey);
     const siteUrl = Deno.env.get('SITE_URL') || 'https://app.autolisting.io';
-    const fromEmail = Deno.env.get('FROM_EMAIL') || 'noreply@autolisting.io';
-    const fromName = org.business_name || 'AutoListing.io';
+    const sender = await resolveSender(supabase, organizationId);
 
     const inviteUrl = `${siteUrl}/accept-invitation?token=${token}`;
 
@@ -193,12 +193,17 @@ Deno.serve(async (req) => {
       </html>
     `;
 
-    const { error: emailError } = await resend.emails.send({
-      from: `${fromName} <${fromEmail}>`,
+    const invitePayload: any = {
+      from: sender.from,
       to: [email],
       subject: `You're invited to join ${org.business_name}`,
       html: emailHtml,
-    });
+    };
+    if (sender.replyTo) {
+      invitePayload.reply_to = sender.replyTo;
+    }
+
+    const { error: emailError } = await resend.emails.send(invitePayload);
 
     if (emailError) {
       console.error('Failed to send invitation email:', emailError);

@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
 import { Resend } from 'https://esm.sh/resend@4.0.0';
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { resolveSender, resolvePlatformSender, type ResolvedSender } from '../_shared/resolve-sender.ts';
 
 // CORS headers set per-request in handler
 
@@ -171,13 +172,18 @@ Deno.serve(async (req) => {
     }
 
     const resend = new Resend(resendApiKey);
-    
-    // Use org-specific sender or fall back to platform defaults
-    const fromEmail = orgConfig?.from_email || Deno.env.get('FROM_EMAIL') || 'noreply@autolisting.io';
-    const fromName = orgConfig?.from_name || orgConfig?.business_name || Deno.env.get('FROM_NAME') || 'AutoListing';
+
+    // Resolve sender identity via shared helper. Org-scoped sends (organizationId present)
+    // honour org.from_email when set and always apply Reply-To from org.contact_email.
+    // Platform sends fall back to FROM_EMAIL env var / FROM_NAME with no Reply-To.
+    const sender: ResolvedSender = organizationId
+      ? await resolveSender(supabase, organizationId)
+      : resolvePlatformSender();
+    const fromEmail = sender.fromEmail;
+    const fromName = sender.fromName;
     const siteUrl = Deno.env.get('SITE_URL') || supabaseUrl;
-    
-    console.log('Sending from:', `${fromName} <${fromEmail}>`);
+
+    console.log('Sending from:', sender.from, 'replyTo:', sender.replyTo ?? '(none)');
     console.log('Sending to:', to);
 
     // Add tracking pixel and tracked links if queueId is provided
@@ -216,11 +222,15 @@ Deno.serve(async (req) => {
 
     // Send email via Resend
     const emailData: any = {
-      from: `${fromName} <${fromEmail}>`,
+      from: sender.from,
       to: [to],
       subject: subject,
       html: bodyHtml,
     };
+
+    if (sender.replyTo) {
+      emailData.reply_to = sender.replyTo;
+    }
 
     if (cc && cc.length > 0) {
       emailData.cc = cc;
