@@ -5,6 +5,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const POSTCODE_LABELS: Record<string, string> = {
+  IE: 'Eircode',
+  GB: 'Postcode',
+  US: 'ZIP Code',
+  CA: 'Postal Code',
+  AU: 'Postcode',
+  NZ: 'Postcode',
+};
+
+function getPostcodeLabel(countryCode: string | null | undefined): string {
+  return POSTCODE_LABELS[(countryCode || 'IE').toUpperCase()] || 'Postcode';
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -28,14 +41,10 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey, {
       db: { schema: 'public' }
     });
-    
-    const supabaseCrm = createClient(supabaseUrl, supabaseKey, {
-      db: { schema: 'crm' }
-    });
 
     const { data: orgData, error: orgError } = await supabase
       .from('organizations')
-      .select('id, business_name, notification_emails')
+      .select('id, business_name, notification_emails, country_code')
       .eq('slug', clientSlug)
       .single();
 
@@ -78,16 +87,21 @@ Deno.serve(async (req) => {
 
     console.log('Valuation request submitted successfully:', data.id);
 
+    const postcodeLabel = getPostcodeLabel(orgData.country_code);
+    const sellerPropertyAddress = postcode
+      ? `${propertyAddress}, ${postcode}`
+      : propertyAddress;
+
     let sellerProfileId: string | null = null;
     try {
-      const { data: profileData, error: profileError } = await supabaseCrm
+      const { data: profileData, error: profileError } = await supabase
         .from('seller_profiles')
         .insert({
           organization_id: orgData.id,
           name,
           email,
           phone,
-          property_address: propertyAddress,
+          property_address: sellerPropertyAddress,
           stage: 'lead',
           source: 'valuation_request',
           source_id: data.id,
@@ -97,10 +111,10 @@ Deno.serve(async (req) => {
         .single();
 
       if (profileError) {
-        console.error('Error creating seller profile in CRM schema:', profileError);
+        console.error('Error creating seller profile:', profileError);
       } else {
         sellerProfileId = profileData?.id || null;
-        console.log('Seller profile created successfully in CRM schema:', sellerProfileId);
+        console.log('Seller profile created successfully:', sellerProfileId);
       }
     } catch (crmError) {
       console.error('Error in CRM profile creation:', crmError);
@@ -145,6 +159,8 @@ Deno.serve(async (req) => {
                 email,
                 phone,
                 propertyAddress,
+                postcode: postcode || '',
+                postcodeLabel,
                 message: message || 'No additional information provided',
               },
             },
