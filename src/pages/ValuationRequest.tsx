@@ -14,6 +14,8 @@ import { SEO } from '@/components/SEO';
 import { toast } from 'sonner';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { usePublicListings } from '@/contexts/PublicListingsContext';
+import { getPostcodeConfig } from '@/lib/regionConfig/postcodes';
+import { LOCALE_TO_COUNTRY, isMarketLocale } from '@/lib/locale/markets';
 
 export default function ValuationRequest() {
   const { orgSlug } = useParams<{ orgSlug?: string }>();
@@ -44,10 +46,20 @@ export default function ValuationRequest() {
     email: '',
     phone: '',
     propertyAddress: '',
+    postcode: '',
     message: '',
     gdprConsent: false,
   });
   const [submitting, setSubmitting] = useState(false);
+
+  // Resolve the org's market so the postcode field shows the right label
+  // (Eircode for IE, Postcode for GB, ZIP Code for US, etc.) regardless of
+  // where the visitor is browsing from.
+  const postcodeConfig = useMemo(() => {
+    const activeLocale = (isDomainBased ? domainOrg?.locale : organization?.locale) || 'en-IE';
+    const countryCode = isMarketLocale(activeLocale) ? LOCALE_TO_COUNTRY[activeLocale] : 'IE';
+    return getPostcodeConfig(countryCode);
+  }, [isDomainBased, domainOrg?.locale, organization?.locale]);
   
   // Check for domain configuration error
   useEffect(() => {
@@ -142,6 +154,7 @@ export default function ValuationRequest() {
           email: '',
           phone: '',
           propertyAddress: '',
+          postcode: '',
           message: '',
           gdprConsent: false,
         });
@@ -272,6 +285,17 @@ export default function ValuationRequest() {
                   onChange={(e) => setFormData({ ...formData, propertyAddress: e.target.value })}
                   rows={3}
                   required
+                />
+              </div>
+
+              <div>
+                <Label className="block mb-2">
+                  {postcodeConfig.label} <span className="text-xs font-normal text-muted-foreground">(optional, helps us pinpoint the property)</span>
+                </Label>
+                <Input
+                  placeholder={postcodeConfig.placeholder}
+                  value={formData.postcode}
+                  onChange={(e) => setFormData({ ...formData, postcode: e.target.value })}
                 />
               </div>
 
