@@ -12,9 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle, AlertCircle, Home, ArrowRight, ArrowLeft, TrendingUp, FileText, Scale, Calendar, Wrench, DollarSign, Download, Phone, MessageSquare } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Home, ArrowRight, ArrowLeft, TrendingUp, FileText, Scale, Calendar, Wrench, DollarSign, Phone, MessageSquare } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
 import { getPostcodeConfig, type PostcodeConfig } from "@/lib/regionConfig/postcodes";
+import { ContactCTA } from "./ContactCTA";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SOCIALS_HUB_URL =
@@ -1261,49 +1262,6 @@ function FullResultsView({ type, result, org, onDownloadPDF, onContactAgent }: F
       )}
 
       <ContactCTA org={org} onDownloadPDF={onDownloadPDF} onContactAgent={onContactAgent} />
-    </div>
-  );
-}
-
-interface ContactCTAProps {
-  org: OrgConfig | null;
-  onDownloadPDF: () => void;
-  onContactAgent: () => void;
-}
-
-function ContactCTA({ org, onDownloadPDF, onContactAgent }: ContactCTAProps) {
-  return (
-    <div className="space-y-4">
-      {/* Download PDF Card */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <h3 className="font-semibold">Download Your Report</h3>
-              <p className="text-sm text-muted-foreground">Save a copy of your results as a PDF</p>
-            </div>
-            <Button variant="outline" onClick={onDownloadPDF} data-testid="button-download-pdf">
-              <Download className="h-4 w-4 mr-2" />
-              Download PDF
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Contact Agent Card */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="pt-6 text-center">
-          <Phone className="h-10 w-10 text-primary mx-auto mb-3" />
-          <h3 className="text-lg font-semibold mb-2">Ready to Take the Next Step?</h3>
-          <p className="text-muted-foreground mb-4">
-            Request a call back from {org?.business_name || "our team"} for a personal consultation
-          </p>
-          <Button onClick={onContactAgent} data-testid="button-contact">
-            Request a Call Back
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }

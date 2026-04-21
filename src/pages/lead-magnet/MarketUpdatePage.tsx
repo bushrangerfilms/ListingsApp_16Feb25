@@ -7,14 +7,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useLocale } from "@/hooks/useLocale";
 import {
   Loader2, TrendingUp, TrendingDown, Minus, BarChart3, Mail,
-  CheckCircle, ArrowRight, AlertCircle, Building2,
+  CheckCircle, ArrowRight, AlertCircle, Building2, MessageSquare,
 } from "lucide-react";
+import { ContactCTA } from "./ContactCTA";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SOCIALS_HUB_URL =
+  import.meta.env.VITE_SOCIALS_HUB_URL || "https://socials.autolisting.io";
 
 interface OrgConfig {
   id: string;
@@ -23,12 +34,27 @@ interface OrgConfig {
   logo_url: string | null;
 }
 
+interface ComparableSale {
+  description: string;
+  sale_price: number;
+  approx_sqm: number;
+  price_per_sqm: number;
+  distance_km: number;
+}
+
 interface MarketInsights {
   headline: string;
   summary: string;
   key_stats: Array<{ label: string; value: string; trend: string }>;
   insights: string[];
   cta_text: string;
+  comparable_sales?: ComparableSale[];
+  price_per_sqm_low?: number;
+  price_per_sqm_high?: number;
+  avg_price_sqm?: number;
+  trend?: string;
+  trend_commentary?: string;
+  area_premium_notes?: string;
 }
 
 const TREND_ICONS: Record<string, typeof TrendingUp> = {
@@ -47,6 +73,7 @@ export default function MarketUpdatePage() {
   const { orgSlug: orgSlugParam } = useParams<{ orgSlug: string }>();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { locale } = useLocale();
 
   const [resolvedOrgSlug, setResolvedOrgSlug] = useState<string | null>(orgSlugParam || null);
   const [loading, setLoading] = useState(true);
@@ -55,10 +82,15 @@ export default function MarketUpdatePage() {
   const [area, setArea] = useState("");
   const [insights, setInsights] = useState<MarketInsights | null>(null);
 
-  // Gate state
   const [unlocked, setUnlocked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", consent: false });
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
+
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactAdditionalInfo, setContactAdditionalInfo] = useState("");
+  const [sendingContact, setSendingContact] = useState(false);
 
   const utmParams = useMemo(() => ({
     utm_source: searchParams.get("utm_source") || searchParams.get("s") || undefined,
@@ -67,7 +99,6 @@ export default function MarketUpdatePage() {
     post_id: searchParams.get("pid") || undefined,
   }), [searchParams]);
 
-  // Resolve org slug from custom domain
   useEffect(() => {
     if (orgSlugParam) {
       setResolvedOrgSlug(orgSlugParam);
@@ -88,7 +119,6 @@ export default function MarketUpdatePage() {
     }
   }, [orgSlugParam]);
 
-  // Load market insights
   useEffect(() => {
     if (!resolvedOrgSlug) return;
 
@@ -116,6 +146,60 @@ export default function MarketUpdatePage() {
     fetchInsights();
   }, [resolvedOrgSlug, searchParams]);
 
+  const downloadPdf = async (silent = false) => {
+    if (!insights || !org) return;
+    setDownloadingPdf(true);
+    try {
+      const resp = await fetch(`${SOCIALS_HUB_URL}/api/lead-magnet-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "MARKET_UPDATE",
+          orgSlug: org.slug,
+          result: {
+            area,
+            headline: insights.headline,
+            summary: insights.summary,
+            key_stats: insights.key_stats,
+            insights: insights.insights,
+            comparable_sales: insights.comparable_sales,
+            price_per_sqm_low: insights.price_per_sqm_low,
+            price_per_sqm_high: insights.price_per_sqm_high,
+            avg_price_sqm: insights.avg_price_sqm,
+            trend: insights.trend,
+            trend_commentary: insights.trend_commentary,
+            area_premium_notes: insights.area_premium_notes,
+            cta_text: insights.cta_text,
+          },
+          locale,
+          generatedAt: new Date().toISOString(),
+        }),
+      });
+      if (!resp.ok) throw new Error(`PDF render failed (${resp.status})`);
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "market-report.pdf";
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error("[MarketUpdatePage] PDF download error", err);
+      if (!silent) {
+        toast({
+          title: "Download failed",
+          description: "Couldn't generate the report PDF. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.email || !form.consent || !org) return;
@@ -142,7 +226,9 @@ export default function MarketUpdatePage() {
       const data = await response.json();
       if (data.success) {
         setUnlocked(true);
-        toast({ title: "Report unlocked!", description: "Check your email for the full report." });
+        if (data.submission_id) setSubmissionId(data.submission_id);
+        toast({ title: "Report unlocked!", description: "Downloading your full PDF report…" });
+        void downloadPdf(true);
       } else {
         throw new Error(data.error || "Submission failed");
       }
@@ -157,7 +243,60 @@ export default function MarketUpdatePage() {
     }
   };
 
-  // Loading state
+  const handleContactAgent = async () => {
+    if (!submissionId || sendingContact) return;
+    setSendingContact(true);
+    try {
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/lead-magnet-api/contact-request`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            submission_id: submissionId,
+            additional_info: contactAdditionalInfo || undefined,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to send contact request");
+
+      toast({
+        title: "Request sent",
+        description: `${org?.business_name || "The agent"} will be in touch soon.`,
+      });
+      setShowContactModal(false);
+      setContactAdditionalInfo("");
+    } catch (err) {
+      toast({
+        title: "Failed to send",
+        description: err instanceof Error ? err.message : "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingContact(false);
+    }
+  };
+
+  const currencySymbol = useMemo(() => {
+    if (!locale) return "€";
+    if (locale.startsWith("en-GB")) return "£";
+    if (locale.startsWith("en-US")) return "$";
+    if (locale.startsWith("en-CA")) return "C$";
+    if (locale.startsWith("en-AU")) return "A$";
+    if (locale.startsWith("en-NZ")) return "NZ$";
+    return "€";
+  }, [locale]);
+
+  const areaUnit = useMemo(() => {
+    if (!locale) return "m²";
+    if (locale.startsWith("en-US") || locale.startsWith("en-CA")) return "sqft";
+    return "m²";
+  }, [locale]);
+
+  const formatNum = (n: number | undefined) =>
+    typeof n === "number" ? n.toLocaleString(locale || "en-IE") : "—";
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -169,7 +308,6 @@ export default function MarketUpdatePage() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -184,9 +322,11 @@ export default function MarketUpdatePage() {
     );
   }
 
+  const hasPriceData =
+    insights?.price_per_sqm_low || insights?.price_per_sqm_high || insights?.avg_price_sqm;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-center gap-3">
           {org?.logo_url && (
@@ -196,7 +336,6 @@ export default function MarketUpdatePage() {
         </div>
       </div>
 
-      {/* Hero */}
       <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-12 px-4">
         <div className="max-w-3xl mx-auto text-center space-y-3">
           <Badge variant="secondary" className="bg-white/20 text-white border-white/30 mb-2">
@@ -213,7 +352,6 @@ export default function MarketUpdatePage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
-        {/* Key Stats */}
         {insights?.key_stats && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {insights.key_stats.map((stat, i) => {
@@ -232,7 +370,6 @@ export default function MarketUpdatePage() {
           </div>
         )}
 
-        {/* Insights — show first 2 free, gate the rest */}
         {insights?.insights && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -251,7 +388,6 @@ export default function MarketUpdatePage() {
               </Card>
             ))}
 
-            {/* Gated insights */}
             {!unlocked && insights.insights.length > 2 && (
               <div className="relative">
                 {insights.insights.slice(2).map((insight, i) => (
@@ -267,7 +403,6 @@ export default function MarketUpdatePage() {
               </div>
             )}
 
-            {/* Unlocked insights */}
             {unlocked && insights.insights.slice(2).map((insight, i) => (
               <Card key={i + 2}>
                 <CardContent className="pt-4 pb-4">
@@ -281,15 +416,103 @@ export default function MarketUpdatePage() {
           </div>
         )}
 
-        {/* Email Gate */}
+        {unlocked && hasPriceData && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+              Price Range in {area}
+            </h2>
+            <div className="grid grid-cols-3 gap-3">
+              {insights?.price_per_sqm_low ? (
+                <Card>
+                  <CardContent className="pt-4 pb-4 text-center">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Low / {areaUnit}</p>
+                    <p className="text-lg font-bold">{currencySymbol}{formatNum(insights.price_per_sqm_low)}</p>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {insights?.avg_price_sqm ? (
+                <Card className="border-blue-400 bg-blue-50/50">
+                  <CardContent className="pt-4 pb-4 text-center">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Average / {areaUnit}</p>
+                    <p className="text-lg font-bold">{currencySymbol}{formatNum(insights.avg_price_sqm)}</p>
+                  </CardContent>
+                </Card>
+              ) : null}
+              {insights?.price_per_sqm_high ? (
+                <Card>
+                  <CardContent className="pt-4 pb-4 text-center">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">High / {areaUnit}</p>
+                    <p className="text-lg font-bold">{currencySymbol}{formatNum(insights.price_per_sqm_high)}</p>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        {unlocked && insights?.trend_commentary && (
+          <Card>
+            <CardContent className="pt-5 pb-5 space-y-2">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Market Trend
+              </h3>
+              <p className="text-sm text-gray-700 leading-relaxed">{insights.trend_commentary}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {unlocked && insights?.comparable_sales && insights.comparable_sales.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold">Recent Comparable Sales</h2>
+            <Card>
+              <CardContent className="pt-4 pb-2">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                        <th className="pb-2 pr-2">Property</th>
+                        <th className="pb-2 pr-2">Sale Price</th>
+                        <th className="pb-2 pr-2">Size</th>
+                        <th className="pb-2">{currencySymbol}/{areaUnit}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {insights.comparable_sales.map((c, i) => (
+                        <tr key={i} className="border-b last:border-0">
+                          <td className="py-2 pr-2">{c.description}</td>
+                          <td className="py-2 pr-2">{currencySymbol}{formatNum(c.sale_price)}</td>
+                          <td className="py-2 pr-2">{formatNum(c.approx_sqm)} {areaUnit}</td>
+                          <td className="py-2">{currencySymbol}{formatNum(c.price_per_sqm)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {unlocked && insights?.area_premium_notes && (
+          <Card className="bg-blue-50/50 border-blue-200">
+            <CardContent className="pt-5 pb-5 space-y-2">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-900">
+                Why {area}
+              </h3>
+              <p className="text-sm text-gray-700 leading-relaxed">{insights.area_premium_notes}</p>
+            </CardContent>
+          </Card>
+        )}
+
         {!unlocked && (
           <Card className="border-blue-200 bg-blue-50/50">
             <CardContent className="pt-6 space-y-4">
               <div className="text-center space-y-2">
                 <Mail className="h-8 w-8 text-blue-600 mx-auto" />
-                <h3 className="text-lg font-semibold">Get the Full Report</h3>
+                <h3 className="text-lg font-semibold">Get the Full PDF Report</h3>
                 <p className="text-sm text-muted-foreground">
-                  Enter your email to unlock all market insights and receive personalised updates from {org?.business_name}.
+                  Enter your email to unlock the full insights, comparable sales, price-per-{areaUnit} range, and a branded PDF download from {org?.business_name}.
                 </p>
               </div>
 
@@ -343,23 +566,66 @@ export default function MarketUpdatePage() {
           </Card>
         )}
 
-        {/* CTA after unlock */}
-        {unlocked && insights?.cta_text && (
-          <Card className="border-green-200 bg-green-50/50">
-            <CardContent className="pt-6 text-center space-y-3">
-              <CheckCircle className="h-8 w-8 text-green-600 mx-auto" />
-              <p className="text-sm font-medium text-green-800">{insights.cta_text}</p>
-              {org?.business_name && (
-                <p className="text-xs text-muted-foreground">
-                  Contact {org.business_name} to discuss your property options.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        {unlocked && (
+          <ContactCTA
+            org={org}
+            onDownloadPDF={() => void downloadPdf(false)}
+            onContactAgent={() => setShowContactModal(true)}
+            downloading={downloadingPdf}
+            downloadLabel={`Download the ${area} Market Report`}
+            downloadDescription="Save a branded PDF copy of the full report"
+          />
         )}
       </div>
 
-      {/* Footer */}
+      <Dialog open={showContactModal} onOpenChange={setShowContactModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Request a Call Back
+            </DialogTitle>
+            <DialogDescription>
+              {org?.business_name || "The agent"} will be in touch soon.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="additional-info">Additional Information (Optional)</Label>
+              <Textarea
+                id="additional-info"
+                placeholder="Any details about your property or timeline..."
+                value={contactAdditionalInfo}
+                onChange={(e) => setContactAdditionalInfo(e.target.value)}
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowContactModal(false)}
+                disabled={sendingContact}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleContactAgent} disabled={sendingContact}>
+                {sendingContact ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    Send Request
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="border-t bg-white py-4 text-center">
         <p className="text-xs text-muted-foreground">
           Powered by <a href="https://autolisting.io" className="text-primary hover:underline">AutoListing.io</a>

@@ -2017,14 +2017,14 @@ async function handleMarketInsights(supabase: any, orgSlug: string, area: string
   }
 
   try {
-    const prompt = `You are a property market analyst. Generate a brief, engaging market update for the ${targetArea} area that a real estate agent would share with potential sellers.
+    const prompt = `You are a property market analyst. Generate a detailed, engaging market report for the ${targetArea} area that a real estate agent would share with potential sellers. Base numbers on realistic current market conditions.
 
-Return ONLY valid JSON:
+Return ONLY valid JSON with this exact shape:
 {
   "headline": "<compelling headline, max 10 words>",
   "summary": "<2-3 sentence market overview>",
   "key_stats": [
-    {"label": "<stat name>", "value": "<stat value>", "trend": "<up|down|stable>"},
+    {"label": "<stat name>", "value": "<stat value with currency symbol and units>", "trend": "<up|down|stable>"},
     {"label": "<stat name>", "value": "<stat value>", "trend": "<up|down|stable>"},
     {"label": "<stat name>", "value": "<stat value>", "trend": "<up|down|stable>"}
   ],
@@ -2032,10 +2032,25 @@ Return ONLY valid JSON:
     "<insight 1 about buyer demand>",
     "<insight 2 about pricing trends>",
     "<insight 3 about time on market>",
-    "<insight 4 about what this means for sellers>"
+    "<insight 4 about local desirability or amenities>",
+    "<insight 5 about what this means for sellers>",
+    "<insight 6 about seasonal or regulatory considerations>"
   ],
+  "comparable_sales": [
+    {"description": "<short description e.g. '3-bed semi, Main Street area'>", "sale_price": <number>, "approx_sqm": <number>, "price_per_sqm": <number>, "distance_km": <number>},
+    {"description": "<...>", "sale_price": <number>, "approx_sqm": <number>, "price_per_sqm": <number>, "distance_km": <number>},
+    {"description": "<...>", "sale_price": <number>, "approx_sqm": <number>, "price_per_sqm": <number>, "distance_km": <number>}
+  ],
+  "price_per_sqm_low": <number>,
+  "price_per_sqm_high": <number>,
+  "avg_price_sqm": <number>,
+  "trend": "<up|down|stable>",
+  "trend_commentary": "<2-3 sentence description of current market direction, including whether now is a good time to sell and why>",
+  "area_premium_notes": "<2-3 sentences on what makes ${targetArea} attractive to buyers — schools, transport, amenities, lifestyle>",
   "cta_text": "<1 sentence encouraging sellers to get in touch>"
-}`;
+}
+
+Important: comparable_sales prices should be realistic whole numbers in EUR (Ireland default) unless the area clearly suggests another country. price_per_sqm should be between 2000 and 10000 for typical Irish markets. Include 3-5 comparable sales.`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
@@ -2044,7 +2059,7 @@ Return ONLY valid JSON:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1000 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2800 },
         }),
       }
     );
@@ -2095,8 +2110,21 @@ function getStaticMarketInsights(area: string) {
       `Buyer demand in ${area} remains strong, with properties attracting significant interest.`,
       `Well-presented homes in ${area} are achieving strong prices relative to asking.`,
       `Properties in good condition are selling within competitive timeframes.`,
+      `Local amenities and transport links continue to underpin demand from relocating buyers.`,
       `If you're considering selling, current market conditions are favourable for sellers.`,
+      `Thoughtful pricing remains the single biggest factor in achieving a strong sale.`,
     ],
+    comparable_sales: [
+      { description: `3-bed semi-detached, near ${area} village`, sale_price: 385000, approx_sqm: 110, price_per_sqm: 3500, distance_km: 1.2 },
+      { description: `4-bed detached with garden, ${area} outskirts`, sale_price: 495000, approx_sqm: 150, price_per_sqm: 3300, distance_km: 2.4 },
+      { description: `2-bed terrace, central ${area}`, sale_price: 295000, approx_sqm: 85, price_per_sqm: 3470, distance_km: 0.6 },
+    ],
+    price_per_sqm_low: 3100,
+    price_per_sqm_high: 4200,
+    avg_price_sqm: 3500,
+    trend: "up",
+    trend_commentary: `${area} prices have shown steady upward movement over recent quarters, reflecting healthy buyer appetite and limited supply. Current conditions favour well-prepared sellers, particularly in the family-home bracket.`,
+    area_premium_notes: `${area} continues to attract buyers drawn by strong local schools, accessible transport, and a genuine community feel. Homes with well-presented interiors and outdoor space tend to command the strongest offers.`,
     cta_text: `Curious what your ${area} property could achieve? Get in touch for a confidential chat.`,
   };
 }
