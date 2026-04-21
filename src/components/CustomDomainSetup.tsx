@@ -8,7 +8,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Globe, CheckCircle2, ArrowRight, Lock, ExternalLink, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { DnsProviderGuide } from "@/components/DnsProviderGuide";
 import { DnsAiPromptButton } from "@/components/DnsAiPromptButton";
-import { useDomainVerification, type DomainStatus } from "@/hooks/useDomainVerification";
+import { EmailDnsRecords } from "@/components/EmailDnsRecords";
+import {
+  useDomainVerification,
+  type DomainStatus,
+  type EmailSenderStatus,
+  type EmailSenderRecord,
+} from "@/hooks/useDomainVerification";
 import { usePlanInfo } from "@/hooks/usePlanInfo";
 import { useNavigate } from "react-router-dom";
 
@@ -34,18 +40,42 @@ export function CustomDomainSetup({
   const [domain, setDomain] = useState(currentDomain || "");
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRetryingEmailSender, setIsRetryingEmailSender] = useState(false);
   const [localCnameTarget, setLocalCnameTarget] = useState(cnameTarget || "");
   const [localStatus, setLocalStatus] = useState<DomainStatus>(initialDomainStatus || null);
+  const [localEmailSenderDomain, setLocalEmailSenderDomain] = useState<string | null>(null);
+  const [localEmailSenderStatus, setLocalEmailSenderStatus] = useState<EmailSenderStatus>(null);
+  const [localEmailSenderRecords, setLocalEmailSenderRecords] = useState<EmailSenderRecord[] | null>(null);
   const navigate = useNavigate();
 
   const { planInfo } = usePlanInfo();
   const isPaidPlan = planInfo?.accountStatus === 'active';
 
-  const { status: verificationStatus, isChecking, checkNow, isVerified } = useDomainVerification(
+  const {
+    status: verificationStatus,
+    emailSenderStatus: polledEmailSenderStatus,
+    emailSenderDomain: polledEmailSenderDomain,
+    emailSenderRecords: polledEmailSenderRecords,
+    isChecking,
+    checkNow,
+    isVerified,
+  } = useDomainVerification(
     organizationId,
     localStatus,
     !!currentDomain && localStatus !== 'verified',
+    {
+      status: localEmailSenderStatus,
+      domain: localEmailSenderDomain,
+      records: localEmailSenderRecords,
+    },
   );
+
+  // Polled email sender state replaces local on every successful verify.
+  useEffect(() => {
+    if (polledEmailSenderDomain !== null) setLocalEmailSenderDomain(polledEmailSenderDomain);
+    if (polledEmailSenderStatus !== null) setLocalEmailSenderStatus(polledEmailSenderStatus);
+    if (polledEmailSenderRecords !== null) setLocalEmailSenderRecords(polledEmailSenderRecords);
+  }, [polledEmailSenderDomain, polledEmailSenderStatus, polledEmailSenderRecords]);
 
   // Sync verification status back to local state
   useEffect(() => {
@@ -88,6 +118,9 @@ export function CustomDomainSetup({
 
       setLocalCnameTarget(data.cnameTarget || '');
       setLocalStatus('pending');
+      setLocalEmailSenderDomain(data.emailSenderDomain ?? null);
+      setLocalEmailSenderStatus(data.emailSenderStatus ?? null);
+      setLocalEmailSenderRecords(data.emailSenderRecords ?? null);
       onDomainChange(cleanDomain);
 
       toast({ title: "Domain registered!", description: "Now follow the steps below to connect it." });
@@ -116,6 +149,9 @@ export function CustomDomainSetup({
       setDomain("");
       setLocalCnameTarget("");
       setLocalStatus(null);
+      setLocalEmailSenderDomain(null);
+      setLocalEmailSenderStatus(null);
+      setLocalEmailSenderRecords(null);
       onDomainChange("");
 
       toast({ title: "Domain removed", description: "Your custom domain has been disconnected." });
@@ -128,6 +164,31 @@ export function CustomDomainSetup({
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRetryEmailSender = async () => {
+    setIsRetryingEmailSender(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-custom-domain', {
+        body: { action: 'retry_email_sender', organizationId },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
+      setLocalEmailSenderDomain(data.emailSenderDomain ?? null);
+      setLocalEmailSenderStatus(data.emailSenderStatus ?? null);
+      setLocalEmailSenderRecords(data.emailSenderRecords ?? null);
+      toast({ title: "Email sender ready", description: "Add the DNS records below to finish setup." });
+    } catch (error) {
+      console.error('Retry email sender error:', error);
+      toast({
+        title: "Still couldn't set up email sender",
+        description: error instanceof Error ? error.message : "Please try again shortly.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRetryingEmailSender(false);
     }
   };
 
@@ -279,6 +340,16 @@ export function CustomDomainSetup({
               domain={currentDomain || domain}
             />
 
+            {/* Email sender records — add at the same DNS provider in the same session */}
+            <EmailDnsRecords
+              domain={currentDomain || domain}
+              senderDomain={localEmailSenderDomain}
+              records={localEmailSenderRecords}
+              status={localEmailSenderStatus}
+              onRetry={handleRetryEmailSender}
+              isRetrying={isRetryingEmailSender}
+            />
+
             {/* Verification status */}
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
               <div className="flex items-center gap-3">
@@ -355,6 +426,32 @@ export function CustomDomainSetup({
                 </p>
               </div>
             </div>
+
+            {localEmailSenderStatus === 'verified' && localEmailSenderDomain && (
+              <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400 shrink-0" />
+                <div>
+                  <p className="text-base font-medium text-green-800 dark:text-green-300">
+                    Branded email is live
+                  </p>
+                  <p className="text-sm text-green-700 dark:text-green-400">
+                    Emails to your leads now come from <code className="text-xs">noreply@{localEmailSenderDomain}</code> with
+                    replies routed to your contact email — no "autolisting" in the sender.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {localEmailSenderStatus && localEmailSenderStatus !== 'verified' && (
+              <EmailDnsRecords
+                domain={currentDomain || domain}
+                senderDomain={localEmailSenderDomain}
+                records={localEmailSenderRecords}
+                status={localEmailSenderStatus}
+                onRetry={handleRetryEmailSender}
+                isRetrying={isRetryingEmailSender}
+              />
+            )}
 
             <a
               href={`https://${currentDomain}`}
