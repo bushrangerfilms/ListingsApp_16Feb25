@@ -2023,6 +2023,75 @@ async function handleServiceAreas(supabase: any, orgSlug: string): Promise<Respo
 }
 
 // ============================================
+// AI content cache (shared by Market Insights + Tips & Advice)
+// ============================================
+// Month-bucketed read-through cache backed by public.lead_magnet_ai_cache.
+// Cap Gemini spend at orgs × types × areas × months, not visitor count.
+// See migration 20260422160000_lead_magnet_ai_cache.sql.
+
+type AiContentType = 'market-update' | 'tips-advice';
+
+function normalizeAreaForCache(area: string): string {
+  return (area || '').trim().toLowerCase();
+}
+
+function currentPeriod(): string {
+  // YYYY-MM in UTC. Avoids timezone drift at month boundaries.
+  const d = new Date();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${mm}`;
+}
+
+async function getOrGenerateAiContent<T>(
+  supabase: any,
+  organizationId: string,
+  contentType: AiContentType,
+  area: string,
+  generator: () => Promise<T | null>,
+): Promise<{ content: T | null; cache_hit: boolean }> {
+  const area_normalized = normalizeAreaForCache(area);
+  const period = currentPeriod();
+
+  const { data: existing } = await supabase
+    .from('lead_magnet_ai_cache')
+    .select('content')
+    .eq('organization_id', organizationId)
+    .eq('content_type', contentType)
+    .eq('area_normalized', area_normalized)
+    .eq('period', period)
+    .maybeSingle();
+
+  if (existing?.content) {
+    console.log(`[ai-cache] hit org=${organizationId} type=${contentType} area=${area_normalized} period=${period}`);
+    return { content: existing.content as T, cache_hit: true };
+  }
+
+  console.log(`[ai-cache] miss org=${organizationId} type=${contentType} area=${area_normalized} period=${period}`);
+  const fresh = await generator();
+  if (!fresh) {
+    // Generator failed — don't cache a fallback; next visitor retries.
+    return { content: null, cache_hit: false };
+  }
+
+  // Two concurrent misses both reach here → both upserts run, second is a no-op.
+  // Visitor count of duplicate calls bounded to concurrency, not traffic.
+  await supabase
+    .from('lead_magnet_ai_cache')
+    .upsert(
+      {
+        organization_id: organizationId,
+        content_type: contentType,
+        area_normalized,
+        period,
+        content: fresh,
+      },
+      { onConflict: 'organization_id,content_type,area_normalized,period', ignoreDuplicates: true },
+    );
+
+  return { content: fresh, cache_hit: false };
+}
+
+// ============================================
 // Market Insights (AI-generated for landing pages)
 // ============================================
 
@@ -2055,13 +2124,21 @@ async function handleMarketInsights(supabase: any, orgSlug: string, area: string
   const googleApiKey = Deno.env.get("GOOGLE_AI_API_KEY");
   if (!googleApiKey || !targetArea) {
     return new Response(
-      JSON.stringify({ org, area: targetArea || "your area", insights: getStaticMarketInsights(targetArea || "your area"), source: "static" }),
+      JSON.stringify({ org, area: targetArea || "your area", insights: getStaticMarketInsights(targetArea || "your area"), source: "static", cache_hit: false }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  try {
-    const prompt = `You are a property market analyst. Generate a detailed, engaging market report for the ${targetArea} area that a real estate agent would share with potential sellers. Base numbers on realistic current market conditions.
+  // Read-through cache: Gemini call only runs on first visit per
+  // (org, area, month). Subsequent visits in the same month reuse the cached
+  // insights. Invalidation is implicit via month rollover.
+  const { content: insights, cache_hit } = await getOrGenerateAiContent<any>(
+    supabase,
+    org.id,
+    'market-update',
+    targetArea,
+    async () => {
+      const prompt = `You are a property market analyst. Generate a detailed, engaging market report for the ${targetArea} area that a real estate agent would share with potential sellers. Base numbers on realistic current market conditions.
 
 Return ONLY valid JSON with this exact shape:
 {
@@ -2096,49 +2173,46 @@ Return ONLY valid JSON with this exact shape:
 
 Important: comparable_sales prices should be realistic whole numbers in EUR (Ireland default) unless the area clearly suggests another country. price_per_sqm should be between 2000 and 10000 for typical Irish markets. Include 3-5 comparable sales.`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 2800 },
-        }),
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.7, maxOutputTokens: 2800 },
+            }),
+          }
+        );
+        if (!response.ok) {
+          console.error("[MarketInsights] Gemini error:", response.status);
+          return null;
+        }
+        const result = await response.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) return null;
+        return JSON.parse(jsonMatch[0]);
+      } catch (err) {
+        console.error("[MarketInsights] Error:", err);
+        return null;
       }
-    );
+    },
+  );
 
-    if (!response.ok) {
-      console.error("[MarketInsights] Gemini error:", response.status);
-      return new Response(
-        JSON.stringify({ org, area: targetArea, insights: getStaticMarketInsights(targetArea), source: "static" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const result = await response.json();
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-
-    if (!jsonMatch) {
-      return new Response(
-        JSON.stringify({ org, area: targetArea, insights: getStaticMarketInsights(targetArea), source: "static" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const insights = JSON.parse(jsonMatch[0]);
+  if (insights) {
     return new Response(
-      JSON.stringify({ org, area: targetArea, insights, source: "ai" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (err) {
-    console.error("[MarketInsights] Error:", err);
-    return new Response(
-      JSON.stringify({ org, area: targetArea, insights: getStaticMarketInsights(targetArea), source: "static" }),
+      JSON.stringify({ org, area: targetArea, insights, source: "ai", cache_hit }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
+  // Generator failed — serve static without caching.
+  return new Response(
+    JSON.stringify({ org, area: targetArea, insights: getStaticMarketInsights(targetArea), source: "static", cache_hit: false }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
 
 function getStaticMarketInsights(area: string) {
@@ -2206,13 +2280,19 @@ async function handleTipsContent(supabase: any, orgSlug: string, area: string): 
   const googleApiKey = Deno.env.get("GOOGLE_AI_API_KEY");
   if (!googleApiKey || !targetArea) {
     return new Response(
-      JSON.stringify({ org, area: targetArea || "your area", tips: getStaticTips(targetArea || "your area", org.business_name), source: "static" }),
+      JSON.stringify({ org, area: targetArea || "your area", tips: getStaticTips(targetArea || "your area", org.business_name), source: "static", cache_hit: false }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  try {
-    const prompt = `You are a property expert writing an article for homeowners in ${targetArea} who might be thinking about selling their home. Write 6 practical, actionable tips.
+  // Read-through cache: one Gemini call per (org, area, month).
+  const { content: tips, cache_hit } = await getOrGenerateAiContent<any>(
+    supabase,
+    org.id,
+    'tips-advice',
+    targetArea,
+    async () => {
+      const prompt = `You are a property expert writing an article for homeowners in ${targetArea} who might be thinking about selling their home. Write 6 practical, actionable tips.
 
 Return ONLY valid JSON:
 {
@@ -2228,50 +2308,45 @@ Return ONLY valid JSON:
   "conclusion": "<1-2 sentences wrapping up and encouraging action>",
   "cta_text": "<1 sentence encouraging them to contact the agent>"
 }`;
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
-        }),
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
+            }),
+          }
+        );
+        if (!response.ok) {
+          console.error("[TipsContent] Gemini error:", response.status);
+          return null;
+        }
+        const result = await response.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) return null;
+        return JSON.parse(jsonMatch[0]);
+      } catch (err) {
+        console.error("[TipsContent] Error:", err);
+        return null;
       }
-    );
+    },
+  );
 
-    if (!response.ok) {
-      console.error("[TipsContent] Gemini error:", response.status);
-      return new Response(
-        JSON.stringify({ org, area: targetArea, tips: getStaticTips(targetArea, org.business_name), source: "static" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const result = await response.json();
-    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-
-    if (!jsonMatch) {
-      return new Response(
-        JSON.stringify({ org, area: targetArea, tips: getStaticTips(targetArea, org.business_name), source: "static" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const tips = JSON.parse(jsonMatch[0]);
+  if (tips) {
     return new Response(
-      JSON.stringify({ org, area: targetArea, tips, source: "ai" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (err) {
-    console.error("[TipsContent] Error:", err);
-    return new Response(
-      JSON.stringify({ org, area: targetArea, tips: getStaticTips(targetArea, org.business_name), source: "static" }),
+      JSON.stringify({ org, area: targetArea, tips, source: "ai", cache_hit }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
+  return new Response(
+    JSON.stringify({ org, area: targetArea, tips: getStaticTips(targetArea, org.business_name), source: "static", cache_hit: false }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
 }
 
 function getStaticTips(area: string, orgName: string) {

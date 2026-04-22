@@ -10,8 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Loader2, Lightbulb, Mail, CheckCircle, ArrowRight,
-  AlertCircle, Lock, BookOpen, Star,
+  AlertCircle, Lock, BookOpen, Star, MapPin,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface ServiceArea {
+  name: string;
+  is_primary: boolean;
+}
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -43,7 +55,7 @@ const IMPACT_STYLES: Record<string, string> = {
 
 export default function TipsAdvicePage() {
   const { orgSlug: orgSlugParam } = useParams<{ orgSlug: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
 
   const [resolvedOrgSlug, setResolvedOrgSlug] = useState<string | null>(orgSlugParam || null);
@@ -52,6 +64,7 @@ export default function TipsAdvicePage() {
   const [org, setOrg] = useState<OrgConfig | null>(null);
   const [area, setArea] = useState("");
   const [tipsContent, setTipsContent] = useState<TipsContent | null>(null);
+  const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
 
   const [unlocked, setUnlocked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -112,6 +125,31 @@ export default function TipsAdvicePage() {
 
     fetchTips();
   }, [resolvedOrgSlug, searchParams]);
+
+  // Fetch service areas for the "change" breadcrumb dropdown. Silent on error —
+  // single-area orgs will just not see the control.
+  useEffect(() => {
+    if (!resolvedOrgSlug) return;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/functions/v1/lead-magnet-api/service-areas/${encodeURIComponent(resolvedOrgSlug)}`,
+        );
+        if (!res.ok) return;
+        const data: { areas?: ServiceArea[] } = await res.json();
+        setServiceAreas(data.areas ?? []);
+      } catch {
+        // leave empty — change control just won't render
+      }
+    })();
+  }, [resolvedOrgSlug]);
+
+  const handleAreaChange = (newArea: string) => {
+    if (!newArea || newArea === area) return;
+    const next = new URLSearchParams(searchParams);
+    next.set("area", newArea);
+    setSearchParams(next, { replace: false });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,6 +234,30 @@ export default function TipsAdvicePage() {
           <span className="text-lg font-semibold text-gray-900">{org?.business_name}</span>
         </div>
       </div>
+
+      {/* Area breadcrumb — only for multi-area orgs; lets the visitor correct
+          the area if the URL defaulted to the wrong one or they arrived from
+          the generic bio hub. */}
+      {serviceAreas.length > 1 && area && (
+        <div className="bg-emerald-50 border-b border-emerald-100">
+          <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center gap-2 text-sm">
+            <MapPin className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+            <span className="text-gray-600">Tips for</span>
+            <Select value={area} onValueChange={handleAreaChange}>
+              <SelectTrigger className="h-7 w-auto min-w-[120px] border-emerald-200 bg-white text-sm font-medium">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {serviceAreas.map((a) => (
+                  <SelectItem key={a.name} value={a.name}>
+                    {a.name}{a.is_primary ? " (primary)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       {/* Hero */}
       <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white py-12 px-4">
