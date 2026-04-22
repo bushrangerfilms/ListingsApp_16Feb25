@@ -85,6 +85,19 @@ Detection logic: `src/lib/domainDetection.ts` → `getDomainType()`
 - `/:orgSlug` — Public listings portal
 - `/:orgSlug/property/:id` — Property detail
 - `/lead-magnet/:orgSlug/:quizType` — Lead gen quiz
+- `/q/:orgSlug/:typeKey` — Lead magnet landing pages (Market Update, Tips & Advice, quizzes). Market Update accepts `?area=` to scope the report; page has a breadcrumb with a change dropdown for multi-area orgs (Listings PR #184).
+- `/links/:orgSlug` — Bio hub (for Instagram/TikTok/Pinterest bio link). Shows all enabled lead magnets; for multi-area orgs, shows an area picker defaulting to primary that threads into the Market Update button's href.
+
+## Lead Magnets — super-admin gate + planned cutover
+
+The Lead Magnets admin page (`src/pages/LeadMagnetsPage.tsx` — Socials app, not this repo) is currently gated behind `isSuperAdmin`. Regular users have NO UI to configure lead magnets today. Post generation uses global defaults from `quiz_type_definitions` via the cron.
+
+Cutover planned imminently — the gate will be removed (keeping the "beta" badge) and the Socials cron will switch to reading `org_lead_magnet_settings` instead of `org_quiz_settings`. Full plan: `/Users/bushrangerfilms/Documents/Claude/lead-magnets-ui-findings.md` Part 5.
+
+Relevant Listings-side files in `src/pages/lead-magnet/`:
+- `LinksPage.tsx` — bio hub with area picker (multi-area orgs only).
+- `MarketUpdatePage.tsx` — Market Update landing page with area breadcrumb.
+- Edge function `supabase/functions/lead-magnet-api/index.ts` — route `GET /service-areas/:orgSlug` is the public source of truth for an org's service areas (RLS locks `org_service_areas` to service_role).
 
 ## Active Integrations
 
