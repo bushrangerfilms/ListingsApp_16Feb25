@@ -174,6 +174,13 @@ serve(async (req: Request) => {
       return await handleMarketInsights(supabase, pathParts[2], pathParts[3] || "");
     }
 
+    // Route: GET /service-areas/:orgSlug — public list of an org's service areas.
+    // Used by the bio hub (LinksPage) to render an area picker for multi-area orgs,
+    // and by the Market Update landing page to render the "change" dropdown. No auth.
+    if (req.method === "GET" && pathParts[1] === "service-areas" && pathParts[2]) {
+      return await handleServiceAreas(supabase, pathParts[2]);
+    }
+
     // Route: GET /tips-content/:orgSlug/:area — AI-generated tips & advice article
     if (req.method === "GET" && pathParts[1] === "tips-content" && pathParts[2]) {
       return await handleTipsContent(supabase, pathParts[2], pathParts[3] || "");
@@ -1974,6 +1981,43 @@ async function handleContactRequest(supabase: any, body: any): Promise<Response>
 
   return new Response(
     JSON.stringify({ success: true, bundled: false }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
+// ============================================
+// Public Service Areas (bio hub + Market Update picker)
+// ============================================
+
+async function handleServiceAreas(supabase: any, orgSlug: string): Promise<Response> {
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("id")
+    .eq("slug", orgSlug)
+    .eq("is_active", true)
+    .single();
+
+  if (!org) {
+    return new Response(
+      JSON.stringify({ error: "Organization not found" }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const { data: areas } = await supabase
+    .from("org_service_areas")
+    .select("area_name, is_primary")
+    .eq("organization_id", org.id)
+    .order("is_primary", { ascending: false })
+    .order("area_name", { ascending: true });
+
+  return new Response(
+    JSON.stringify({
+      areas: (areas || []).map((a: any) => ({
+        name: a.area_name,
+        is_primary: !!a.is_primary,
+      })),
+    }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 }

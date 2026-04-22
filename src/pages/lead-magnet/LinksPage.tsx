@@ -2,7 +2,10 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { isPublicSite, detectOrganizationFromDomain } from "@/lib/domainDetection";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ExternalLink } from "lucide-react";
+import { Loader2, ExternalLink, MapPin } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 interface OrgData {
   id: string;
@@ -17,6 +20,15 @@ interface LinkItem {
   display_name: string;
   description: string;
 }
+
+interface ServiceArea {
+  name: string;
+  is_primary: boolean;
+}
+
+// Only these types are currently area-aware at the landing-page level.
+// Free Valuation goes to an external form; Tips & Advice content is universal.
+const AREA_AWARE_TYPES = new Set(["market-update"]);
 
 const TYPE_DESCRIPTIONS: Record<string, string> = {
   "ready-to-sell": "Find out if your property is ready for market",
@@ -39,6 +51,8 @@ export default function LinksPage() {
   const [resolvedOrgSlug, setResolvedOrgSlug] = useState<string | null>(orgSlugParam || null);
   const [org, setOrg] = useState<OrgData | null>(null);
   const [links, setLinks] = useState<LinkItem[]>([]);
+  const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
+  const [selectedArea, setSelectedArea] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,6 +125,25 @@ export default function LinksPage() {
         });
 
         setLinks(enabledTypes);
+
+        // Fetch public service areas so the picker can default to primary
+        // without requiring direct DB access (RLS locks org_service_areas to
+        // service_role). We just swallow errors — worst case, no picker renders.
+        try {
+          const areasRes = await fetch(
+            `${SUPABASE_URL}/functions/v1/lead-magnet-api/service-areas/${encodeURIComponent(resolvedOrgSlug)}`,
+          );
+          if (areasRes.ok) {
+            const areasData: { areas?: ServiceArea[] } = await areasRes.json();
+            const areas = areasData.areas ?? [];
+            setServiceAreas(areas);
+            const primary = areas.find((a) => a.is_primary) || areas[0];
+            if (primary) setSelectedArea(primary.name);
+          }
+        } catch {
+          // Silent — area picker just won't render.
+        }
+
         setLoading(false);
       } catch {
         setError("Failed to load page");
@@ -127,11 +160,18 @@ export default function LinksPage() {
     // that pre-date the verification flow.
     const hasVerifiedDomain =
       !!org?.domain && (org as any)?.custom_domain_status === "verified";
-    if (hasVerifiedDomain) {
-      return `/q/${typeKey}?s=linkinbio`;
+    const base = hasVerifiedDomain
+      ? `/q/${typeKey}?s=linkinbio`
+      : `/q/${org?.slug}/${typeKey}?s=linkinbio`;
+    // Only append area to landing pages that actually use it. For now only the
+    // Market Update report is area-aware; Tips and Free Valuation ignore the param.
+    if (selectedArea && AREA_AWARE_TYPES.has(typeKey)) {
+      return `${base}&area=${encodeURIComponent(selectedArea)}`;
     }
-    return `/q/${org?.slug}/${typeKey}?s=linkinbio`;
+    return base;
   };
+
+  const showAreaPicker = serviceAreas.length > 1;
 
   if (loading) {
     return (
@@ -164,6 +204,33 @@ export default function LinksPage() {
           <h1 className="text-xl font-semibold text-gray-900">{org.business_name}</h1>
           <p className="text-sm text-gray-500 mt-1">Helpful tools & resources</p>
         </div>
+
+        {/* Area picker — only for orgs that cover multiple service areas.
+            Defaults to primary; the selection only threads into area-aware
+            landing pages (Market Update right now). */}
+        {showAreaPicker && (
+          <div className="mb-5">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              <MapPin className="h-3 w-3" />
+              Your area
+            </label>
+            <Select value={selectedArea} onValueChange={setSelectedArea}>
+              <SelectTrigger className="bg-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {serviceAreas.map((a) => (
+                  <SelectItem key={a.name} value={a.name}>
+                    {a.name}{a.is_primary ? " (primary)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-gray-400 mt-1.5">
+              We'll tailor the Market Update report to this area.
+            </p>
+          </div>
+        )}
 
         {/* Link cards */}
         <div className="space-y-3">

@@ -20,8 +20,21 @@ import { useLocale } from "@/hooks/useLocale";
 import {
   Loader2, TrendingUp, TrendingDown, Minus, BarChart3, Mail,
   CheckCircle, ArrowRight, AlertCircle, Building2, MessageSquare,
+  MapPin,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ContactCTA } from "./ContactCTA";
+
+interface ServiceArea {
+  name: string;
+  is_primary: boolean;
+}
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SOCIALS_HUB_URL =
@@ -71,7 +84,7 @@ const TREND_COLORS: Record<string, string> = {
 
 export default function MarketUpdatePage() {
   const { orgSlug: orgSlugParam } = useParams<{ orgSlug: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { locale } = useLocale();
 
@@ -81,6 +94,7 @@ export default function MarketUpdatePage() {
   const [org, setOrg] = useState<OrgConfig | null>(null);
   const [area, setArea] = useState("");
   const [insights, setInsights] = useState<MarketInsights | null>(null);
+  const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
 
   const [unlocked, setUnlocked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -145,6 +159,32 @@ export default function MarketUpdatePage() {
 
     fetchInsights();
   }, [resolvedOrgSlug, searchParams]);
+
+  // Fetch this org's service areas so multi-area orgs can see a "change" control
+  // on the breadcrumb. Single-area orgs get no picker. Silent on failure.
+  useEffect(() => {
+    if (!resolvedOrgSlug) return;
+    (async () => {
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/functions/v1/lead-magnet-api/service-areas/${encodeURIComponent(resolvedOrgSlug)}`,
+        );
+        if (!res.ok) return;
+        const data: { areas?: ServiceArea[] } = await res.json();
+        setServiceAreas(data.areas ?? []);
+      } catch {
+        // leave serviceAreas empty — change control just won't render
+      }
+    })();
+  }, [resolvedOrgSlug]);
+
+  const handleAreaChange = (newArea: string) => {
+    if (!newArea || newArea === area) return;
+    // Preserve other query params (utm, etc) while swapping the area.
+    const next = new URLSearchParams(searchParams);
+    next.set("area", newArea);
+    setSearchParams(next, { replace: false });
+  };
 
   const downloadPdf = async (silent = false) => {
     if (!insights || !org) return;
@@ -335,6 +375,30 @@ export default function MarketUpdatePage() {
           <span className="text-lg font-semibold text-gray-900">{org?.business_name}</span>
         </div>
       </div>
+
+      {/* Area breadcrumb — for multi-area orgs, lets the visitor correct the
+          area if the URL defaulted to the wrong one or they arrived from the
+          generic bio hub. Single-area orgs see nothing here (no point). */}
+      {serviceAreas.length > 1 && area && (
+        <div className="bg-blue-50 border-b border-blue-100">
+          <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center gap-2 text-sm">
+            <MapPin className="h-4 w-4 text-blue-600 flex-shrink-0" />
+            <span className="text-gray-600">Showing data for</span>
+            <Select value={area} onValueChange={handleAreaChange}>
+              <SelectTrigger className="h-7 w-auto min-w-[120px] border-blue-200 bg-white text-sm font-medium">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {serviceAreas.map((a) => (
+                  <SelectItem key={a.name} value={a.name}>
+                    {a.name}{a.is_primary ? " (primary)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-12 px-4">
         <div className="max-w-3xl mx-auto text-center space-y-3">
