@@ -26,9 +26,9 @@ interface ServiceArea {
   is_primary: boolean;
 }
 
-// Only these types are currently area-aware at the landing-page level.
-// Free Valuation goes to an external form; Tips & Advice content is universal.
-const AREA_AWARE_TYPES = new Set(["market-update"]);
+// Landing pages that actually read ?area= and vary content per area.
+// Free Valuation goes to an external form and ignores area.
+const AREA_AWARE_TYPES = new Set(["market-update", "tips-advice"]);
 
 const TYPE_DESCRIPTIONS: Record<string, string> = {
   "ready-to-sell": "Find out if your property is ready for market",
@@ -227,7 +227,7 @@ export default function LinksPage() {
               </SelectContent>
             </Select>
             <p className="text-[11px] text-gray-400 mt-1.5">
-              We'll tailor the Market Update report to this area.
+              We'll tailor the Market Update and Tips & Advice reports to this area.
             </p>
           </div>
         )}
