@@ -195,6 +195,19 @@ export default function MarketUpdatePage() {
     })();
   }, [resolvedOrgSlug]);
 
+  // Callback entry point: a visitor clicking the "Request a Call Back"
+  // button inside the PDF lands back here with ?callback=<submissionId>.
+  // Auto-open the modal pre-associated with that submission so one click
+  // in the PDF fires the existing /contact-request flow (CRM activity +
+  // org email notification).
+  useEffect(() => {
+    const cb = searchParams.get("callback");
+    if (!cb) return;
+    setSubmissionId(cb);
+    setDelivered(true);
+    setShowContactModal(true);
+  }, [searchParams]);
+
   const handleAreaChange = (newArea: string) => {
     if (!newArea || newArea === area) return;
     const next = new URLSearchParams(searchParams);
@@ -202,10 +215,20 @@ export default function MarketUpdatePage() {
     setSearchParams(next, { replace: false });
   };
 
-  const downloadPdf = async (silent = false) => {
+  const downloadPdf = async (silent = false, overrideSubmissionId?: string) => {
     if (!insights || !org) return;
     setDownloadingPdf(true);
     try {
+      // Callback URL threaded into the PDF's "Request a Call Back" button.
+      // Landing back on this page with ?callback=<id> auto-opens the modal
+      // and pre-associates the action with the lead's original submission.
+      // submissionId state may not have flushed yet if downloadPdf fires
+      // in the same tick as setSubmissionId — caller can override.
+      const effectiveSubmissionId = overrideSubmissionId ?? submissionId;
+      const callbackUrl = effectiveSubmissionId
+        ? `${window.location.origin}${window.location.pathname}?area=${encodeURIComponent(area)}&callback=${encodeURIComponent(effectiveSubmissionId)}`
+        : undefined;
+
       const resp = await fetch(`${SOCIALS_HUB_URL}/api/lead-magnet-pdf`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -228,6 +251,8 @@ export default function MarketUpdatePage() {
             market_outlook: insights.market_outlook,
             trends: insights.trends,
             cta_text: insights.cta_text,
+            submission_id: submissionId ?? undefined,
+            callback_url: callbackUrl,
           },
           locale,
           generatedAt: new Date().toISOString(),
@@ -286,10 +311,10 @@ export default function MarketUpdatePage() {
         setDelivered(true);
         if (data.submission_id) setSubmissionId(data.submission_id);
         toast({
-          title: "Report on its way",
-          description: `We've emailed your free ${area} report to ${form.email}. Downloading now…`,
+          title: "Downloading your free report",
+          description: `Your ${area} market report PDF is downloading now.`,
         });
-        void downloadPdf(true);
+        void downloadPdf(true, data.submission_id);
       } else {
         throw new Error(data.error || "Submission failed");
       }
@@ -431,7 +456,7 @@ export default function MarketUpdatePage() {
             {insights?.summary}
           </p>
           <p className="text-blue-100/80 text-xs sm:text-sm max-w-xl mx-auto pt-1">
-            The full report is <span className="font-semibold text-white">free</span> — enter your email below for the PDF with trends, comparable sales, and the full {area} outlook.
+            The full report is <span className="font-semibold text-white">free</span> — download the PDF below with trends, comparable sales, and the full {area} outlook.
           </p>
         </div>
       </div>
@@ -522,7 +547,7 @@ export default function MarketUpdatePage() {
                   Get the Full Report — Free
                 </h3>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Free PDF with 5-year price trends, comparable sales, energy-rating breakdown, and a full {area} market outlook from {org?.business_name}. No payment, no spam — unsubscribe anytime.
+                  Free PDF with 5-year price trends, comparable sales, energy-rating breakdown, and a full {area} market outlook from {org?.business_name}. No payment, no spam.
                 </p>
               </div>
 
@@ -593,10 +618,10 @@ export default function MarketUpdatePage() {
               <CardContent className="pt-5 pb-5 text-center space-y-2">
                 <CheckCircle className="h-8 w-8 text-green-600 mx-auto" />
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Your free report is on its way
+                  Your free report is downloading
                 </h3>
                 <p className="text-sm text-gray-700">
-                  We've emailed the full {area} Market Report to <strong>{form.email}</strong>. Your PDF is downloading now too.
+                  The full {area} Market Report PDF has started downloading. Save it, print it, or share it — it's yours to keep.
                 </p>
                 <Button
                   variant="outline"

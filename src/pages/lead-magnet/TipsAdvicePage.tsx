@@ -165,6 +165,17 @@ export default function TipsAdvicePage() {
     })();
   }, [resolvedOrgSlug]);
 
+  // Callback entry point: ?callback=<submissionId> from the in-PDF CTA
+  // auto-opens the Request a Call Back modal pre-associated with the
+  // original submission.
+  useEffect(() => {
+    const cb = searchParams.get("callback");
+    if (!cb) return;
+    setSubmissionId(cb);
+    setDelivered(true);
+    setShowContactModal(true);
+  }, [searchParams]);
+
   const handleAreaChange = (newArea: string) => {
     if (!newArea || newArea === area) return;
     const next = new URLSearchParams(searchParams);
@@ -172,10 +183,15 @@ export default function TipsAdvicePage() {
     setSearchParams(next, { replace: false });
   };
 
-  const downloadPdf = async (silent = false) => {
+  const downloadPdf = async (silent = false, overrideSubmissionId?: string) => {
     if (!tipsContent || !org) return;
     setDownloadingPdf(true);
     try {
+      const effectiveSubmissionId = overrideSubmissionId ?? submissionId;
+      const callbackUrl = effectiveSubmissionId
+        ? `${window.location.origin}${window.location.pathname}?area=${encodeURIComponent(area)}&callback=${encodeURIComponent(effectiveSubmissionId)}`
+        : undefined;
+
       const resp = await fetch(`${SOCIALS_HUB_URL}/api/lead-magnet-pdf`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -189,6 +205,8 @@ export default function TipsAdvicePage() {
             tips: tipsContent.tips,
             conclusion: tipsContent.conclusion,
             cta_text: tipsContent.cta_text,
+            submission_id: effectiveSubmissionId,
+            callback_url: callbackUrl,
           },
           locale,
           generatedAt: new Date().toISOString(),
@@ -247,10 +265,10 @@ export default function TipsAdvicePage() {
         setDelivered(true);
         if (data.submission_id) setSubmissionId(data.submission_id);
         toast({
-          title: "Guide on its way",
-          description: `We've emailed your free seller tips guide to ${form.email}. Downloading now…`,
+          title: "Downloading your free guide",
+          description: `Your seller tips PDF is downloading now.`,
         });
-        void downloadPdf(true);
+        void downloadPdf(true, data.submission_id);
       } else {
         throw new Error(data.error || "Submission failed");
       }
@@ -374,7 +392,7 @@ export default function TipsAdvicePage() {
             {tipsContent?.intro}
           </p>
           <p className="text-emerald-100/80 text-xs sm:text-sm max-w-xl mx-auto pt-1">
-            The full guide is <span className="font-semibold text-white">free</span> — enter your email below for the PDF with step-by-step how-to, pitfalls to avoid, and pro tips.
+            The full guide is <span className="font-semibold text-white">free</span> — download the PDF below with step-by-step how-to, pitfalls to avoid, and pro tips.
           </p>
         </div>
       </div>
@@ -431,7 +449,7 @@ export default function TipsAdvicePage() {
                   Get the Full Guide — Free
                 </h3>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Free PDF with all {tips.length} expert tips expanded — step-by-step how-to, common pitfalls, and pro tips from {org?.business_name}. No payment, no spam — unsubscribe anytime.
+                  Free PDF with all {tips.length} expert tips expanded — step-by-step how-to, common pitfalls, and pro tips from {org?.business_name}. No payment, no spam.
                 </p>
               </div>
 
@@ -502,10 +520,10 @@ export default function TipsAdvicePage() {
               <CardContent className="pt-5 pb-5 text-center space-y-2">
                 <CheckCircle className="h-8 w-8 text-green-600 mx-auto" />
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Your free guide is on its way
+                  Your free guide is downloading
                 </h3>
                 <p className="text-sm text-gray-700">
-                  We've emailed the full guide to <strong>{form.email}</strong>. Your PDF is downloading now too.
+                  The full seller tips guide PDF has started downloading. Save it, print it, or share it — it's yours to keep.
                 </p>
                 <Button
                   variant="outline"
