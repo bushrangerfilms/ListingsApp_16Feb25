@@ -1,8 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { adminApi, isOrgCreditsRedacted, OrganizationCreditsResponse } from '@/lib/admin/adminApi';
+import {
+  adminApi,
+  isOrgCreditsRedacted,
+  OrganizationCreditsResponse,
+  BillingOverride,
+  PlanDefinition,
+} from '@/lib/admin/adminApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSuperAdminPermissions } from '@/hooks/useSuperAdminPermissions';
 import {
@@ -20,7 +25,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -37,8 +42,27 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Mail, Phone, MapPin, Globe, Calendar, Users, Home, Clock, Coins, Eye, Loader2, TrendingUp, TrendingDown, CreditCard, ArrowUpRight, ArrowDownRight, Crown, ArrowUpCircle, Gift, Languages, Rocket } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
+import {
+  Building2,
+  Mail,
+  Phone,
+  MapPin,
+  Globe,
+  Calendar,
+  Users,
+  Home,
+  Coins,
+  Eye,
+  Loader2,
+  TrendingUp,
+  TrendingDown,
+  CreditCard,
+  ArrowUpRight,
+  ArrowUpCircle,
+  Gift,
+  Languages,
+  ShieldCheck,
+} from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -50,34 +74,75 @@ interface OrganizationDetailDrawerProps {
   onClose: () => void;
 }
 
+interface OverrideFormState {
+  type: 'pilot' | 'comp';
+  plan_equivalent: string;
+  notes: string;
+  price_weekly_cents: string;
+  currency: string;
+  expires_at: string;
+}
+
+const EMPTY_OVERRIDE_FORM: OverrideFormState = {
+  type: 'comp',
+  plan_equivalent: 'professional',
+  notes: '',
+  price_weekly_cents: '',
+  currency: '',
+  expires_at: '',
+};
+
+function accountStatusClass(status: string | null | undefined): string {
+  switch (status) {
+    case 'active':
+      return 'text-green-600 dark:text-green-400';
+    case 'free':
+      return 'text-slate-600 dark:text-slate-300';
+    case 'trial':
+      return 'text-blue-600 dark:text-blue-400';
+    case 'trial_expired':
+      return 'text-orange-600 dark:text-orange-400';
+    case 'payment_failed':
+      return 'text-red-600 dark:text-red-400';
+    default:
+      return 'text-muted-foreground';
+  }
+}
+
+function formatCents(cents: number | null | undefined, currency: string | null | undefined): string {
+  if (cents == null || cents <= 0) return 'Free';
+  const amount = cents / 100;
+  const cur = (currency || 'EUR').toUpperCase();
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(amount);
+  } catch {
+    return `${amount.toFixed(0)} ${cur}`;
+  }
+}
+
 export function OrganizationDetailDrawer({
   organizationId,
   open,
   onClose,
 }: OrganizationDetailDrawerProps) {
   const navigate = useNavigate();
-  const { user, startImpersonation } = useAuth();
-  const { hasPermission } = useSuperAdminPermissions();
+  const { startImpersonation } = useAuth();
+  const { hasPermission, isSuperAdmin } = useSuperAdminPermissions();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState('overview');
-  const [extendTrialOpen, setExtendTrialOpen] = useState(false);
   const [grantCreditsOpen, setGrantCreditsOpen] = useState(false);
   const [changePlanOpen, setChangePlanOpen] = useState(false);
+  const [billingOverrideOpen, setBillingOverrideOpen] = useState(false);
   const [regionSettingsOpen, setRegionSettingsOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
-  const [isSponsored, setIsSponsored] = useState(false);
-  const [sponsoredReason, setSponsoredReason] = useState('');
-  const [trialDays, setTrialDays] = useState('14');
+  const [overrideForm, setOverrideForm] = useState<OverrideFormState>(EMPTY_OVERRIDE_FORM);
   const [creditAmount, setCreditAmount] = useState('');
   const [creditReason, setCreditReason] = useState('');
 
-  const canExtendTrial = hasPermission('canExtendTrial');
   const canGrantCredits = hasPermission('canGrantCredits');
-  const canGrantCreditsOver100 = hasPermission('canGrantCreditsOver100');
   const canImpersonate = hasPermission('canImpersonateUsers');
-  const { isSuperAdmin } = useSuperAdminPermissions();
 
   const { data: orgDetail, isLoading } = useQuery({
     queryKey: ['admin-organization-detail', organizationId],
@@ -88,10 +153,19 @@ export function OrganizationDetailDrawer({
     enabled: !!organizationId,
   });
 
+  const { data: plansData } = useQuery({
+    queryKey: ['admin-plan-definitions'],
+    queryFn: () => adminApi.plans.list(),
+    enabled: open && isSuperAdmin,
+  });
+
   const org = orgDetail?.organization;
   const stats = orgDetail?.stats;
   const users = orgDetail?.users || [];
-  const billingProfile = orgDetail?.billing_profile;
+  const planSummary = orgDetail?.plan_summary;
+  const billingOverride: BillingOverride | null = org?.billing_override ?? null;
+  const hasOverride = !!billingOverride;
+  const plans: PlanDefinition[] = plansData?.plans || [];
 
   const { data: creditsData, isLoading: creditsLoading } = useQuery({
     queryKey: ['admin-organization-credits', organizationId],
@@ -105,7 +179,6 @@ export function OrganizationDetailDrawer({
   const grantCreditsMutation = useMutation({
     mutationFn: async ({ amount, reason }: { amount: number; reason: string }) => {
       if (!organizationId) throw new Error('Missing organization ID');
-      
       return adminApi.credits.grant({
         organization_id: organizationId,
         amount,
@@ -119,7 +192,7 @@ export function OrganizationDetailDrawer({
       setGrantCreditsOpen(false);
       setCreditAmount('');
       setCreditReason('');
-      toast({ title: 'Credits granted successfully' });
+      toast({ title: 'Credits granted' });
     },
     onError: (error: Error) => {
       toast({ title: 'Failed to grant credits', description: error.message, variant: 'destructive' });
@@ -127,53 +200,56 @@ export function OrganizationDetailDrawer({
   });
 
   const changePlanMutation = useMutation({
-    mutationFn: async (data: { plan: string; is_sponsored: boolean; sponsored_reason: string }) => {
+    mutationFn: async (plan: string) => {
       if (!organizationId) throw new Error('Missing organization ID');
-      return adminApi.organizations.changePlan(organizationId, data.plan, {
-        is_sponsored: data.is_sponsored,
-        sponsored_reason: data.sponsored_reason,
-      });
+      return adminApi.organizations.changePlan(organizationId, plan);
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-organization-detail', organizationId] });
       queryClient.invalidateQueries({ queryKey: ['admin-organizations'] });
       setChangePlanOpen(false);
       setSelectedPlan('');
-      setIsSponsored(false);
-      setSponsoredReason('');
-      const sponsoredMsg = result.is_sponsored ? ' (Complimentary)' : '';
-      toast({ title: 'Plan updated successfully', description: `Now on ${result.new_plan}${sponsoredMsg}` });
+      toast({ title: 'Plan updated', description: `Now on ${result.new_plan}` });
     },
     onError: (error: Error) => {
       toast({ title: 'Failed to update plan', description: error.message, variant: 'destructive' });
     },
   });
 
-  const toggleCompedMutation = useMutation({
-    mutationFn: async (isComped: boolean) => {
+  const setOverrideMutation = useMutation({
+    mutationFn: async (override: BillingOverride | null) => {
       if (!organizationId) throw new Error('Missing organization ID');
-      const { error } = await supabase
-        .schema('public')
-        .from('organizations')
-        .update({ is_comped: isComped })
-        .eq('id', organizationId);
-      
-      if (error) throw error;
-      return isComped;
+      return adminApi.organizations.setBillingOverride(organizationId, override);
     },
-    onSuccess: (isComped) => {
+    onSuccess: (_, override) => {
       queryClient.invalidateQueries({ queryKey: ['admin-organization-detail', organizationId] });
       queryClient.invalidateQueries({ queryKey: ['admin-organizations'] });
       queryClient.invalidateQueries({ queryKey: ['comped-organizations'] });
-      toast({ 
-        title: isComped ? 'Organization marked as comped' : 'Comped status removed',
-        description: isComped ? 'This organization now has pilot access' : 'Standard billing will apply'
+      setBillingOverrideOpen(false);
+      toast({
+        title: override ? 'Billing override saved' : 'Billing override cleared',
       });
     },
     onError: (error: Error) => {
-      toast({ title: 'Failed to update comped status', description: error.message, variant: 'destructive' });
+      toast({ title: 'Failed to update billing override', description: error.message, variant: 'destructive' });
     },
   });
+
+  useEffect(() => {
+    if (!billingOverrideOpen) return;
+    if (billingOverride) {
+      setOverrideForm({
+        type: (billingOverride.type as 'pilot' | 'comp') ?? 'comp',
+        plan_equivalent: billingOverride.plan_equivalent ?? 'professional',
+        notes: billingOverride.notes ?? '',
+        price_weekly_cents: billingOverride.price_weekly_cents != null ? String(billingOverride.price_weekly_cents) : '',
+        currency: billingOverride.currency ?? '',
+        expires_at: billingOverride.expires_at ?? '',
+      });
+    } else {
+      setOverrideForm(EMPTY_OVERRIDE_FORM);
+    }
+  }, [billingOverrideOpen, billingOverride]);
 
   const handleImpersonate = async () => {
     if (!organizationId) return;
@@ -185,6 +261,33 @@ export function OrganizationDetailDrawer({
     } catch (error) {
       toast({ title: 'Failed to start impersonation', description: (error as Error).message, variant: 'destructive' });
     }
+  };
+
+  const currentPlan = org?.current_plan_name || planSummary?.effective_plan_name || 'free';
+  const currentPlanDisplay = planSummary?.plan_display_name || currentPlan;
+
+  const usageRows = useMemo(() => {
+    if (!planSummary) return [];
+    const rows: Array<{ label: string; used?: number; max: number | null; suffix?: string }> = [
+      { label: 'Listings', used: planSummary.listing_count ?? 0, max: planSummary.max_listings },
+      { label: 'Social hubs', used: planSummary.hub_count ?? 0, max: planSummary.max_social_hubs },
+      { label: 'Posts / listing / week', max: planSummary.max_posts_per_listing_per_week },
+      { label: 'Lead magnets / week', max: planSummary.max_lead_magnets_per_week },
+      { label: 'Team members', max: planSummary.max_users },
+    ];
+    return rows;
+  }, [planSummary]);
+
+  const submitOverride = () => {
+    const payload: BillingOverride = {
+      type: overrideForm.type,
+      plan_equivalent: overrideForm.plan_equivalent || null,
+      notes: overrideForm.notes || null,
+      price_weekly_cents: overrideForm.price_weekly_cents ? parseInt(overrideForm.price_weekly_cents, 10) : null,
+      currency: overrideForm.currency ? overrideForm.currency.toLowerCase() : null,
+      expires_at: overrideForm.expires_at || null,
+    };
+    setOverrideMutation.mutate(payload);
   };
 
   return (
@@ -222,36 +325,21 @@ export function OrganizationDetailDrawer({
               <Badge variant={org.is_active ? 'default' : 'secondary'}>
                 {org.is_active ? 'Active' : 'Inactive'}
               </Badge>
-              {billingProfile?.subscription_plan && (
-                <Badge variant="outline" className="gap-1">
-                  <Crown className="h-3 w-3" />
-                  {billingProfile.subscription_plan === 'pro' ? 'Pro' : 'Starter'}
-                </Badge>
-              )}
-              {billingProfile?.is_sponsored && (
-                <Badge variant="secondary" className="gap-1 text-green-600 dark:text-green-400" title={billingProfile.sponsored_reason || 'Complimentary access'}>
-                  <Gift className="h-3 w-3" />
-                  Sponsored
-                </Badge>
-              )}
-              {org.account_status && (
-                <Badge 
+              <Badge variant="outline" className="gap-1" data-testid="badge-plan">
+                {currentPlanDisplay}
+              </Badge>
+              {planSummary?.account_status && (
+                <Badge
                   variant="secondary"
-                  className={
-                    org.account_status === 'trial' ? 'text-blue-600 dark:text-blue-400' :
-                    org.account_status === 'active' ? 'text-green-600 dark:text-green-400' :
-                    org.account_status === 'trial_expired' ? 'text-orange-600 dark:text-orange-400' :
-                    org.account_status === 'payment_failed' ? 'text-red-600 dark:text-red-400' :
-                    'text-muted-foreground'
-                  }
+                  className={accountStatusClass(planSummary.account_status)}
                 >
-                  {org.account_status.replace('_', ' ')}
+                  {planSummary.account_status.replace('_', ' ')}
                 </Badge>
               )}
-              {(org as any).is_comped && (
-                <Badge variant="secondary" className="gap-1 text-purple-600 dark:text-purple-400">
-                  <Rocket className="h-3 w-3" />
-                  Comped
+              {hasOverride && (
+                <Badge variant="secondary" className="gap-1 text-purple-600 dark:text-purple-400" data-testid="badge-override">
+                  <Gift className="h-3 w-3" />
+                  Comped ({billingOverride?.type})
                 </Badge>
               )}
             </div>
@@ -270,36 +358,12 @@ export function OrganizationDetailDrawer({
                     View As
                   </Button>
                 )}
-                {canGrantCredits && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setGrantCreditsOpen(true)}
-                    data-testid="button-grant-credits"
-                  >
-                    <Coins className="h-4 w-4 mr-2" />
-                    Grant Credits
-                  </Button>
-                )}
-                {canExtendTrial && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setExtendTrialOpen(true)}
-                    data-testid="button-extend-trial"
-                  >
-                    <Clock className="h-4 w-4 mr-2" />
-                    Extend Trial
-                  </Button>
-                )}
                 {isSuperAdmin && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setSelectedPlan(billingProfile?.subscription_plan || 'starter');
-                      setIsSponsored(billingProfile?.is_sponsored ?? false);
-                      setSponsoredReason(billingProfile?.sponsored_reason || '');
+                      setSelectedPlan(currentPlan);
                       setChangePlanOpen(true);
                     }}
                     data-testid="button-change-plan"
@@ -312,11 +376,33 @@ export function OrganizationDetailDrawer({
                   <Button
                     variant="outline"
                     size="sm"
+                    onClick={() => setBillingOverrideOpen(true)}
+                    data-testid="button-comp-override"
+                  >
+                    <ShieldCheck className="h-4 w-4 mr-2" />
+                    {hasOverride ? 'Manage Comp' : 'Set Comp'}
+                  </Button>
+                )}
+                {isSuperAdmin && (
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => setRegionSettingsOpen(true)}
                     data-testid="button-region-settings"
                   >
                     <Languages className="h-4 w-4 mr-2" />
                     Region
+                  </Button>
+                )}
+                {canGrantCredits && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setGrantCreditsOpen(true)}
+                    data-testid="button-grant-credits"
+                  >
+                    <Coins className="h-4 w-4 mr-2" />
+                    Grant Credits
                   </Button>
                 )}
               </div>
@@ -349,6 +435,69 @@ export function OrganizationDetailDrawer({
                     <div className="text-xs text-muted-foreground">Active</div>
                   </div>
                 </div>
+
+                {isSuperAdmin && (
+                  <Card>
+                    <CardContent className="pt-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium text-sm">Plan & Billing</h3>
+                          <p className="text-xs text-muted-foreground">
+                            Current tier and billing override state
+                          </p>
+                        </div>
+                        <Badge variant="outline">{currentPlanDisplay}</Badge>
+                      </div>
+                      {hasOverride && billingOverride && (
+                        <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-3 text-xs space-y-1">
+                          <div className="flex items-center gap-2 font-medium text-purple-700 dark:text-purple-300">
+                            <Gift className="h-3 w-3" />
+                            Billing override active ({billingOverride.type})
+                          </div>
+                          {billingOverride.plan_equivalent && (
+                            <div>
+                              Plan equivalent: <span className="font-medium">{billingOverride.plan_equivalent}</span>
+                            </div>
+                          )}
+                          {billingOverride.price_weekly_cents != null && (
+                            <div>
+                              Price / week: <span className="font-medium">
+                                {formatCents(billingOverride.price_weekly_cents, billingOverride.currency)}
+                              </span>
+                            </div>
+                          )}
+                          {billingOverride.expires_at && (
+                            <div>
+                              Expires: <span className="font-medium">{format(new Date(billingOverride.expires_at), 'PPP')}</span>
+                            </div>
+                          )}
+                          {billingOverride.notes && (
+                            <div className="text-muted-foreground">{billingOverride.notes}</div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {planSummary && (
+                  <Card>
+                    <CardContent className="pt-4 space-y-2">
+                      <h3 className="font-medium text-sm">Plan Usage</h3>
+                      <div className="space-y-1 text-sm">
+                        {usageRows.map((row) => (
+                          <div key={row.label} className="flex items-center justify-between">
+                            <span className="text-muted-foreground">{row.label}</span>
+                            <span className="font-medium">
+                              {row.used != null ? `${row.used} / ` : ''}
+                              {row.max == null ? '—' : row.max === -1 ? 'Unlimited' : row.max}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Separator />
 
@@ -403,14 +552,14 @@ export function OrganizationDetailDrawer({
                   <h3 className="font-medium">Team Members</h3>
                   {users && users.length > 0 ? (
                     <div className="space-y-2">
-                      {users.map((user) => (
+                      {users.map((u) => (
                         <div
-                          key={user.user_id}
+                          key={u.user_id}
                           className="flex items-center justify-between text-sm bg-muted rounded-lg px-3 py-2"
                         >
-                          <code className="text-xs">{user.user_id.slice(0, 8)}...</code>
+                          <code className="text-xs">{u.user_id.slice(0, 8)}...</code>
                           <Badge variant="outline" className="text-xs">
-                            {user.role}
+                            {u.role}
                           </Badge>
                         </div>
                       ))}
@@ -421,40 +570,6 @@ export function OrganizationDetailDrawer({
                 </div>
 
                 <Separator />
-
-                {isSuperAdmin && (
-                  <>
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="font-medium flex items-center gap-2">
-                          <Rocket className="h-4 w-4" />
-                          Pilot Status
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Comped organizations have free access during the pilot phase
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="comped-toggle" className="text-sm font-medium">
-                            Comped Organization
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            Exempt from billing and credit requirements
-                          </p>
-                        </div>
-                        <Switch
-                          id="comped-toggle"
-                          checked={(org as any).is_comped ?? false}
-                          onCheckedChange={(checked) => toggleCompedMutation.mutate(checked)}
-                          disabled={toggleCompedMutation.isPending}
-                          data-testid="switch-comped-org"
-                        />
-                      </div>
-                    </div>
-                    <Separator />
-                  </>
-                )}
 
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between">
@@ -480,6 +595,9 @@ export function OrganizationDetailDrawer({
               </TabsContent>
 
               <TabsContent value="credits" className="space-y-6 mt-4">
+                <p className="text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">
+                  Credits run under the hood of the tier model — kept for usage monitoring and audit only.
+                </p>
                 {creditsLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -544,35 +662,19 @@ export function OrganizationDetailDrawer({
                           <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={credits.usage_timeline} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                              <XAxis 
-                                dataKey="week" 
+                              <XAxis
+                                dataKey="week"
                                 tick={{ fontSize: 10 }}
                                 tickFormatter={(val) => format(new Date(val), 'MMM d')}
                               />
                               <YAxis tick={{ fontSize: 10 }} width={40} />
-                              <Tooltip 
+                              <Tooltip
                                 labelFormatter={(val) => format(new Date(val), 'MMM d, yyyy')}
                                 formatter={(value: number, name: string) => [value.toFixed(0), name === 'credits' ? 'Credits In' : 'Credits Out']}
                               />
                               <Legend />
-                              <Area 
-                                type="monotone" 
-                                dataKey="credits" 
-                                stackId="1" 
-                                stroke="#22c55e" 
-                                fill="#22c55e" 
-                                fillOpacity={0.3}
-                                name="Credits In"
-                              />
-                              <Area 
-                                type="monotone" 
-                                dataKey="debits" 
-                                stackId="2" 
-                                stroke="#f97316" 
-                                fill="#f97316" 
-                                fillOpacity={0.3}
-                                name="Credits Out"
-                              />
+                              <Area type="monotone" dataKey="credits" stackId="1" stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} name="Credits In" />
+                              <Area type="monotone" dataKey="debits" stackId="2" stroke="#f97316" fill="#f97316" fillOpacity={0.3} name="Credits Out" />
                             </AreaChart>
                           </ResponsiveContainer>
                         </div>
@@ -634,7 +736,7 @@ export function OrganizationDetailDrawer({
           <DialogHeader>
             <DialogTitle>Grant Credits</DialogTitle>
             <DialogDescription>
-              Add bonus credits to {org?.business_name}
+              Add credits to {org?.business_name} — internal monitoring / audit only
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -665,9 +767,9 @@ export function OrganizationDetailDrawer({
               Cancel
             </Button>
             <Button
-              onClick={() => grantCreditsMutation.mutate({ 
-                amount: parseFloat(creditAmount), 
-                reason: creditReason 
+              onClick={() => grantCreditsMutation.mutate({
+                amount: parseFloat(creditAmount),
+                reason: creditReason,
               })}
               disabled={!creditAmount || parseFloat(creditAmount) <= 0 || grantCreditsMutation.isPending}
               data-testid="button-confirm-grant"
@@ -679,78 +781,23 @@ export function OrganizationDetailDrawer({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={extendTrialOpen} onOpenChange={setExtendTrialOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Extend Trial</DialogTitle>
-            <DialogDescription>
-              Extend the trial period for {org?.business_name}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="trial-days">Additional Days</Label>
-              <Input
-                id="trial-days"
-                type="number"
-                value={trialDays}
-                onChange={(e) => setTrialDays(e.target.value)}
-                placeholder="14"
-                data-testid="input-trial-days"
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Note: Trial extension requires the organization to have an active trial subscription.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setExtendTrialOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                toast({ title: 'Trial extension', description: 'This feature requires Stripe integration to modify subscription trial period.' });
-                setExtendTrialOpen(false);
-              }}
-              disabled={!trialDays || parseInt(trialDays) <= 0}
-              data-testid="button-confirm-extend"
-            >
-              Extend Trial
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={changePlanOpen} onOpenChange={(open) => {
-        setChangePlanOpen(open);
-        if (!open) {
-          setSelectedPlan('');
-          setIsSponsored(false);
-          setSponsoredReason('');
-        }
+      <Dialog open={changePlanOpen} onOpenChange={(isOpen) => {
+        setChangePlanOpen(isOpen);
+        if (!isOpen) setSelectedPlan('');
       }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Change Plan</DialogTitle>
             <DialogDescription>
-              Update the subscription plan for {org?.business_name}
+              Update the subscription tier for {org?.business_name}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label>Current Plan</Label>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="gap-1">
-                  <Crown className="h-3 w-3" />
-                  {billingProfile?.subscription_plan === 'pro' ? 'Pro' : billingProfile?.subscription_plan || 'None'}
-                </Badge>
-                {billingProfile?.is_sponsored && (
-                  <Badge variant="secondary" className="gap-1 text-green-600 dark:text-green-400">
-                    <Gift className="h-3 w-3" />
-                    Sponsored
-                  </Badge>
-                )}
-              </div>
+              <Badge variant="outline" data-testid="badge-current-plan">
+                {currentPlanDisplay}
+              </Badge>
             </div>
             <div className="space-y-2">
               <Label htmlFor="new-plan">New Plan</Label>
@@ -759,43 +806,38 @@ export function OrganizationDetailDrawer({
                   <SelectValue placeholder="Select a plan" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="starter">Starter</SelectItem>
-                  <SelectItem value="pro">Pro</SelectItem>
+                  {plans.map((p) => {
+                    const limits = (p.limits || {}) as Record<string, number>;
+                    const priceLabel = formatCents(p.monthly_price_cents, 'EUR');
+                    const listings = limits.max_listings;
+                    const hubs = limits.max_social_hubs;
+                    return (
+                      <SelectItem key={p.name} value={p.name}>
+                        <div className="flex flex-col">
+                          <span>
+                            {p.display_name} — {priceLabel}/mo
+                          </span>
+                          {(listings != null || hubs != null) && (
+                            <span className="text-xs text-muted-foreground">
+                              {listings != null ? `${listings === -1 ? '∞' : listings} listings` : ''}
+                              {listings != null && hubs != null ? ' · ' : ''}
+                              {hubs != null ? `${hubs === -1 ? '∞' : hubs} hubs` : ''}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
-            <Separator />
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <Label htmlFor="sponsored-toggle" className="text-base">Complimentary Access</Label>
-                <p className="text-sm text-muted-foreground">
-                  Skip billing for this organization
-                </p>
-              </div>
-              <Switch
-                id="sponsored-toggle"
-                checked={isSponsored}
-                onCheckedChange={setIsSponsored}
-                data-testid="switch-sponsored"
-              />
-            </div>
-            {isSponsored && (
-              <div className="space-y-2">
-                <Label htmlFor="sponsored-reason">Reason for Sponsorship</Label>
-                <Input
-                  id="sponsored-reason"
-                  value={sponsoredReason}
-                  onChange={(e) => setSponsoredReason(e.target.value)}
-                  placeholder="e.g., Founding partner, Beta tester"
-                  data-testid="input-sponsored-reason"
-                />
-              </div>
+            {selectedPlan === 'free' && currentPlan !== 'free' && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Demoting to Free will disable AI motion video styles (VS2, VS4) for this org.
+              </p>
             )}
-            <p className="text-sm text-muted-foreground">
-              {isSponsored 
-                ? 'This organization will have full access without being billed.'
-                : 'Note: This updates the plan in the database. For subscription billing changes, update via Stripe dashboard.'
-              }
+            <p className="text-xs text-muted-foreground">
+              Pilot / comped deals are managed via the Comp control, not the plan tier.
             </p>
           </div>
           <DialogFooter>
@@ -803,13 +845,125 @@ export function OrganizationDetailDrawer({
               Cancel
             </Button>
             <Button
-              onClick={() => changePlanMutation.mutate({ plan: selectedPlan, is_sponsored: isSponsored, sponsored_reason: sponsoredReason })}
-              disabled={!selectedPlan || (selectedPlan === billingProfile?.subscription_plan && isSponsored === !!billingProfile?.is_sponsored) || changePlanMutation.isPending}
+              onClick={() => changePlanMutation.mutate(selectedPlan)}
+              disabled={!selectedPlan || selectedPlan === currentPlan || changePlanMutation.isPending}
               data-testid="button-confirm-change-plan"
             >
               {changePlanMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Update Plan
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={billingOverrideOpen} onOpenChange={setBillingOverrideOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{hasOverride ? 'Manage Comp / Billing Override' : 'Set Comp / Billing Override'}</DialogTitle>
+            <DialogDescription>
+              Billing overrides bypass the standard tier — used for pilot customers and complimentary accounts.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="override-type">Type</Label>
+                <Select
+                  value={overrideForm.type}
+                  onValueChange={(v) => setOverrideForm({ ...overrideForm, type: v as 'pilot' | 'comp' })}
+                >
+                  <SelectTrigger id="override-type" data-testid="select-override-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="comp">Complimentary</SelectItem>
+                    <SelectItem value="pilot">Pilot deal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="override-plan">Plan equivalent</Label>
+                <Select
+                  value={overrideForm.plan_equivalent}
+                  onValueChange={(v) => setOverrideForm({ ...overrideForm, plan_equivalent: v })}
+                >
+                  <SelectTrigger id="override-plan" data-testid="select-override-plan">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plans.filter(p => p.name !== 'free').map((p) => (
+                      <SelectItem key={p.name} value={p.name}>{p.display_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {overrideForm.type === 'pilot' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="override-price">Price / week (cents)</Label>
+                  <Input
+                    id="override-price"
+                    type="number"
+                    value={overrideForm.price_weekly_cents}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, price_weekly_cents: e.target.value })}
+                    placeholder="7000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="override-currency">Currency</Label>
+                  <Input
+                    id="override-currency"
+                    value={overrideForm.currency}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, currency: e.target.value })}
+                    placeholder="eur"
+                  />
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="override-expires">Expires at (optional)</Label>
+              <Input
+                id="override-expires"
+                type="date"
+                value={overrideForm.expires_at ? overrideForm.expires_at.slice(0, 10) : ''}
+                onChange={(e) => setOverrideForm({ ...overrideForm, expires_at: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="override-notes">Notes</Label>
+              <Textarea
+                id="override-notes"
+                value={overrideForm.notes}
+                onChange={(e) => setOverrideForm({ ...overrideForm, notes: e.target.value })}
+                placeholder="Why this org is comped — founding partner, pilot, support gesture, etc."
+              />
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            {hasOverride ? (
+              <Button
+                variant="ghost"
+                onClick={() => setOverrideMutation.mutate(null)}
+                disabled={setOverrideMutation.isPending}
+                data-testid="button-clear-override"
+              >
+                Clear override
+              </Button>
+            ) : <div />}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setBillingOverrideOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={submitOverride}
+                disabled={setOverrideMutation.isPending || !overrideForm.type}
+                data-testid="button-save-override"
+              >
+                {setOverrideMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

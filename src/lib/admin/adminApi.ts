@@ -435,6 +435,9 @@ export interface OrganizationWithCounts {
   listing_count: number;
   credit_balance: number | null;
   credit_balance_redacted: boolean;
+  plan_display_name: string | null;
+  account_status: string | null;
+  has_billing_override: boolean;
 }
 
 export interface OrganizationCreditsTransaction {
@@ -513,6 +516,50 @@ export interface OrganizationDetailUser {
   created_at: string;
 }
 
+export interface BillingOverride {
+  type: string;
+  plan_equivalent?: string | null;
+  price_weekly_cents?: number | null;
+  currency?: string | null;
+  notes?: string | null;
+  expires_at?: string | null;
+}
+
+export interface PlanSummary {
+  organization_id: string;
+  organization_name: string | null;
+  effective_plan_name: string;
+  plan_display_name: string;
+  plan_tier: string | null;
+  max_listings: number | null;
+  max_social_hubs: number | null;
+  max_posts_per_listing_per_week: number | null;
+  max_lead_magnets_per_week: number | null;
+  max_crm_contacts: number | null;
+  max_email_campaigns_per_month: number | null;
+  max_users: number | null;
+  has_watermark: boolean | null;
+  allowed_video_styles: string[] | null;
+  monthly_credits: number | null;
+  has_billing_override: boolean;
+  billing_override: BillingOverride | null;
+  account_status: string | null;
+  credit_spending_enabled: boolean | null;
+  listing_count: number;
+  hub_count: number;
+}
+
+export interface PlanDefinition {
+  name: string;
+  display_name: string;
+  description: string | null;
+  monthly_price_cents: number;
+  features: Record<string, unknown> | null;
+  limits: Record<string, unknown> | null;
+  display_order: number;
+  is_active: boolean;
+}
+
 export interface OrganizationDetailResponse {
   organization: {
     id: string;
@@ -526,6 +573,7 @@ export interface OrganizationDetailResponse {
     psr_licence_number: string | null;
     logo_url: string | null;
     is_active: boolean | null;
+    is_comped: boolean | null;
     account_status: string | null;
     trial_ends_at: string | null;
     grace_period_ends_at: string | null;
@@ -536,6 +584,8 @@ export interface OrganizationDetailResponse {
     timezone: string | null;
     vat_rate: number | null;
     country_code: string | null;
+    current_plan_name: string | null;
+    billing_override: BillingOverride | null;
   };
   stats: {
     users: number;
@@ -553,6 +603,7 @@ export interface OrganizationDetailResponse {
     is_sponsored: boolean | null;
     sponsored_reason: string | null;
   } | null;
+  plan_summary: PlanSummary | null;
 }
 
 export interface BroadcastCampaign {
@@ -611,6 +662,10 @@ export interface BroadcastCampaignDetail extends BroadcastCampaign {
 }
 
 export const adminApi = {
+  plans: {
+    list: () => adminFetch<{ plans: PlanDefinition[] }>("/plan-definitions"),
+  },
+
   organizations: {
     list: (params?: { search?: string; status?: string; page?: number; pageSize?: number }) => {
       const queryParams = new URLSearchParams();
@@ -645,17 +700,24 @@ export const adminApi = {
           sponsored_reason: string | null;
         } | null;
       }>(`/organizations/${organizationId}/billing`),
-    changePlan: (organizationId: string, plan: string, options?: { is_sponsored?: boolean; sponsored_reason?: string }) =>
+    changePlan: (organizationId: string, plan: string) =>
       adminFetch<{
         success: boolean;
         organization_id: string;
         previous_plan: string | null;
         new_plan: string;
-        is_sponsored: boolean;
-        sponsored_reason: string | null;
       }>(`/organizations/${organizationId}/plan`, {
         method: "PATCH",
-        body: JSON.stringify({ plan, is_sponsored: options?.is_sponsored, sponsored_reason: options?.sponsored_reason }),
+        body: JSON.stringify({ plan }),
+      }),
+    setBillingOverride: (organizationId: string, override: BillingOverride | null) =>
+      adminFetch<{
+        success: boolean;
+        organization_id: string;
+        billing_override: BillingOverride | null;
+      }>(`/organizations/${organizationId}/billing-override`, {
+        method: "PATCH",
+        body: JSON.stringify({ override }),
       }),
     updateRegionSettings: (organizationId: string, data: { locale: string; currency: string; timezone: string }) =>
       adminFetch<{
