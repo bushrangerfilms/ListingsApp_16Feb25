@@ -2488,6 +2488,7 @@ async function handleSubmitCta(supabase: any, body: any): Promise<Response> {
           email,
           phone: phone || "",
           source: "lead_magnet",
+          source_id: submission.id,
           stage: "lead",
           notes: `From ${type_key} lead magnet (quality: ${ctaConfig.stage})`,
         })
