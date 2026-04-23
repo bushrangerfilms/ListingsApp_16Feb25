@@ -128,6 +128,23 @@ When extending to a new AI-generated lead-magnet surface: add a `content_type` C
 - **Blotato** — Referenced in Supabase types (`blotato_accounts`, `blotato_posts` tables) but no longer used by this app. Social posting is handled entirely by the Socials app.
 - **Airtable** — Referenced in Supabase types (`airtable_listings`, `airtable_field_reference`) but no longer the listing data source. Listings are created directly in this app and synced via the shared `public` schema.
 
+## Outbound Email Sender Identity
+
+Canonical resolver: `supabase/functions/_shared/resolve-sender.ts`. Every org-scoped email (`send-email`, CRM sequences, enquiry/valuation confirmations, property alerts, buyer match notifications) calls `resolveSender(supabase, organizationId)`. Do not bypass it with hand-rolled `from` strings.
+
+**Resolution order** (per field, first non-empty wins):
+- **From address** — `organizations.from_email` → `FROM_EMAIL` env → `noreply@mail.autolisting.io`
+- **Display name** — `organizations.from_name` → `organizations.business_name` → `FROM_NAME` env → `'AutoListing'`
+- **Reply-to** — `organizations.contact_email` or null (header omitted when null) — so lead replies land in the agency's inbox, not ours
+
+**`organizations.from_email` is auto-managed by the custom-domain flow.** When `manage-custom-domain` verifies both the public custom domain and the Resend email-sender subdomain (`em.<domain>`), it writes `from_email = noreply@em.<domain>`. The Email Settings UI **no longer exposes From Email Address as an editable field** (PR #196) — typing an unverified address there only broke outbound email. The column still round-trips through the form to preserve legacy per-org values (Bridge Auctioneers). If a new manual override is ever needed, set it in the DB directly.
+
+**Platform-sender rule (critical).** Platform-level emails — welcome signup, onboarding nudges, lifecycle/dunning, super-admin notifications — must **not** pass `organizationId` to `send-email`. If they do and the caller's active org has a custom `from_email`, those platform emails go out branded as that org to unrelated recipients (prior incident: Bridge Auctioneers' sender leaked onto unrelated users). Use `resolvePlatformSender()` for no-org contexts, and when in doubt, omit `organizationId`.
+
+**Notification Recipients is not the sender.** `organizations.notification_emails` is the *inbound* fan-out target — enquiry/valuation/alert notifications to agency staff. On the Email Settings tab, "Display Name" (outbound sender friendly name) and "Notification Recipients" (inbound alert addresses) are the only user-editable fields; everything else is derived or set by the custom-domain flow.
+
+**Cross-app note.** The Socials app sends its own emails (approval digests, remediation, health monitor) via its own server-side Resend integration — it does not import `resolve-sender.ts`. If Socials ever starts invoking Listings' `send-email`, the same org-vs-platform rule applies.
+
 ## Environment Variables
 
 | Variable | Required | Purpose |
