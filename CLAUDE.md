@@ -103,6 +103,8 @@ Edge function `supabase/functions/lead-magnet-api/index.ts`:
 - `GET /market-insights/:orgSlug/:area?` — AI-generated market report (Gemini).
 - `GET /tips-content/:orgSlug/:area?` — AI-generated tips article (Gemini).
 
+**Lazy post-time rendering for lead-magnet posts (AGREED 2026-04-23, build pending, Socials-side).** The admin page in Socials + its scheduling cron no longer pre-bakes per-post content at activation time. A scheduled slot is a reservation of `(branch, scheduled_for)`; type / area / image / caption are all picked at post time from current org settings. From this repo's perspective, the only surface that matters is the bio hub (`LinksPage.tsx`) — which is unaffected because it reads enabled types from the DB at render time already. See Socials `CLAUDE.md` "Lead Magnet Lazy Post-Time Rendering" and `/Users/bushrangerfilms/.claude/plans/lead-magnets-lazy-render.md`.
+
 ## Lead Magnets AI content cache (PR #186, 2026-04-22)
 
 Both AI handlers (`handleMarketInsights`, `handleTipsContent`) use a shared month-bucketed read-through cache backed by `public.lead_magnet_ai_cache`. Composite PK `(org, content_type, area_normalized, period)`. `area_normalized` is lowercase+trimmed, `period` is `YYYY-MM` UTC. LWW on conflict.
