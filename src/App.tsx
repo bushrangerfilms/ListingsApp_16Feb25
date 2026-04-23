@@ -314,6 +314,8 @@ function AdminRoutes() {
         <Route path="/:orgSlug" element={<OrganizationRoute><PublicListings /></OrganizationRoute>} />
         <Route path="/:orgSlug/property/:id" element={<OrganizationRoute><PropertyDetails /></OrganizationRoute>} />
         <Route path="/:orgSlug/request-valuation" element={<OrganizationRoute><ValuationRequest /></OrganizationRoute>} />
+        <Route path="/:orgSlug/market-update" element={<MarketUpdatePage />} />
+        <Route path="/:orgSlug/tips-advice" element={<TipsAdvicePage />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -326,6 +328,8 @@ function OrgPublicRoutes() {
     <Suspense fallback={<GlobalLoadingFallback />}>
       <Routes>
         {/* Lead magnet routes on custom domains — org detected from hostname */}
+        <Route path="/market-update" element={<MarketUpdatePage />} />
+        <Route path="/tips-advice" element={<TipsAdvicePage />} />
         <Route path="/quiz/market-update" element={<MarketUpdatePage />} />
         <Route path="/quiz/tips-advice" element={<TipsAdvicePage />} />
         <Route path="/quiz/:quizType" element={<LeadMagnetQuiz />} />
