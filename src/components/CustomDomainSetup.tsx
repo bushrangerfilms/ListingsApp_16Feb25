@@ -219,8 +219,9 @@ export function CustomDomainSetup({
             <div>
               <CardTitle>Connect Your Own Domain</CardTitle>
               <CardDescription>
-                Use your own web address like <strong>youragency.com</strong> instead of app.autolisting.io/{organizationSlug || 'your-name'}.
-                Available on paid plans.
+                Use your own web address like <strong>youragency.com</strong> instead of app.autolisting.io/{organizationSlug || 'your-name'} —
+                plus branded email from the same domain (<code className="text-xs">noreply@em.youragency.com</code>)
+                so lead emails don't come from "autolisting". Available on paid plans.
               </CardDescription>
             </div>
           </div>
@@ -244,7 +245,7 @@ export function CustomDomainSetup({
             <div>
               <CardTitle>Custom Domain</CardTitle>
               <CardDescription>
-                Use your own web address for your public property listings
+                Connect your own domain for your public listings — branded email from the same domain is included in this setup.
               </CardDescription>
             </div>
           </div>
@@ -274,11 +275,17 @@ export function CustomDomainSetup({
         {/* STEP 1: Enter domain */}
         {currentStep === 1 && (
           <div className="space-y-4">
-            <div className="space-y-1">
+            <div className="space-y-2">
               <p className="text-base font-medium">What domain do you want to use?</p>
               <p className="text-sm text-muted-foreground">
                 This is the web address your clients will visit to see your property listings.
                 For example: youragency.com or listings.youragency.com
+              </p>
+              <p className="text-sm text-muted-foreground">
+                <strong>Branded email is included.</strong> Once verified, outbound emails to your leads
+                will send from <code className="text-xs">noreply@em.&lt;yourdomain&gt;</code>,
+                with replies routed to your organisation's contact email. Until you connect a domain,
+                emails send from the platform default, <code className="text-xs">noreply@mail.autolisting.io</code>.
               </p>
             </div>
 
