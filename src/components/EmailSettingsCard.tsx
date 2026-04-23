@@ -157,44 +157,38 @@ export function EmailSettingsCard({ organizationId }: EmailSettingsCardProps) {
           <CardContent className="space-y-6">
             <Alert>
               <Info className="h-4 w-4" />
-              <AlertTitle>Domain Verification Required</AlertTitle>
-              <AlertDescription>
-                To send emails from a custom domain (e.g., hello@yourbusiness.com), 
-                the domain must be verified in Resend. Contact{" "}
-                <a href="mailto:support@autolisting.io" className="text-primary underline">
-                  support@autolisting.io
-                </a>{" "}
-                to set this up.
+              <AlertTitle>How your outbound emails are sent</AlertTitle>
+              <AlertDescription className="space-y-2 pt-1">
+                <p className="text-sm">
+                  Lead replies, enquiry notifications, valuation requests and property alerts all use this sender identity:
+                </p>
+                <ul className="list-disc pl-5 text-sm space-y-1">
+                  <li>
+                    <strong>From address:</strong> if you've connected a custom domain on the{" "}
+                    <strong>Website</strong> tab, emails send from{" "}
+                    <code className="text-xs">noreply@em.&lt;yourdomain&gt;</code>. Otherwise they
+                    send from the platform default, <code className="text-xs">noreply@mail.autolisting.io</code>.
+                  </li>
+                  <li>
+                    <strong>Display name:</strong> the name below — shown alongside the from address.
+                  </li>
+                  <li>
+                    <strong>Reply-to:</strong> your organisation's Contact Email — so when a lead
+                    hits reply, it lands in your inbox, not ours.
+                  </li>
+                </ul>
+                <p className="text-sm pt-1">
+                  To send from your own domain, connect a custom domain on the{" "}
+                  <strong>Website</strong> tab — branded email DNS is configured in the same flow.
+                </p>
               </AlertDescription>
             </Alert>
 
             <div className="space-y-4">
-              <h4 className="text-sm font-medium">Sender Identity</h4>
+              <h4 className="text-sm font-medium">Display Name</h4>
               <p className="text-sm text-muted-foreground">
-                These settings control how your outbound emails appear to recipients.
+                The name recipients see next to the from address.
               </p>
-              
-              <FormField
-                control={form.control}
-                name="from_email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>From Email Address</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="email"
-                        placeholder="hello@yourbusiness.com" 
-                        {...field} 
-                        data-testid="input-from-email"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      The email address that will appear as the sender. Must be from a verified domain.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <FormField
                 control={form.control}
@@ -203,14 +197,16 @@ export function EmailSettingsCard({ organizationId }: EmailSettingsCardProps) {
                   <FormItem>
                     <FormLabel>From Display Name</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Your Business Name" 
-                        {...field} 
+                      <Input
+                        placeholder="Your Business Name"
+                        {...field}
                         data-testid="input-from-name"
                       />
                     </FormControl>
                     <FormDescription>
-                      The name that will appear alongside the email address (e.g., "Your Business" &lt;hello@yourbusiness.com&gt;)
+                      Appears alongside the from address (e.g. "Your Business"
+                      &lt;noreply@em.youragency.com&gt;). Falls back to your organisation's
+                      business name if left blank.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
