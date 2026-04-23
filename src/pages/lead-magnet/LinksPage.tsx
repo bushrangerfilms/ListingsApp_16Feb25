@@ -160,9 +160,17 @@ export default function LinksPage() {
     // that pre-date the verification flow.
     const hasVerifiedDomain =
       !!org?.domain && (org as any)?.custom_domain_status === "verified";
-    const base = hasVerifiedDomain
-      ? `/q/${typeKey}?s=linkinbio`
-      : `/q/${org?.slug}/${typeKey}?s=linkinbio`;
+    // Market Update and Tips & Advice live at org-scoped paths that match
+    // the Free Valuation pattern, so leads land in the CRM under a URL the
+    // org owns. Other quiz types still route through `/q/...`.
+    const isOrgScoped = typeKey === "market-update" || typeKey === "tips-advice";
+    const base = isOrgScoped
+      ? hasVerifiedDomain
+        ? `/${typeKey}?s=linkinbio`
+        : `/${org?.slug}/${typeKey}?s=linkinbio`
+      : hasVerifiedDomain
+        ? `/q/${typeKey}?s=linkinbio`
+        : `/q/${org?.slug}/${typeKey}?s=linkinbio`;
     // Only append area to landing pages that actually use it. For now only the
     // Market Update report is area-aware; Tips and Free Valuation ignore the param.
     if (selectedArea && AREA_AWARE_TYPES.has(typeKey)) {
