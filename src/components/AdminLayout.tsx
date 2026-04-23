@@ -8,6 +8,8 @@ import { useOnboardingAutoDetect } from "@/hooks/useOnboardingAutoDetect";
 import { UKPreviewBanner } from "@/components/admin/UKPreviewBanner";
 import { useLocalePreview } from "@/hooks/useLocalePreview";
 import { useOrganization } from "@/contexts/OrganizationContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { AlFloatingButton } from "@/components/al/AlFloatingButton";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -18,6 +20,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   useOnboardingAutoDetect();
   const { clearPreview } = useLocalePreview();
   const { organization } = useOrganization();
+  const { isSuperAdmin } = useAuth();
 
   useEffect(() => {
     if (organization?.business_name) {
@@ -38,6 +41,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </SidebarInset>
       </div>
       <WelcomeModal />
+      {isSuperAdmin && <AlFloatingButton />}
     </SidebarProvider>
   );
 }
