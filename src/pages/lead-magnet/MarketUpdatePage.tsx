@@ -20,7 +20,7 @@ import { useLocale } from "@/hooks/useLocale";
 import {
   Loader2, TrendingUp, TrendingDown, Minus, BarChart3, Mail,
   CheckCircle, ArrowRight, AlertCircle, Building2, MessageSquare,
-  MapPin,
+  MapPin, Sparkles, Download, FileText,
 } from "lucide-react";
 import {
   Select,
@@ -53,6 +53,13 @@ interface ComparableSale {
   approx_sqm: number;
   price_per_sqm: number;
   distance_km: number;
+  sale_date?: string;
+  ber_rating?: string;
+}
+
+interface TrendPoint {
+  year: number;
+  value: number;
 }
 
 interface MarketInsights {
@@ -68,6 +75,16 @@ interface MarketInsights {
   trend?: string;
   trend_commentary?: string;
   area_premium_notes?: string;
+  market_outlook?: string;
+  trends?: {
+    price_5yr?: TrendPoint[];
+    time_on_market_5yr?: TrendPoint[];
+    price_per_sqm_5yr?: TrendPoint[];
+    verification?: {
+      status: "verified" | "replaced" | "unverified";
+      source?: string;
+    };
+  };
 }
 
 const TREND_ICONS: Record<string, typeof TrendingUp> = {
@@ -81,6 +98,8 @@ const TREND_COLORS: Record<string, string> = {
   down: "text-red-500",
   stable: "text-amber-500",
 };
+
+const SUMMARY_INSIGHT_COUNT = 4;
 
 export default function MarketUpdatePage() {
   const { orgSlug: orgSlugParam } = useParams<{ orgSlug: string }>();
@@ -96,7 +115,7 @@ export default function MarketUpdatePage() {
   const [insights, setInsights] = useState<MarketInsights | null>(null);
   const [serviceAreas, setServiceAreas] = useState<ServiceArea[]>([]);
 
-  const [unlocked, setUnlocked] = useState(false);
+  const [delivered, setDelivered] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", consent: false });
   const [submissionId, setSubmissionId] = useState<string | null>(null);
@@ -160,8 +179,6 @@ export default function MarketUpdatePage() {
     fetchInsights();
   }, [resolvedOrgSlug, searchParams]);
 
-  // Fetch this org's service areas so multi-area orgs can see a "change" control
-  // on the breadcrumb. Single-area orgs get no picker. Silent on failure.
   useEffect(() => {
     if (!resolvedOrgSlug) return;
     (async () => {
@@ -180,7 +197,6 @@ export default function MarketUpdatePage() {
 
   const handleAreaChange = (newArea: string) => {
     if (!newArea || newArea === area) return;
-    // Preserve other query params (utm, etc) while swapping the area.
     const next = new URLSearchParams(searchParams);
     next.set("area", newArea);
     setSearchParams(next, { replace: false });
@@ -209,6 +225,8 @@ export default function MarketUpdatePage() {
             trend: insights.trend,
             trend_commentary: insights.trend_commentary,
             area_premium_notes: insights.area_premium_notes,
+            market_outlook: insights.market_outlook,
+            trends: insights.trends,
             cta_text: insights.cta_text,
           },
           locale,
@@ -220,7 +238,7 @@ export default function MarketUpdatePage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "market-report.pdf";
+      link.download = `${area || "market"}-report.pdf`;
       link.rel = "noopener";
       document.body.appendChild(link);
       link.click();
@@ -265,9 +283,12 @@ export default function MarketUpdatePage() {
 
       const data = await response.json();
       if (data.success) {
-        setUnlocked(true);
+        setDelivered(true);
         if (data.submission_id) setSubmissionId(data.submission_id);
-        toast({ title: "Report unlocked!", description: "Downloading your full PDF report…" });
+        toast({
+          title: "Report on its way",
+          description: `We've emailed your free ${area} report to ${form.email}. Downloading now…`,
+        });
         void downloadPdf(true);
       } else {
         throw new Error(data.error || "Submission failed");
@@ -362,8 +383,8 @@ export default function MarketUpdatePage() {
     );
   }
 
-  const hasPriceData =
-    insights?.price_per_sqm_low || insights?.price_per_sqm_high || insights?.avg_price_sqm;
+  const summaryInsights = insights?.insights?.slice(0, SUMMARY_INSIGHT_COUNT) ?? [];
+  const extraInsightCount = Math.max(0, (insights?.insights?.length ?? 0) - SUMMARY_INSIGHT_COUNT);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -376,9 +397,6 @@ export default function MarketUpdatePage() {
         </div>
       </div>
 
-      {/* Area breadcrumb — for multi-area orgs, lets the visitor correct the
-          area if the URL defaulted to the wrong one or they arrived from the
-          generic bio hub. Single-area orgs see nothing here (no point). */}
       {serviceAreas.length > 1 && area && (
         <div className="bg-blue-50 border-b border-blue-100">
           <div className="max-w-3xl mx-auto px-4 py-2.5 flex items-center gap-2 text-sm">
@@ -400,17 +418,20 @@ export default function MarketUpdatePage() {
         </div>
       )}
 
-      <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-12 px-4">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-10 px-4">
         <div className="max-w-3xl mx-auto text-center space-y-3">
           <Badge variant="secondary" className="bg-white/20 text-white border-white/30 mb-2">
             <BarChart3 className="h-3 w-3 mr-1" />
-            Market Report
+            Summary Report · At a glance
           </Badge>
           <h1 className="text-3xl sm:text-4xl font-bold leading-tight">
-            {insights?.headline || `${area} Property Market Update`}
+            {area} Property Market — Summary
           </h1>
-          <p className="text-blue-100 text-lg max-w-xl mx-auto">
+          <p className="text-blue-100 text-base sm:text-lg max-w-xl mx-auto">
             {insights?.summary}
+          </p>
+          <p className="text-blue-100/80 text-xs sm:text-sm max-w-xl mx-auto pt-1">
+            The full report is <span className="font-semibold text-white">free</span> — enter your email below for the PDF with trends, comparable sales, and the full {area} outlook.
           </p>
         </div>
       </div>
@@ -434,14 +455,14 @@ export default function MarketUpdatePage() {
           </div>
         )}
 
-        {insights?.insights && (
+        {summaryInsights.length > 0 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Building2 className="h-5 w-5 text-blue-600" />
               Key Market Insights
             </h2>
 
-            {insights.insights.slice(0, 2).map((insight, i) => (
+            {summaryInsights.map((insight, i) => (
               <Card key={i}>
                 <CardContent className="pt-4 pb-4">
                   <div className="flex gap-3">
@@ -452,70 +473,33 @@ export default function MarketUpdatePage() {
               </Card>
             ))}
 
-            {!unlocked && insights.insights.length > 2 && (
-              <div className="relative">
-                {insights.insights.slice(2).map((insight, i) => (
-                  <Card key={i + 2} className="mb-3 opacity-40 blur-[2px] select-none pointer-events-none">
-                    <CardContent className="pt-4 pb-4">
-                      <div className="flex gap-3">
-                        <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-gray-700">{insight}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+            {extraInsightCount > 0 && (
+              <p className="text-xs text-muted-foreground text-center">
+                + {extraInsightCount} more insight{extraInsightCount === 1 ? "" : "s"}, plus {area} market trends and comparable sales in the full free PDF below.
+              </p>
             )}
-
-            {unlocked && insights.insights.slice(2).map((insight, i) => (
-              <Card key={i + 2}>
-                <CardContent className="pt-4 pb-4">
-                  <div className="flex gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-gray-700">{insight}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         )}
 
-        {unlocked && hasPriceData && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-              Price Range in {area}
-            </h2>
-            <div className="grid grid-cols-3 gap-3">
-              {insights?.price_per_sqm_low ? (
-                <Card>
-                  <CardContent className="pt-4 pb-4 text-center">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Low / {areaUnit}</p>
-                    <p className="text-lg font-bold">{currencySymbol}{formatNum(insights.price_per_sqm_low)}</p>
-                  </CardContent>
-                </Card>
-              ) : null}
-              {insights?.avg_price_sqm ? (
-                <Card className="border-blue-400 bg-blue-50/50">
-                  <CardContent className="pt-4 pb-4 text-center">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Average / {areaUnit}</p>
-                    <p className="text-lg font-bold">{currencySymbol}{formatNum(insights.avg_price_sqm)}</p>
-                  </CardContent>
-                </Card>
-              ) : null}
-              {insights?.price_per_sqm_high ? (
-                <Card>
-                  <CardContent className="pt-4 pb-4 text-center">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">High / {areaUnit}</p>
-                    <p className="text-lg font-bold">{currencySymbol}{formatNum(insights.price_per_sqm_high)}</p>
-                  </CardContent>
-                </Card>
-              ) : null}
-            </div>
-          </div>
+        {insights?.avg_price_sqm && (
+          <Card>
+            <CardContent className="pt-5 pb-5 space-y-2">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-blue-600" />
+                Average Price in {area}
+              </h3>
+              <p className="text-2xl font-bold text-gray-900">
+                {currencySymbol}{formatNum(insights.avg_price_sqm)}
+                <span className="text-sm font-normal text-muted-foreground ml-1">/ {areaUnit}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Full low / average / high price-per-{areaUnit} range included in the free PDF report.
+              </p>
+            </CardContent>
+          </Card>
         )}
 
-        {unlocked && insights?.trend_commentary && (
+        {insights?.trend_commentary && (
           <Card>
             <CardContent className="pt-5 pb-5 space-y-2">
               <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -526,57 +510,19 @@ export default function MarketUpdatePage() {
           </Card>
         )}
 
-        {unlocked && insights?.comparable_sales && insights.comparable_sales.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold">Recent Comparable Sales</h2>
-            <Card>
-              <CardContent className="pt-4 pb-2">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                        <th className="pb-2 pr-2">Property</th>
-                        <th className="pb-2 pr-2">Sale Price</th>
-                        <th className="pb-2 pr-2">Size</th>
-                        <th className="pb-2">{currencySymbol}/{areaUnit}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {insights.comparable_sales.map((c, i) => (
-                        <tr key={i} className="border-b last:border-0">
-                          <td className="py-2 pr-2">{c.description}</td>
-                          <td className="py-2 pr-2">{currencySymbol}{formatNum(c.sale_price)}</td>
-                          <td className="py-2 pr-2">{formatNum(c.approx_sqm)} {areaUnit}</td>
-                          <td className="py-2">{currencySymbol}{formatNum(c.price_per_sqm)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {unlocked && insights?.area_premium_notes && (
-          <Card className="bg-blue-50/50 border-blue-200">
-            <CardContent className="pt-5 pb-5 space-y-2">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-900">
-                Why {area}
-              </h3>
-              <p className="text-sm text-gray-700 leading-relaxed">{insights.area_premium_notes}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {!unlocked && (
-          <Card className="border-blue-200 bg-blue-50/50">
-            <CardContent className="pt-6 space-y-4">
+        {!delivered && (
+          <Card className="border-blue-300 bg-gradient-to-br from-blue-50 to-white shadow-sm">
+            <CardContent className="pt-6 pb-6 space-y-4">
               <div className="text-center space-y-2">
-                <Mail className="h-8 w-8 text-blue-600 mx-auto" />
-                <h3 className="text-lg font-semibold">Get the Full PDF Report</h3>
-                <p className="text-sm text-muted-foreground">
-                  Enter your email to unlock the full insights, comparable sales, price-per-{areaUnit} range, and a branded PDF download from {org?.business_name}.
+                <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 mb-1">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  Free Download
+                </Badge>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
+                  Get the Full Report — Free
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Free PDF with 5-year price trends, comparable sales, energy-rating breakdown, and a full {area} market outlook from {org?.business_name}. No payment, no spam — unsubscribe anytime.
                 </p>
               </div>
 
@@ -615,7 +561,7 @@ export default function MarketUpdatePage() {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full"
+                  className="w-full bg-blue-600 hover:bg-blue-700"
                   disabled={!form.email || !form.consent || submitting}
                 >
                   {submitting ? (
@@ -623,23 +569,82 @@ export default function MarketUpdatePage() {
                   ) : (
                     <ArrowRight className="h-4 w-4 mr-2" />
                   )}
-                  {submitting ? "Unlocking..." : "Unlock Full Report"}
+                  {submitting ? "Sending report..." : "Get the Free Report →"}
                 </Button>
+                <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-1">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3 text-green-500" /> Free
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3 text-green-500" /> Instant download
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3 text-green-500" /> No credit card
+                  </span>
+                </div>
               </form>
             </CardContent>
           </Card>
         )}
 
-        {unlocked && (
-          <ContactCTA
-            org={org}
-            onDownloadPDF={() => void downloadPdf(false)}
-            onContactAgent={() => setShowContactModal(true)}
-            downloading={downloadingPdf}
-            downloadLabel={`Download the ${area} Market Report`}
-            downloadDescription="Save a branded PDF copy of the full report"
-          />
+        {delivered && (
+          <>
+            <Card className="border-green-200 bg-green-50/50">
+              <CardContent className="pt-5 pb-5 text-center space-y-2">
+                <CheckCircle className="h-8 w-8 text-green-600 mx-auto" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Your free report is on its way
+                </h3>
+                <p className="text-sm text-gray-700">
+                  We've emailed the full {area} Market Report to <strong>{form.email}</strong>. Your PDF is downloading now too.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => void downloadPdf(false)}
+                  disabled={downloadingPdf}
+                >
+                  {downloadingPdf ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Download again
+                </Button>
+              </CardContent>
+            </Card>
+
+            <ContactCTA
+              org={org}
+              onDownloadPDF={() => void downloadPdf(false)}
+              onContactAgent={() => setShowContactModal(true)}
+              downloading={downloadingPdf}
+              downloadLabel={`Download the ${area} Market Report`}
+              downloadDescription="Save a branded PDF copy of the full report"
+            />
+          </>
         )}
+
+        <Card className="bg-slate-50 border-slate-200">
+          <CardContent className="pt-5 pb-5 flex items-start gap-3">
+            <FileText className="h-5 w-5 text-slate-600 flex-shrink-0 mt-0.5" />
+            <div className="space-y-1 text-sm text-slate-700">
+              <p className="font-medium">What's in the full report?</p>
+              <ul className="list-disc list-inside space-y-0.5 text-slate-600">
+                <li>5-year price &amp; time-on-market trend charts for {area}</li>
+                <li>Full comparable sales with BER / energy ratings</li>
+                <li>Low / average / high price-per-{areaUnit} range</li>
+                <li>Why {area} &amp; forward market outlook</li>
+              </ul>
+              {insights?.trends?.verification?.source && (
+                <p className="text-xs text-slate-500 pt-1">
+                  Historical figures cross-referenced against {insights.trends.verification.source}.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={showContactModal} onOpenChange={setShowContactModal}>

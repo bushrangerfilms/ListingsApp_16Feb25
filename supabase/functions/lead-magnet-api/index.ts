@@ -6,6 +6,8 @@ import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { getEdgeLocaleConfig, formatEdgePrice } from '../_shared/locale-config.ts';
 import { getPostcodeConfig as getEdgePostcodeConfig, normalizePostcode as normalizeEdgePostcode, routingKeyFor as edgeRoutingKeyFor } from '../_shared/postcodes.ts';
 import { getDefaultMarketResearch as getEdgeDefaultMarketResearch } from '../_shared/market-defaults.ts';
+import { verifyPriceTrend } from './market-index/index.ts';
+import type { TrendPoint, VerificationOutcome } from './market-index/types.ts';
 
 const corsHeaders = {
   ...publicCorsHeaders,
@@ -16,11 +18,37 @@ const corsHeaders = {
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const FROM_EMAIL = "AutoListing Reports <reports@autolisting.io>";
 
-// Send email via Resend
-async function sendEmail(to: string, subject: string, html: string, retries = 1): Promise<boolean> {
+interface EmailAttachment {
+  filename: string;
+  content: string;
+  contentType?: string;
+}
+
+// Send email via Resend. Attachments are base64-encoded strings per Resend's API contract.
+async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  opts: { retries?: number; attachments?: EmailAttachment[]; from?: string } = {},
+): Promise<boolean> {
+  const retries = opts.retries ?? 1;
   if (!RESEND_API_KEY) {
     console.error("RESEND_API_KEY not configured");
     return false;
+  }
+
+  const body: Record<string, unknown> = {
+    from: opts.from || FROM_EMAIL,
+    to: [to],
+    subject,
+    html,
+  };
+  if (opts.attachments && opts.attachments.length > 0) {
+    body.attachments = opts.attachments.map((a) => ({
+      filename: a.filename,
+      content: a.content,
+      content_type: a.contentType,
+    }));
   }
 
   try {
@@ -30,12 +58,7 @@ async function sendEmail(to: string, subject: string, html: string, retries = 1)
         "Authorization": `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: [to],
-        subject,
-        html,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -44,7 +67,7 @@ async function sendEmail(to: string, subject: string, html: string, retries = 1)
       if (retries > 0) {
         console.log(`   Retrying email to ${to} in 2s (${retries} retries left)...`);
         await new Promise(r => setTimeout(r, 2000));
-        return sendEmail(to, subject, html, retries - 1);
+        return sendEmail(to, subject, html, { ...opts, retries: retries - 1 });
       }
       return false;
     }
@@ -55,9 +78,47 @@ async function sendEmail(to: string, subject: string, html: string, retries = 1)
     if (retries > 0) {
       console.log(`   Retrying email to ${to} in 2s (${retries} retries left)...`);
       await new Promise(r => setTimeout(r, 2000));
-      return sendEmail(to, subject, html, retries - 1);
+      return sendEmail(to, subject, html, { ...opts, retries: retries - 1 });
     }
     return false;
+  }
+}
+
+const SOCIALS_HUB_URL = Deno.env.get("SOCIALS_HUB_URL") || "https://socials.autolisting.io";
+
+async function bufferToBase64(buf: ArrayBuffer): Promise<string> {
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
+  }
+  return btoa(binary);
+}
+
+async function renderLeadMagnetPdfBase64(payload: unknown): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const resp = await fetch(`${SOCIALS_HUB_URL}/api/lead-magnet-pdf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      if (!resp.ok) {
+        console.error(`[lead-magnet-pdf] upstream HTTP ${resp.status}`);
+        return null;
+      }
+      const buf = await resp.arrayBuffer();
+      return await bufferToBase64(buf);
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (err) {
+    console.error("[lead-magnet-pdf] render failed", err);
+    return null;
   }
 }
 
@@ -2029,7 +2090,7 @@ async function handleServiceAreas(supabase: any, orgSlug: string): Promise<Respo
 // Cap Gemini spend at orgs × types × areas × months, not visitor count.
 // See migration 20260422160000_lead_magnet_ai_cache.sql.
 
-type AiContentType = 'market-update' | 'tips-advice';
+type AiContentType = 'market-update' | 'tips-advice' | 'market-update-v2' | 'tips-advice-v2';
 
 function normalizeAreaForCache(area: string): string {
   return (area || '').trim().toLowerCase();
@@ -2098,7 +2159,7 @@ async function getOrGenerateAiContent<T>(
 async function handleMarketInsights(supabase: any, orgSlug: string, area: string): Promise<Response> {
   const { data: org } = await supabase
     .from("organizations")
-    .select("id, business_name, slug")
+    .select("id, business_name, slug, locale")
     .eq("slug", orgSlug)
     .eq("is_active", true)
     .single();
@@ -2121,6 +2182,8 @@ async function handleMarketInsights(supabase: any, orgSlug: string, area: string
     targetArea = areas?.[0]?.area_name || "";
   }
 
+  const { countryCode } = await resolveOrgLocale(supabase, org.locale);
+
   const googleApiKey = Deno.env.get("GOOGLE_AI_API_KEY");
   if (!googleApiKey || !targetArea) {
     return new Response(
@@ -2129,13 +2192,13 @@ async function handleMarketInsights(supabase: any, orgSlug: string, area: string
     );
   }
 
-  // Read-through cache: Gemini call only runs on first visit per
-  // (org, area, month). Subsequent visits in the same month reuse the cached
-  // insights. Invalidation is implicit via month rollover.
+  const currentYear = new Date().getUTCFullYear();
+  const trendsStartYear = currentYear - 4;
+
   const { content: insights, cache_hit } = await getOrGenerateAiContent<any>(
     supabase,
     org.id,
-    'market-update',
+    'market-update-v2',
     targetArea,
     async () => {
       const prompt = `You are a property market analyst. Generate a detailed, engaging market report for the ${targetArea} area that a real estate agent would share with potential sellers. Base numbers on realistic current market conditions.
@@ -2158,20 +2221,47 @@ Return ONLY valid JSON with this exact shape:
     "<insight 6 about seasonal or regulatory considerations>"
   ],
   "comparable_sales": [
-    {"description": "<short description e.g. '3-bed semi, Main Street area'>", "sale_price": <number>, "approx_sqm": <number>, "price_per_sqm": <number>, "distance_km": <number>},
-    {"description": "<...>", "sale_price": <number>, "approx_sqm": <number>, "price_per_sqm": <number>, "distance_km": <number>},
-    {"description": "<...>", "sale_price": <number>, "approx_sqm": <number>, "price_per_sqm": <number>, "distance_km": <number>}
+    {"description": "<short description e.g. '3-bed semi, Main Street area'>", "sale_price": <number>, "approx_sqm": <number>, "price_per_sqm": <number>, "distance_km": <number>, "sale_date": "<YYYY-MM, within last 12 months>", "ber_rating": "<A1|A2|A3|B1|B2|B3|C1|C2|C3|D1|D2|E1|E2|F|G>"}
   ],
   "price_per_sqm_low": <number>,
   "price_per_sqm_high": <number>,
   "avg_price_sqm": <number>,
   "trend": "<up|down|stable>",
   "trend_commentary": "<2-3 sentence description of current market direction, including whether now is a good time to sell and why>",
-  "area_premium_notes": "<2-3 sentences on what makes ${targetArea} attractive to buyers — schools, transport, amenities, lifestyle>",
+  "area_premium_notes": "<2-3 sentences on what makes ${targetArea} attractive to buyers>",
+  "market_outlook": "<2-3 forward-looking sentences: interest rates, supply pipeline, regulatory changes (energy / rental / planning), seasonal factors. No firm predictions, use 'likely', 'expected'.>",
+  "trends": {
+    "price_5yr": [
+      {"year": ${trendsStartYear}, "value": <avg price_per_sqm for that year>},
+      {"year": ${trendsStartYear + 1}, "value": <number>},
+      {"year": ${trendsStartYear + 2}, "value": <number>},
+      {"year": ${trendsStartYear + 3}, "value": <number>},
+      {"year": ${currentYear}, "value": <number>}
+    ],
+    "time_on_market_5yr": [
+      {"year": ${trendsStartYear}, "value": <avg days on market for that year>},
+      {"year": ${trendsStartYear + 1}, "value": <number>},
+      {"year": ${trendsStartYear + 2}, "value": <number>},
+      {"year": ${trendsStartYear + 3}, "value": <number>},
+      {"year": ${currentYear}, "value": <number>}
+    ],
+    "price_per_sqm_5yr": [
+      {"year": ${trendsStartYear}, "value": <number>},
+      {"year": ${trendsStartYear + 1}, "value": <number>},
+      {"year": ${trendsStartYear + 2}, "value": <number>},
+      {"year": ${trendsStartYear + 3}, "value": <number>},
+      {"year": ${currentYear}, "value": <number>}
+    ]
+  },
   "cta_text": "<1 sentence encouraging sellers to get in touch>"
 }
 
-Important: comparable_sales prices should be realistic whole numbers in EUR (Ireland default) unless the area clearly suggests another country. price_per_sqm should be between 2000 and 10000 for typical Irish markets. Include 3-5 comparable sales.`;
+Requirements:
+- Include 8-12 comparable_sales entries with varied property types, sizes, and BER ratings
+- Currency: EUR for Ireland, GBP for UK, USD otherwise — match ${countryCode}
+- price_per_sqm typical range: 2000-10000 IE, 3000-12000 GB, 2500-9000 US/CA/AU/NZ
+- Trend arrays must be monotonically plausible: small year-over-year changes (-10% to +15%), no zeros, no round-to-zero values
+- All 5-year arrays must have exactly 5 points from ${trendsStartYear} to ${currentYear}`;
 
       try {
         const response = await fetch(
@@ -2181,7 +2271,7 @@ Important: comparable_sales prices should be realistic whole numbers in EUR (Ire
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.7, maxOutputTokens: 2800 },
+              generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
             }),
           }
         );
@@ -2193,7 +2283,23 @@ Important: comparable_sales prices should be realistic whole numbers in EUR (Ire
         const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (!jsonMatch) return null;
-        return JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]);
+
+        // Cross-check LLM trends against regional index. We verify the
+        // price_per_sqm series (most directly comparable to HPI).
+        const { series: verifiedSeries, verification } = await verifyPriceTrend({
+          supabase,
+          countryCode,
+          area: targetArea,
+          llmSeries: parsed?.trends?.price_per_sqm_5yr as TrendPoint[] | undefined,
+          years: 5,
+        });
+        parsed.trends = parsed.trends || {};
+        if (verifiedSeries) {
+          parsed.trends.price_per_sqm_5yr = verifiedSeries;
+        }
+        parsed.trends.verification = verification;
+        return parsed;
       } catch (err) {
         console.error("[MarketInsights] Error:", err);
         return null;
@@ -2208,7 +2314,6 @@ Important: comparable_sales prices should be realistic whole numbers in EUR (Ire
     );
   }
 
-  // Generator failed — serve static without caching.
   return new Response(
     JSON.stringify({ org, area: targetArea, insights: getStaticMarketInsights(targetArea), source: "static", cache_hit: false }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -2216,6 +2321,7 @@ Important: comparable_sales prices should be realistic whole numbers in EUR (Ire
 }
 
 function getStaticMarketInsights(area: string) {
+  const now = new Date().getUTCFullYear();
   return {
     headline: `${area} Property Market Update`,
     summary: `The property market in ${area} continues to evolve. Whether you're thinking about selling or just curious about local trends, here's what you need to know.`,
@@ -2233,9 +2339,9 @@ function getStaticMarketInsights(area: string) {
       `Thoughtful pricing remains the single biggest factor in achieving a strong sale.`,
     ],
     comparable_sales: [
-      { description: `3-bed semi-detached, near ${area} village`, sale_price: 385000, approx_sqm: 110, price_per_sqm: 3500, distance_km: 1.2 },
-      { description: `4-bed detached with garden, ${area} outskirts`, sale_price: 495000, approx_sqm: 150, price_per_sqm: 3300, distance_km: 2.4 },
-      { description: `2-bed terrace, central ${area}`, sale_price: 295000, approx_sqm: 85, price_per_sqm: 3470, distance_km: 0.6 },
+      { description: `3-bed semi-detached, near ${area} village`, sale_price: 385000, approx_sqm: 110, price_per_sqm: 3500, distance_km: 1.2, sale_date: `${now}-02`, ber_rating: "B3" },
+      { description: `4-bed detached with garden, ${area} outskirts`, sale_price: 495000, approx_sqm: 150, price_per_sqm: 3300, distance_km: 2.4, sale_date: `${now}-01`, ber_rating: "C1" },
+      { description: `2-bed terrace, central ${area}`, sale_price: 295000, approx_sqm: 85, price_per_sqm: 3470, distance_km: 0.6, sale_date: `${now - 1}-11`, ber_rating: "D1" },
     ],
     price_per_sqm_low: 3100,
     price_per_sqm_high: 4200,
@@ -2243,6 +2349,34 @@ function getStaticMarketInsights(area: string) {
     trend: "up",
     trend_commentary: `${area} prices have shown steady upward movement over recent quarters, reflecting healthy buyer appetite and limited supply. Current conditions favour well-prepared sellers, particularly in the family-home bracket.`,
     area_premium_notes: `${area} continues to attract buyers drawn by strong local schools, accessible transport, and a genuine community feel. Homes with well-presented interiors and outdoor space tend to command the strongest offers.`,
+    market_outlook: `Looking ahead, supply in ${area} is expected to remain tight into the coming quarters while buyer appetite holds firm. Interest rate direction and energy-efficiency regulation will be the main variables to watch.`,
+    trends: {
+      price_5yr: [
+        { year: now - 4, value: 3050 },
+        { year: now - 3, value: 3180 },
+        { year: now - 2, value: 3290 },
+        { year: now - 1, value: 3400 },
+        { year: now, value: 3500 },
+      ],
+      time_on_market_5yr: [
+        { year: now - 4, value: 9 },
+        { year: now - 3, value: 8 },
+        { year: now - 2, value: 7 },
+        { year: now - 1, value: 7 },
+        { year: now, value: 6 },
+      ],
+      price_per_sqm_5yr: [
+        { year: now - 4, value: 3050 },
+        { year: now - 3, value: 3180 },
+        { year: now - 2, value: 3290 },
+        { year: now - 1, value: 3400 },
+        { year: now, value: 3500 },
+      ],
+      verification: {
+        status: "unverified" as const,
+        note: "Indicative figures only — live data temporarily unavailable.",
+      },
+    },
     cta_text: `Curious what your ${area} property could achieve? Get in touch for a confidential chat.`,
   };
 }
@@ -2285,11 +2419,10 @@ async function handleTipsContent(supabase: any, orgSlug: string, area: string): 
     );
   }
 
-  // Read-through cache: one Gemini call per (org, area, month).
   const { content: tips, cache_hit } = await getOrGenerateAiContent<any>(
     supabase,
     org.id,
-    'tips-advice',
+    'tips-advice-v2',
     targetArea,
     async () => {
       const prompt = `You are a property expert writing an article for homeowners in ${targetArea} who might be thinking about selling their home. Write 6 practical, actionable tips.
@@ -2301,13 +2434,29 @@ Return ONLY valid JSON:
   "tips": [
     {
       "title": "<short tip title, 3-6 words>",
-      "body": "<2-3 sentences of practical advice>",
-      "impact": "<High|Medium>"
+      "body": "<2-3 sentence summary of the tip>",
+      "impact": "<High|Medium>",
+      "how_to": [
+        "<actionable step 1>",
+        "<actionable step 2>",
+        "<actionable step 3>"
+      ],
+      "common_pitfalls": [
+        "<specific mistake to avoid>",
+        "<another specific mistake to avoid>"
+      ],
+      "pro_tip": "<1-2 sentences of insider knowledge — a non-obvious angle a ${targetArea} agent would add>"
     }
   ],
   "conclusion": "<1-2 sentences wrapping up and encouraging action>",
   "cta_text": "<1 sentence encouraging them to contact the agent>"
-}`;
+}
+
+Requirements:
+- Exactly 6 tips
+- Each tip's how_to has 3-5 steps; common_pitfalls has 2-3 items
+- Tips should be specific to ${targetArea} where possible (mention local characteristics, regulations, or buyer profiles)
+- Order tips by impact (High first)`;
       try {
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`,
@@ -2316,7 +2465,7 @@ Return ONLY valid JSON:
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.7, maxOutputTokens: 1500 },
+              generationConfig: { temperature: 0.7, maxOutputTokens: 3500 },
             }),
           }
         );
@@ -2354,12 +2503,102 @@ function getStaticTips(area: string, orgName: string) {
     headline: `Expert Tips to Maximise Your ${area} Property Sale`,
     intro: `Thinking about selling your home in ${area}? These practical tips from property experts can help you achieve the best possible price and a smooth sale.`,
     tips: [
-      { title: "First Impressions Count", body: `Kerb appeal is everything. A freshly painted front door, clean windows, and a tidy garden can add thousands to your ${area} property's perceived value. Buyers form opinions within seconds of arriving.`, impact: "High" },
-      { title: "Declutter Every Room", body: "Remove personal items and excess furniture to make rooms feel larger and help buyers imagine themselves living there. Consider renting a storage unit during viewings.", impact: "High" },
-      { title: "Fix the Small Things", body: "Dripping taps, cracked tiles, and squeaky doors signal neglect. A weekend of minor repairs can prevent buyers from negotiating down on price.", impact: "Medium" },
-      { title: "Get Your BER Certificate", body: "Energy efficiency matters more than ever. If your rating is low, consider quick wins like attic insulation or draught-proofing before listing.", impact: "Medium" },
-      { title: "Price It Right from Day One", body: `Overpricing leads to stale listings. Research recent sales in ${area} and price competitively — well-priced homes attract multiple offers and often exceed asking.`, impact: "High" },
-      { title: "Choose the Right Agent", body: `An agent who knows ${area} intimately can price accurately, market effectively, and negotiate the best deal. Look for local track record and marketing quality.`, impact: "High" },
+      {
+        title: "First Impressions Count",
+        body: `Kerb appeal is everything. A freshly painted front door, clean windows, and a tidy garden can add thousands to your ${area} property's perceived value. Buyers form opinions within seconds of arriving.`,
+        impact: "High",
+        how_to: [
+          "Power-wash the front path, driveway, and any rendered walls",
+          "Repaint or refresh the front door and trim — a bold tasteful colour reads well in photos",
+          "Clear gutters, prune overhanging branches, edge the lawn",
+          "Add one statement planter or hanging basket by the entrance",
+        ],
+        common_pitfalls: [
+          "Leaving wheelie bins, bikes, or hoses visible in the hero photo",
+          "Over-mulching or over-staging to the point it feels commercial",
+        ],
+        pro_tip: `Photograph the front elevation at the same time of day the viewer will arrive. In ${area}, late-afternoon light tends to flatter most frontages.`,
+      },
+      {
+        title: "Declutter Every Room",
+        body: "Remove personal items and excess furniture to make rooms feel larger and help buyers imagine themselves living there. Consider renting a storage unit during viewings.",
+        impact: "High",
+        how_to: [
+          "Remove at least one-third of furniture from every reception room",
+          "Box up family photos, fridge magnets, and personal collections",
+          "Clear kitchen counters to no more than 3 appliances",
+          "Neutralise strong artwork choices with calmer alternatives",
+        ],
+        common_pitfalls: [
+          "Stuffing cupboards full — buyers open everything and storage is a major selling point",
+          "Leaving pet beds, litter trays, or toys in shot",
+        ],
+        pro_tip: "If you can't remove it, curate it — one good print on an empty wall beats four competing pictures every time.",
+      },
+      {
+        title: "Price It Right from Day One",
+        body: `Overpricing leads to stale listings. Research recent sales in ${area} and price competitively — well-priced homes attract multiple offers and often exceed asking.`,
+        impact: "High",
+        how_to: [
+          `Pull at least 5 comparable sales within 500m in ${area}`,
+          "Adjust for BER, floor area, and garden size",
+          "Set the asking price at or just under the most recent comparable",
+          "Agree a 14-day review with your agent — reduce quickly if footfall stalls",
+        ],
+        common_pitfalls: [
+          "Anchoring to the highest historical sale rather than the median",
+          "Believing an online AVM that hasn't seen the inside of the property",
+        ],
+        pro_tip: `${area} buyers are sophisticated — under-pricing by 3-5% typically triggers multiple bids and beats an ambitious asking.`,
+      },
+      {
+        title: "Choose the Right Agent",
+        body: `An agent who knows ${area} intimately can price accurately, market effectively, and negotiate the best deal. Look for local track record and marketing quality.`,
+        impact: "High",
+        how_to: [
+          `Ask 2-3 agents actively selling in ${area} for a valuation and marketing plan`,
+          "Request recent sold prices vs asking for the last 6 months",
+          "Check social and listing quality — photos, video, floor plans",
+          "Agree in writing: fee, tie-in period, and marketing spend",
+        ],
+        common_pitfalls: [
+          "Picking the highest valuation without checking whether those prices actually achieve",
+          "Signing a long tie-in before seeing any marketing output",
+        ],
+        pro_tip: "The best agents ask as many questions about you and your timeline as they answer about price — that's a signal they'll negotiate well on your behalf.",
+      },
+      {
+        title: "Fix the Small Things",
+        body: "Dripping taps, cracked tiles, and squeaky doors signal neglect. A weekend of minor repairs can prevent buyers from negotiating down on price.",
+        impact: "Medium",
+        how_to: [
+          "Walk the house with a critical eye and list every defect",
+          "Fix the top 10 cheapest / quickest items first",
+          "Touch up paint where furniture has rubbed or scuffed",
+          "Replace missing grout, silicone, and cracked tiles",
+        ],
+        common_pitfalls: [
+          "Starting big renovation projects that overrun the sale timeline",
+          "Using wildly mismatched paint colour on touch-ups",
+        ],
+        pro_tip: "Surveyors flag the obvious — fixing the 'obvious' list pre-listing removes ~80% of the post-offer haggle.",
+      },
+      {
+        title: "Get Your BER Certificate",
+        body: "Energy efficiency matters more than ever. If your rating is low, consider quick wins like attic insulation or draught-proofing before listing.",
+        impact: "Medium",
+        how_to: [
+          "Book a BER assessor 4-6 weeks before launching to market",
+          "Pre-assessor: top up attic insulation, draught-proof doors, add lagging jackets",
+          "Get written quotes for any recommended upgrades",
+          "Include the BER certificate on all marketing material",
+        ],
+        common_pitfalls: [
+          "Leaving the BER to the last minute — cert delivery lags the inspection",
+          "Ignoring low-cost improvements that can move a D to a C band",
+        ],
+        pro_tip: "A visible BER improvement story — 'upgraded from D1 to B3' — is a powerful marketing angle, especially for post-2008 buyers financing at higher rates.",
+      },
     ],
     conclusion: `Selling a home in ${area} doesn't have to be stressful. With the right preparation and expert guidance, you can achieve a great result.`,
     cta_text: `Ready to take the next step? Contact ${orgName} for a free, no-obligation valuation of your property.`,
@@ -2537,10 +2776,153 @@ async function handleSubmitCta(supabase: any, body: any): Promise<Response> {
     }
   }
 
+  // For Market Update / Tips & Advice: deliver the free PDF report to the
+  // lead's email. Best-effort — user still downloads in-browser on submit,
+  // so email failure is non-fatal.
+  if (type_key === "market-update" || type_key === "tips-advice") {
+    void deliverLeadMagnetPdfToUser(supabase, {
+      orgId: organization_id,
+      orgSlug: org.slug,
+      orgName: org.business_name || "your local agent",
+      leadEmail: email,
+      leadName: name,
+      area: area || "",
+      typeKey: type_key,
+    }).catch((err) => {
+      console.error(`[user-delivery] background delivery failed for submission ${submission.id}`, err);
+    });
+  }
+
   return new Response(
     JSON.stringify({ success: true, submission_id: submission.id }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
+}
+
+async function deliverLeadMagnetPdfToUser(
+  supabase: any,
+  params: {
+    orgId: string;
+    orgSlug: string;
+    orgName: string;
+    leadEmail: string;
+    leadName?: string | null;
+    area: string;
+    typeKey: "market-update" | "tips-advice";
+  },
+): Promise<void> {
+  const { orgId, orgSlug, orgName, leadEmail, leadName, area, typeKey } = params;
+  const area_normalized = normalizeAreaForCache(area);
+  const period = currentPeriod();
+  const cacheType = typeKey === "market-update" ? "market-update-v2" : "tips-advice-v2";
+
+  const { data: cached } = await supabase
+    .from("lead_magnet_ai_cache")
+    .select("content")
+    .eq("organization_id", orgId)
+    .eq("content_type", cacheType)
+    .eq("area_normalized", area_normalized)
+    .eq("period", period)
+    .maybeSingle();
+
+  if (!cached?.content) {
+    console.warn(`[user-delivery] no cached content for org=${orgId} type=${cacheType} area=${area_normalized} period=${period} — skipping email PDF`);
+    return;
+  }
+
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("locale")
+    .eq("id", orgId)
+    .single();
+  const { locale } = await resolveOrgLocale(supabase, org?.locale);
+
+  const pdfPayload = typeKey === "market-update"
+    ? {
+      type: "MARKET_UPDATE",
+      orgSlug,
+      result: { area, ...cached.content },
+      locale,
+      generatedAt: new Date().toISOString(),
+    }
+    : {
+      type: "TIPS_ADVICE",
+      orgSlug,
+      result: { area, ...cached.content },
+      locale,
+      generatedAt: new Date().toISOString(),
+    };
+
+  const pdfBase64 = await renderLeadMagnetPdfBase64(pdfPayload);
+  if (!pdfBase64) {
+    console.warn(`[user-delivery] PDF render returned null — skipping attachment email for ${leadEmail}`);
+    return;
+  }
+
+  const subject = typeKey === "market-update"
+    ? `Your free ${area || "local"} market report`
+    : `Your free seller tips guide${area ? ` — ${area}` : ""}`;
+
+  const filename = typeKey === "market-update"
+    ? `${area || "market"}-report.pdf`.replace(/\s+/g, "-").toLowerCase()
+    : `${area || "seller"}-tips.pdf`.replace(/\s+/g, "-").toLowerCase();
+
+  const html = buildUserDeliveryEmail({
+    leadName: leadName || "",
+    orgName,
+    area,
+    typeKey,
+  });
+
+  const ok = await sendEmail(leadEmail, subject, html, {
+    attachments: [{ filename, content: pdfBase64, contentType: "application/pdf" }],
+  });
+
+  if (!ok) {
+    console.error(`[user-delivery] sendEmail failed for ${leadEmail}`);
+  }
+}
+
+function buildUserDeliveryEmail(params: {
+  leadName: string;
+  orgName: string;
+  area: string;
+  typeKey: "market-update" | "tips-advice";
+}): string {
+  const { leadName, orgName, area, typeKey } = params;
+  const greeting = leadName ? `Hi ${escapeHtml(leadName)},` : "Hi there,";
+  const title = typeKey === "market-update"
+    ? `Your free ${escapeHtml(area || "local")} market report`
+    : `Your free seller tips guide`;
+  const blurb = typeKey === "market-update"
+    ? `Attached is your free ${escapeHtml(area || "local")} market report from ${escapeHtml(orgName)} — with key stats, 5-year trends, comparable sales, and a full ${escapeHtml(area || "local")} outlook.`
+    : `Attached is your free seller tips guide from ${escapeHtml(orgName)} — all six tips expanded with step-by-step how-to, pitfalls to avoid, and insider pro tips.`;
+
+  return `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;color:#111827;">
+  <div style="max-width:600px;margin:0 auto;padding:20px;">
+    <div style="background:linear-gradient(135deg,#2563eb,#1e40af);border-radius:12px 12px 0 0;padding:28px 24px;text-align:center;">
+      <p style="margin:0 0 6px;color:rgba(255,255,255,0.85);font-size:12px;text-transform:uppercase;letter-spacing:1px;">Free Report · AutoListing</p>
+      <h1 style="margin:0;color:#ffffff;font-size:22px;line-height:1.3;">${title}</h1>
+    </div>
+    <div style="background:#ffffff;border-radius:0 0 12px 12px;padding:28px 24px;border:1px solid #e5e7eb;border-top:none;">
+      <p style="margin:0 0 14px;font-size:15px;">${greeting}</p>
+      <p style="margin:0 0 14px;font-size:15px;line-height:1.55;">${blurb}</p>
+      <p style="margin:0 0 14px;font-size:15px;line-height:1.55;">The PDF is attached to this email. No payment, no obligation — it's free to keep, forward, or print.</p>
+      <div style="margin:20px 0;padding:16px;background:#f3f4f6;border-radius:8px;border:1px solid #e5e7eb;">
+        <p style="margin:0;font-size:14px;line-height:1.5;color:#374151;">
+          Have questions or want to talk through what it means for your property?
+          Just reply to this email — it goes straight to <strong>${escapeHtml(orgName)}</strong>.
+        </p>
+      </div>
+      <p style="margin:0;font-size:14px;color:#6b7280;">Thanks,<br/>${escapeHtml(orgName)}</p>
+    </div>
+    <p style="text-align:center;color:#9ca3af;font-size:11px;margin:14px 0 0;">Delivered by AutoListing.io on behalf of ${escapeHtml(orgName)}. Unsubscribe any time.</p>
+  </div>
+</body>
+</html>`.trim();
 }
 
 function buildCtaLeadEmail(params: {
@@ -2585,7 +2967,7 @@ function buildCtaLeadEmail(params: {
         ${additionalFields}
       </table>
       <div style="margin:24px 0 0;padding:16px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;">
-        <p style="margin:0;font-size:14px;color:#166534;"><strong>Next Step:</strong> This lead has been added to your CRM. Follow up promptly for the best conversion.</p>
+        <p style="margin:0;font-size:14px;color:#166534;"><strong>Next Step:</strong> This lead has been added to your CRM and their free report has been emailed automatically. Follow up promptly for the best conversion.</p>
       </div>
     </div>
     <p style="text-align:center;color:#9ca3af;font-size:12px;margin:16px 0 0;">Sent via AutoListing.io</p>
