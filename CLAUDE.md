@@ -85,7 +85,8 @@ Detection logic: `src/lib/domainDetection.ts` → `getDomainType()`
 - `/:orgSlug` — Public listings portal
 - `/:orgSlug/property/:id` — Property detail
 - `/lead-magnet/:orgSlug/:quizType` — Lead gen quiz
-- `/q/:orgSlug/:typeKey` — Lead magnet landing pages (Market Update, Tips & Advice, quizzes). Market Update accepts `?area=` to scope the report; page has a breadcrumb with a change dropdown for multi-area orgs (Listings PR #184).
+- `/:orgSlug/market-update`, `/:orgSlug/tips-advice` — Market Update + Tips & Advice landing pages (PR #188, 2026-04-23). Org-scoped to match Free Valuation (`/:orgSlug/request-valuation`). Market Update accepts `?area=` to scope the report; page has a breadcrumb with a change dropdown for multi-area orgs (PR #184). Old `/q/:orgSlug/:typeKey` paths remain as aliases.
+- `/q/:orgSlug/:typeKey` — Legacy alias for Market Update / Tips / quizzes. Still resolves; new URL builders emit the org-scoped paths above.
 - `/links/:orgSlug` — Bio hub (for Instagram/TikTok/Pinterest bio link). Shows all enabled lead magnets; for multi-area orgs, shows an area picker defaulting to primary that threads into the Market Update button's href.
 
 ## Lead Magnets landing pages (public routes)
@@ -94,8 +95,8 @@ The Lead Magnets admin page lives in the Socials app, not this repo. Cutover com
 
 Area-aware landing pages in `src/pages/lead-magnet/`:
 - **`LinksPage.tsx`** — bio hub (`/links/:orgSlug`). Shows area picker for multi-area orgs, defaulted to primary. Picker selection threads into URLs of area-aware types (`AREA_AWARE_TYPES` = market-update + tips-advice). Free Valuation ignores area (external form).
-- **`MarketUpdatePage.tsx`** — Market Update landing (`/q/:orgSlug/market-update`). Breadcrumb strip with change dropdown for multi-area orgs.
-- **`TipsAdvicePage.tsx`** — Tips & Advice landing (`/q/:orgSlug/tips-advice`). Same breadcrumb pattern as Market Update (emerald-accented).
+- **`MarketUpdatePage.tsx`** — Market Update landing (`/:orgSlug/market-update` — org-scoped, matches Free Valuation). Breadcrumb strip with change dropdown for multi-area orgs.
+- **`TipsAdvicePage.tsx`** — Tips & Advice landing (`/:orgSlug/tips-advice`). Same breadcrumb pattern as Market Update (emerald-accented).
 
 Edge function `supabase/functions/lead-magnet-api/index.ts`:
 - `GET /service-areas/:orgSlug` — public, returns `{ areas: [{ name, is_primary }] }`. Used by the bio hub + landing page breadcrumbs (RLS locks `org_service_areas` to service_role, so a public edge route is the cleanest surface).
