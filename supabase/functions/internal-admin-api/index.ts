@@ -1289,15 +1289,17 @@ async function handleOrganizationsList(
 
   const orgIds = orgs.map((org: any) => org.id);
 
-  const [usersResult, listingsResult, balancesResult] = await Promise.all([
+  const [usersResult, listingsResult, balancesResult, planSummariesResult] = await Promise.all([
     supabase.from("user_organizations").select("organization_id").in("organization_id", orgIds),
     supabase.from("listings").select("organization_id").in("organization_id", orgIds),
     supabase.from("organization_credit_balances").select("organization_id, balance, updated_at").in("organization_id", orgIds),
+    supabase.from("v_organization_plan_summary").select("organization_id, plan_display_name, account_status, has_billing_override").in("organization_id", orgIds),
   ]);
 
   const userCountMap = new Map<string, number>();
   const listingCountMap = new Map<string, number>();
   const balanceMap = new Map<string, { balance: number; updated_at: string }>();
+  const planMap = new Map<string, { plan_display_name: string | null; account_status: string | null; has_billing_override: boolean }>();
 
   (usersResult.data || []).forEach((u: any) => {
     userCountMap.set(u.organization_id, (userCountMap.get(u.organization_id) || 0) + 1);
@@ -1308,15 +1310,26 @@ async function handleOrganizationsList(
   (balancesResult.data || []).forEach((b: any) => {
     balanceMap.set(b.organization_id, { balance: parseFloat(b.balance || 0), updated_at: b.updated_at });
   });
+  (planSummariesResult.data || []).forEach((p: any) => {
+    planMap.set(p.organization_id, {
+      plan_display_name: p.plan_display_name ?? null,
+      account_status: p.account_status ?? null,
+      has_billing_override: !!p.has_billing_override,
+    });
+  });
 
   const orgsWithCounts = orgs.map((org: any) => {
     const balanceData = balanceMap.get(org.id);
+    const planData = planMap.get(org.id);
     return {
       ...org,
       user_count: userCountMap.get(org.id) || 0,
       listing_count: listingCountMap.get(org.id) || 0,
       credit_balance: auth.isSuperAdmin ? (balanceData?.balance ?? 0) : null,
       credit_balance_redacted: !auth.isSuperAdmin,
+      plan_display_name: planData?.plan_display_name ?? null,
+      account_status: planData?.account_status ?? null,
+      has_billing_override: planData?.has_billing_override ?? false,
     };
   });
 
@@ -1338,12 +1351,13 @@ async function handleOrganizationDetail(
     throw new Error("Organization not found");
   }
 
-  const [usersResult, listingsResult, activeListingsResult, billingResult, userListResult] = await Promise.all([
+  const [usersResult, listingsResult, activeListingsResult, billingResult, userListResult, planSummaryResult] = await Promise.all([
     supabase.from("user_organizations").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).neq("role", "super_admin").neq("role", "developer"),
     supabase.from("listings").select("id", { count: "exact", head: true }).eq("organization_id", organizationId),
     supabase.from("listings").select("id", { count: "exact", head: true }).eq("organization_id", organizationId).eq("status", "For Sale"),
     supabase.from("billing_profiles").select("*").eq("organization_id", organizationId).maybeSingle(),
     supabase.from("user_organizations").select("user_id, role, created_at").eq("organization_id", organizationId).limit(10),
+    supabase.from("v_organization_plan_summary").select("*").eq("organization_id", organizationId).maybeSingle(),
   ]);
 
   return {
@@ -1355,6 +1369,7 @@ async function handleOrganizationDetail(
     },
     users: userListResult.data || [],
     billing_profile: billingResult.data,
+    plan_summary: planSummaryResult.data,
   };
 }
 
@@ -1389,24 +1404,58 @@ async function handleOrganizationBilling(
   };
 }
 
+async function handleListPlanDefinitions(
+  supabase: SupabaseClient,
+  auth: AuthResult
+) {
+  if (!auth.isSuperAdmin) {
+    throw new Error("Only super admins can list plan definitions");
+  }
+
+  const { data, error } = await supabase
+    .from("plan_definitions")
+    .select("name, display_name, description, monthly_price_cents, features, limits, display_order, is_active")
+    .eq("is_active", true)
+    .order("display_order", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to list plans: ${error.message}`);
+  }
+
+  return { plans: data || [] };
+}
+
 async function handleChangePlan(
   supabase: SupabaseClient,
   auth: AuthResult,
   organizationId: string,
-  body: { plan: string; is_sponsored?: boolean; sponsored_reason?: string }
+  body: { plan: string }
 ) {
   if (!auth.isSuperAdmin) {
     throw new Error("Only super admins can change organization plans");
   }
 
-  const { plan, is_sponsored, sponsored_reason } = body;
-  if (!plan || !["starter", "pro"].includes(plan)) {
-    throw new Error("Invalid plan. Must be 'starter' or 'pro'");
+  const { plan } = body;
+  if (!plan || typeof plan !== "string") {
+    throw new Error("Plan name is required");
+  }
+
+  const { data: planDef, error: planErr } = await supabase
+    .from("plan_definitions")
+    .select("name, is_active")
+    .eq("name", plan)
+    .maybeSingle();
+
+  if (planErr) {
+    throw new Error(`Plan lookup failed: ${planErr.message}`);
+  }
+  if (!planDef || !planDef.is_active) {
+    throw new Error(`Invalid or inactive plan: ${plan}`);
   }
 
   const { data: org, error: orgError } = await supabase
     .from("organizations")
-    .select("id, business_name")
+    .select("id, business_name, current_plan_name")
     .eq("id", organizationId)
     .single();
 
@@ -1414,73 +1463,132 @@ async function handleChangePlan(
     throw new Error("Organization not found");
   }
 
-  const { data: existingProfile } = await supabase
-    .from("billing_profiles")
-    .select("subscription_plan, is_sponsored, sponsored_reason")
-    .eq("organization_id", organizationId)
-    .maybeSingle();
+  const previousPlan = org.current_plan_name;
 
-  const previousState = {
-    subscription_plan: existingProfile?.subscription_plan || null,
-    is_sponsored: existingProfile?.is_sponsored || false,
-    sponsored_reason: existingProfile?.sponsored_reason || null,
-  };
+  const { error: updateError } = await supabase
+    .from("organizations")
+    .update({ current_plan_name: plan })
+    .eq("id", organizationId);
 
-  const updateData = {
-    subscription_plan: plan,
-    is_sponsored: is_sponsored ?? false,
-    sponsored_reason: is_sponsored ? (sponsored_reason || null) : null,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (existingProfile) {
-    const { error: updateError } = await supabase
-      .from("billing_profiles")
-      .update(updateData)
-      .eq("organization_id", organizationId);
-
-    if (updateError) {
-      throw new Error(`Failed to update plan: ${updateError.message}`);
-    }
-  } else {
-    const { error: insertError } = await supabase
-      .from("billing_profiles")
-      .insert({
-        organization_id: organizationId,
-        subscription_plan: plan,
-        subscription_status: "active",
-        is_sponsored: is_sponsored ?? false,
-        sponsored_reason: is_sponsored ? (sponsored_reason || null) : null,
-      });
-
-    if (insertError) {
-      throw new Error(`Failed to create billing profile: ${insertError.message}`);
-    }
+  if (updateError) {
+    throw new Error(`Failed to update plan: ${updateError.message}`);
   }
 
-  const newState = {
-    subscription_plan: plan,
-    is_sponsored: is_sponsored ?? false,
-    sponsored_reason: is_sponsored ? (sponsored_reason || null) : null,
-  };
+  // Free-plan content gating: re-assert that AI motion video styles are disabled.
+  // Idempotent upsert — safe to run on every demotion to free.
+  // Upstream: Socials `_shared/plan-gates.ts` also blocks at post time, but UI
+  // state lives in `org_content_type_settings` which must match.
+  if (plan === "free") {
+    const rows = [
+      { organization_id: organizationId, content_type: "video_style_2", is_enabled: false },
+      { organization_id: organizationId, content_type: "video_style_4", is_enabled: false },
+    ];
+    await supabase
+      .from("org_content_type_settings")
+      .upsert(rows, { onConflict: "organization_id,content_type" });
+  }
 
   await supabase.from("admin_audit_log").insert({
     actor_id: auth.user.id,
     action_type: "change_plan",
     target_type: "organization",
     target_id: organizationId,
-    before_state: previousState,
-    after_state: newState,
+    before_state: { current_plan_name: previousPlan },
+    after_state: { current_plan_name: plan },
     metadata: { organization_name: org.business_name },
   });
 
   return {
     success: true,
     organization_id: organizationId,
-    previous_plan: previousState.subscription_plan,
+    previous_plan: previousPlan,
     new_plan: plan,
-    is_sponsored: is_sponsored ?? false,
-    sponsored_reason: is_sponsored ? (sponsored_reason || null) : null,
+  };
+}
+
+async function handleSetBillingOverride(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+  organizationId: string,
+  body: {
+    override: null | {
+      type: string;
+      plan_equivalent?: string;
+      price_weekly_cents?: number | null;
+      currency?: string | null;
+      notes?: string | null;
+      expires_at?: string | null;
+    };
+  }
+) {
+  if (!auth.isSuperAdmin) {
+    throw new Error("Only super admins can set billing overrides");
+  }
+
+  const { data: org, error: orgError } = await supabase
+    .from("organizations")
+    .select("id, business_name, billing_override, is_comped")
+    .eq("id", organizationId)
+    .single();
+
+  if (orgError || !org) {
+    throw new Error("Organization not found");
+  }
+
+  const override = body?.override ?? null;
+  let toWrite: Record<string, any> | null = null;
+
+  if (override !== null) {
+    if (!override.type || typeof override.type !== "string") {
+      throw new Error("billing_override.type is required");
+    }
+    if (override.plan_equivalent) {
+      const { data: planDef } = await supabase
+        .from("plan_definitions")
+        .select("name")
+        .eq("name", override.plan_equivalent)
+        .maybeSingle();
+      if (!planDef) {
+        throw new Error(`Invalid plan_equivalent: ${override.plan_equivalent}`);
+      }
+    }
+    toWrite = {
+      type: override.type,
+      plan_equivalent: override.plan_equivalent ?? null,
+      price_weekly_cents: override.price_weekly_cents ?? null,
+      currency: override.currency ?? null,
+      notes: override.notes ?? null,
+      expires_at: override.expires_at ?? null,
+    };
+  }
+
+  const { error: updateError } = await supabase
+    .from("organizations")
+    .update({
+      billing_override: toWrite,
+      // Mirror is_comped to match override presence until the legacy column is dropped.
+      is_comped: toWrite !== null,
+    })
+    .eq("id", organizationId);
+
+  if (updateError) {
+    throw new Error(`Failed to update billing override: ${updateError.message}`);
+  }
+
+  await supabase.from("admin_audit_log").insert({
+    actor_id: auth.user.id,
+    action_type: toWrite === null ? "clear_billing_override" : "set_billing_override",
+    target_type: "organization",
+    target_id: organizationId,
+    before_state: { billing_override: org.billing_override, is_comped: org.is_comped },
+    after_state: { billing_override: toWrite, is_comped: toWrite !== null },
+    metadata: { organization_name: org.business_name },
+  });
+
+  return {
+    success: true,
+    organization_id: organizationId,
+    billing_override: toWrite,
   };
 }
 
@@ -3862,6 +3970,12 @@ serve(async (req) => {
       const organizationId = path.replace("/organizations/", "").replace("/plan", "");
       const body = await req.json();
       responseData = await handleChangePlan(supabase, authResult, organizationId, body);
+    } else if (path.match(/^\/organizations\/[^/]+\/billing-override$/) && method === "PATCH") {
+      const organizationId = path.replace("/organizations/", "").replace("/billing-override", "");
+      const body = await req.json();
+      responseData = await handleSetBillingOverride(supabase, authResult, organizationId, body);
+    } else if (path === "/plan-definitions" && method === "GET") {
+      responseData = await handleListPlanDefinitions(supabase, authResult);
     } else if (path === "/organizations/delete" && method === "POST") {
       const body = await req.json();
       responseData = await handleDeleteOrganizations(supabase, authResult, body);

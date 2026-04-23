@@ -34,7 +34,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Building2, Users, ExternalLink, ChevronLeft, ChevronRight, Coins, X, Loader2, Trash2 } from 'lucide-react';
+import { Search, Building2, Users, ExternalLink, ChevronLeft, ChevronRight, Coins, X, Loader2, Trash2, Gift } from 'lucide-react';
 import { format } from 'date-fns';
 import { OrganizationDetailDrawer } from '@/components/admin/OrganizationDetailDrawer';
 
@@ -284,7 +284,7 @@ export default function OrganizationsPage() {
                     <TableHead>Contact</TableHead>
                     <TableHead className="text-center">Users</TableHead>
                     <TableHead className="text-center">Listings</TableHead>
-                    <TableHead className="text-center">Credits</TableHead>
+                    <TableHead>Plan</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead></TableHead>
@@ -341,25 +341,22 @@ export default function OrganizationsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">{org.listing_count}</TableCell>
-                      <TableCell className="text-center">
-                        {org.credit_balance_redacted ? (
-                          <Badge variant="secondary" className="text-xs" data-testid={`text-credit-balance-${org.id}-redacted`}>
-                            Restricted
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline" className="text-xs" data-testid={`text-plan-${org.id}`}>
+                            {org.plan_display_name ?? 'Free'}
                           </Badge>
-                        ) : (
-                          <Badge
-                            variant={org.credit_balance !== null && org.credit_balance < 100 ? 'destructive' : 'outline'}
-                            className="text-xs"
-                            data-testid={`text-credit-balance-${org.id}`}
-                          >
-                            <Coins className="h-3 w-3 mr-1" />
-                            {org.credit_balance?.toFixed(0) ?? '0'}
-                          </Badge>
-                        )}
+                          {org.has_billing_override && (
+                            <Badge variant="secondary" className="text-xs gap-1 text-purple-600 dark:text-purple-400" title="Billing override active">
+                              <Gift className="h-3 w-3" />
+                              Comp
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={org.is_active ? 'default' : 'secondary'}>
-                          {org.is_active ? 'Active' : 'Inactive'}
+                        <Badge variant={org.is_active ? 'default' : 'secondary'} className="text-xs">
+                          {org.account_status ? org.account_status.replace('_', ' ') : (org.is_active ? 'Active' : 'Inactive')}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
