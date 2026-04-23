@@ -250,7 +250,10 @@ export function AppSidebar() {
                 <ChevronsUpDown className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">
+            <DropdownMenuContent
+              align="start"
+              className="w-[--radix-dropdown-menu-trigger-width] max-h-[--radix-dropdown-menu-content-available-height] overflow-y-auto"
+            >
               <DropdownMenuLabel className="text-xs text-muted-foreground">Switch Organization</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {userOrganizations.map((org) => (
