@@ -84,43 +84,6 @@ async function sendEmail(
   }
 }
 
-const SOCIALS_HUB_URL = Deno.env.get("SOCIALS_HUB_URL") || "https://socials.autolisting.io";
-
-async function bufferToBase64(buf: ArrayBuffer): Promise<string> {
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
-  }
-  return btoa(binary);
-}
-
-async function renderLeadMagnetPdfBase64(payload: unknown): Promise<string | null> {
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
-    try {
-      const resp = await fetch(`${SOCIALS_HUB_URL}/api/lead-magnet-pdf`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-      if (!resp.ok) {
-        console.error(`[lead-magnet-pdf] upstream HTTP ${resp.status}`);
-        return null;
-      }
-      const buf = await resp.arrayBuffer();
-      return await bufferToBase64(buf);
-    } finally {
-      clearTimeout(timer);
-    }
-  } catch (err) {
-    console.error("[lead-magnet-pdf] render failed", err);
-    return null;
-  }
-}
 
 // Ready-to-Sell Section Max Points (V1 - LOCKED per spec)
 const SECTION_MAX_POINTS = {
@@ -2776,153 +2739,10 @@ async function handleSubmitCta(supabase: any, body: any): Promise<Response> {
     }
   }
 
-  // For Market Update / Tips & Advice: deliver the free PDF report to the
-  // lead's email. Best-effort — user still downloads in-browser on submit,
-  // so email failure is non-fatal.
-  if (type_key === "market-update" || type_key === "tips-advice") {
-    void deliverLeadMagnetPdfToUser(supabase, {
-      orgId: organization_id,
-      orgSlug: org.slug,
-      orgName: org.business_name || "your local agent",
-      leadEmail: email,
-      leadName: name,
-      area: area || "",
-      typeKey: type_key,
-    }).catch((err) => {
-      console.error(`[user-delivery] background delivery failed for submission ${submission.id}`, err);
-    });
-  }
-
   return new Response(
     JSON.stringify({ success: true, submission_id: submission.id }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
-}
-
-async function deliverLeadMagnetPdfToUser(
-  supabase: any,
-  params: {
-    orgId: string;
-    orgSlug: string;
-    orgName: string;
-    leadEmail: string;
-    leadName?: string | null;
-    area: string;
-    typeKey: "market-update" | "tips-advice";
-  },
-): Promise<void> {
-  const { orgId, orgSlug, orgName, leadEmail, leadName, area, typeKey } = params;
-  const area_normalized = normalizeAreaForCache(area);
-  const period = currentPeriod();
-  const cacheType = typeKey === "market-update" ? "market-update-v2" : "tips-advice-v2";
-
-  const { data: cached } = await supabase
-    .from("lead_magnet_ai_cache")
-    .select("content")
-    .eq("organization_id", orgId)
-    .eq("content_type", cacheType)
-    .eq("area_normalized", area_normalized)
-    .eq("period", period)
-    .maybeSingle();
-
-  if (!cached?.content) {
-    console.warn(`[user-delivery] no cached content for org=${orgId} type=${cacheType} area=${area_normalized} period=${period} — skipping email PDF`);
-    return;
-  }
-
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("locale")
-    .eq("id", orgId)
-    .single();
-  const { locale } = await resolveOrgLocale(supabase, org?.locale);
-
-  const pdfPayload = typeKey === "market-update"
-    ? {
-      type: "MARKET_UPDATE",
-      orgSlug,
-      result: { area, ...cached.content },
-      locale,
-      generatedAt: new Date().toISOString(),
-    }
-    : {
-      type: "TIPS_ADVICE",
-      orgSlug,
-      result: { area, ...cached.content },
-      locale,
-      generatedAt: new Date().toISOString(),
-    };
-
-  const pdfBase64 = await renderLeadMagnetPdfBase64(pdfPayload);
-  if (!pdfBase64) {
-    console.warn(`[user-delivery] PDF render returned null — skipping attachment email for ${leadEmail}`);
-    return;
-  }
-
-  const subject = typeKey === "market-update"
-    ? `Your free ${area || "local"} market report`
-    : `Your free seller tips guide${area ? ` — ${area}` : ""}`;
-
-  const filename = typeKey === "market-update"
-    ? `${area || "market"}-report.pdf`.replace(/\s+/g, "-").toLowerCase()
-    : `${area || "seller"}-tips.pdf`.replace(/\s+/g, "-").toLowerCase();
-
-  const html = buildUserDeliveryEmail({
-    leadName: leadName || "",
-    orgName,
-    area,
-    typeKey,
-  });
-
-  const ok = await sendEmail(leadEmail, subject, html, {
-    attachments: [{ filename, content: pdfBase64, contentType: "application/pdf" }],
-  });
-
-  if (!ok) {
-    console.error(`[user-delivery] sendEmail failed for ${leadEmail}`);
-  }
-}
-
-function buildUserDeliveryEmail(params: {
-  leadName: string;
-  orgName: string;
-  area: string;
-  typeKey: "market-update" | "tips-advice";
-}): string {
-  const { leadName, orgName, area, typeKey } = params;
-  const greeting = leadName ? `Hi ${escapeHtml(leadName)},` : "Hi there,";
-  const title = typeKey === "market-update"
-    ? `Your free ${escapeHtml(area || "local")} market report`
-    : `Your free seller tips guide`;
-  const blurb = typeKey === "market-update"
-    ? `Attached is your free ${escapeHtml(area || "local")} market report from ${escapeHtml(orgName)} — with key stats, 5-year trends, comparable sales, and a full ${escapeHtml(area || "local")} outlook.`
-    : `Attached is your free seller tips guide from ${escapeHtml(orgName)} — all six tips expanded with step-by-step how-to, pitfalls to avoid, and insider pro tips.`;
-
-  return `
-<!DOCTYPE html>
-<html>
-<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;color:#111827;">
-  <div style="max-width:600px;margin:0 auto;padding:20px;">
-    <div style="background:linear-gradient(135deg,#2563eb,#1e40af);border-radius:12px 12px 0 0;padding:28px 24px;text-align:center;">
-      <p style="margin:0 0 6px;color:rgba(255,255,255,0.85);font-size:12px;text-transform:uppercase;letter-spacing:1px;">Free Report · AutoListing</p>
-      <h1 style="margin:0;color:#ffffff;font-size:22px;line-height:1.3;">${title}</h1>
-    </div>
-    <div style="background:#ffffff;border-radius:0 0 12px 12px;padding:28px 24px;border:1px solid #e5e7eb;border-top:none;">
-      <p style="margin:0 0 14px;font-size:15px;">${greeting}</p>
-      <p style="margin:0 0 14px;font-size:15px;line-height:1.55;">${blurb}</p>
-      <p style="margin:0 0 14px;font-size:15px;line-height:1.55;">The PDF is attached to this email. No payment, no obligation — it's free to keep, forward, or print.</p>
-      <div style="margin:20px 0;padding:16px;background:#f3f4f6;border-radius:8px;border:1px solid #e5e7eb;">
-        <p style="margin:0;font-size:14px;line-height:1.5;color:#374151;">
-          Have questions or want to talk through what it means for your property?
-          Just reply to this email — it goes straight to <strong>${escapeHtml(orgName)}</strong>.
-        </p>
-      </div>
-      <p style="margin:0;font-size:14px;color:#6b7280;">Thanks,<br/>${escapeHtml(orgName)}</p>
-    </div>
-    <p style="text-align:center;color:#9ca3af;font-size:11px;margin:14px 0 0;">Delivered by AutoListing.io on behalf of ${escapeHtml(orgName)}. Unsubscribe any time.</p>
-  </div>
-</body>
-</html>`.trim();
 }
 
 function buildCtaLeadEmail(params: {
@@ -2967,7 +2787,7 @@ function buildCtaLeadEmail(params: {
         ${additionalFields}
       </table>
       <div style="margin:24px 0 0;padding:16px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;">
-        <p style="margin:0;font-size:14px;color:#166534;"><strong>Next Step:</strong> This lead has been added to your CRM and their free report has been emailed automatically. Follow up promptly for the best conversion.</p>
+        <p style="margin:0;font-size:14px;color:#166534;"><strong>Next Step:</strong> This lead has been added to your CRM. They downloaded the free report on your site — follow up promptly for the best conversion.</p>
       </div>
     </div>
     <p style="text-align:center;color:#9ca3af;font-size:12px;margin:16px 0 0;">Sent via AutoListing.io</p>
