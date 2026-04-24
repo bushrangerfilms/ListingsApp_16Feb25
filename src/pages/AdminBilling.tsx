@@ -18,6 +18,7 @@ import { formatPrice, estimatePrice, type SupportedCurrency } from '@/lib/billin
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { useLocale } from '@/hooks/useLocale';
+import { usePlanInfo } from '@/hooks/usePlanInfo';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function AdminBilling() {
@@ -69,17 +70,27 @@ export default function AdminBilling() {
   const status = getBalanceStatus(currentBalance);
   const colorClass = getBalanceColor(status);
 
+  const { planInfo } = usePlanInfo();
+
   const accountStatus = (organization?.account_status || 'trial') as AccountStatus;
   const isOnTrial = accountStatus === 'trial';
   const isTrialExpired = accountStatus === 'trial_expired';
   const hasActiveSubscription = billingProfile?.subscription_status === 'active';
-  const needsPlanSelection = isOnTrial || isTrialExpired || !hasActiveSubscription;
-  // Fallback when no active subscription is 'free' — matches what
-  // create-organization actually writes (see Listings CLAUDE.md "Signup &
-  // Onboarding"). The legacy 'starter' fallback referenced a plan that
-  // never existed in the active catalog and surfaced as "starter" in
-  // downstream displays (and, until 2026-04-24, as a row in plan_definitions).
-  const currentPlan = billingProfile?.subscription_plan || 'free';
+  // Plan display comes from v_organization_plan_summary (via usePlanInfo) —
+  // the same source Super Admin writes to. `billing_profiles.subscription_plan`
+  // is only set for real Stripe subscriptions, so reading it here hid
+  // Super Admin comps and legacy pilot overrides behind "Free Plan".
+  const currentPlan = planInfo?.planName || 'free';
+  const isFreePlan = currentPlan === 'free';
+  // Show the plan picker whenever the org has no active managed plan:
+  // trial (haven't picked yet), trial expired, still on free, or came off
+  // a Stripe sub (unsubscribed). Comped/pilot orgs (non-free plan, no
+  // Stripe sub) skip the picker — admin manages their plan directly.
+  const needsPlanSelection =
+    isOnTrial ||
+    isTrialExpired ||
+    accountStatus === 'unsubscribed' ||
+    (isFreePlan && !hasActiveSubscription);
 
   const handleSubscribe = async (planName: string) => {
     if (!organization?.id) {
@@ -289,19 +300,20 @@ export default function AdminBilling() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold capitalize">
-              {hasActiveSubscription
-                ? (planDefinitions?.find(p => p.name === currentPlan)?.display_name || currentPlan)
-                : isOnTrial ? 'Free Tier' : 'Free Plan'}
+              {isFreePlan && isOnTrial ? 'Free Tier' : (planInfo?.displayName || 'Free Plan')}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {hasActiveSubscription
-                ? (() => {
-                    const plan = planDefinitions?.find(p => p.name === currentPlan);
-                    return plan ? `${formatLocalPrice(plan.monthly_price_cents)}/${plan.billing_interval}` : '';
-                  })()
-                : isOnTrial && organization?.trial_ends_at
-                  ? `${getTrialDaysRemaining(organization.trial_ends_at) || 0} days remaining`
-                  : '3 listings included'}
+              {(() => {
+                if (!isFreePlan) {
+                  const plan = planDefinitions?.find(p => p.name === currentPlan);
+                  return plan ? `${formatLocalPrice(plan.monthly_price_cents)}/${plan.billing_interval}` : '';
+                }
+                if (isOnTrial && organization?.trial_ends_at) {
+                  return `${getTrialDaysRemaining(organization.trial_ends_at) || 0} days remaining`;
+                }
+                const freeMax = planInfo?.maxListings ?? 3;
+                return `${freeMax} listings included`;
+              })()}
             </p>
           </CardContent>
         </Card>
