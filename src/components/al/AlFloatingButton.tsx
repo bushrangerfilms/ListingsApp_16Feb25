@@ -12,6 +12,19 @@ export function AlFloatingButton() {
     if (typeof window === "undefined") return;
     const seen = window.localStorage.getItem(STORAGE_KEY);
     if (!seen) setPulse(true);
+
+    // If Al generated a cross-subdomain link, it tagged the URL with `al=open`
+    // so we auto-reopen the panel here. The conversation itself is restored
+    // separately via `al_conv` (handled inside useAlChat).
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("al") === "open") {
+      setOpen(true);
+      setPulse(false);
+      window.localStorage.setItem(STORAGE_KEY, "1");
+      const cleaned = new URL(window.location.href);
+      cleaned.searchParams.delete("al");
+      window.history.replaceState({}, "", cleaned.toString());
+    }
   }, []);
 
   const toggle = () => {

@@ -44,14 +44,33 @@ export function parseAssistantMessage(content: string): ParsedAssistantMessage {
 interface MarkdownProps {
   text: string;
   onLinkClick?: (href: string) => void;
+  // When present, absolute links to autolisting.io subdomains get `al=open`
+  // and `al_conv={id}` appended so the destination page can auto-open the
+  // chat panel and restore the same conversation.
+  conversationId?: string;
+}
+
+// If `href` is an absolute URL pointing at a subdomain of autolisting.io,
+// append the al-open params so the destination restores the panel state.
+// Non-autolisting URLs and relative paths are returned untouched.
+function augmentAutoListingUrl(href: string, conversationId?: string): string {
+  try {
+    const url = new URL(href);
+    if (!url.hostname.endsWith("autolisting.io")) return href;
+    url.searchParams.set("al", "open");
+    if (conversationId) url.searchParams.set("al_conv", conversationId);
+    return url.toString();
+  } catch {
+    return href;
+  }
 }
 
 // Render markdown text. Splits into blocks (paragraphs, lists, code), then renders inline.
-export function Markdown({ text, onLinkClick }: MarkdownProps) {
+export function Markdown({ text, onLinkClick, conversationId }: MarkdownProps) {
   const blocks = blockify(text);
   return (
     <div className="space-y-2 text-sm leading-relaxed">
-      {blocks.map((block, i) => renderBlock(block, i, onLinkClick))}
+      {blocks.map((block, i) => renderBlock(block, i, onLinkClick, conversationId))}
     </div>
   );
 }
@@ -142,19 +161,24 @@ function blockify(input: string): Block[] {
   return blocks;
 }
 
-function renderBlock(block: Block, idx: number, onLinkClick?: (href: string) => void): ReactNode {
+function renderBlock(
+  block: Block,
+  idx: number,
+  onLinkClick?: (href: string) => void,
+  conversationId?: string
+): ReactNode {
   switch (block.kind) {
     case "p":
       return (
         <p key={idx} className="whitespace-pre-wrap">
-          {renderInline(block.text, onLinkClick)}
+          {renderInline(block.text, onLinkClick, conversationId)}
         </p>
       );
     case "ul":
       return (
         <ul key={idx} className="list-disc pl-5 space-y-1">
           {block.items.map((item, j) => (
-            <li key={j}>{renderInline(item, onLinkClick)}</li>
+            <li key={j}>{renderInline(item, onLinkClick, conversationId)}</li>
           ))}
         </ul>
       );
@@ -162,7 +186,7 @@ function renderBlock(block: Block, idx: number, onLinkClick?: (href: string) => 
       return (
         <ol key={idx} className="list-decimal pl-5 space-y-1">
           {block.items.map((item, j) => (
-            <li key={j}>{renderInline(item, onLinkClick)}</li>
+            <li key={j}>{renderInline(item, onLinkClick, conversationId)}</li>
           ))}
         </ol>
       );
@@ -179,7 +203,7 @@ function renderBlock(block: Block, idx: number, onLinkClick?: (href: string) => 
       const sizes = { 1: "text-base", 2: "text-sm", 3: "text-sm" };
       return (
         <p key={idx} className={`font-semibold ${sizes[block.level]}`}>
-          {renderInline(block.text, onLinkClick)}
+          {renderInline(block.text, onLinkClick, conversationId)}
         </p>
       );
     }
@@ -187,7 +211,11 @@ function renderBlock(block: Block, idx: number, onLinkClick?: (href: string) => 
 }
 
 // Inline: links [text](href), bold **x**, italic *x*, inline code `x`.
-function renderInline(text: string, onLinkClick?: (href: string) => void): ReactNode[] {
+function renderInline(
+  text: string,
+  onLinkClick?: (href: string) => void,
+  conversationId?: string
+): ReactNode[] {
   const out: ReactNode[] = [];
   // Tokenize via a single regex with named alternates.
   const re = /(\[([^\]]+)\]\(([^)]+)\))|(`([^`]+)`)|(\*\*([^*]+)\*\*)|(\*([^*]+)\*)/g;
@@ -199,7 +227,9 @@ function renderInline(text: string, onLinkClick?: (href: string) => void): React
     if (m[1]) {
       // Link
       const label = m[2];
-      const href = m[3];
+      const rawHref = m[3];
+      const isAbsolute = rawHref.startsWith("http");
+      const href = isAbsolute ? augmentAutoListingUrl(rawHref, conversationId) : rawHref;
       out.push(
         <a
           key={key++}
@@ -212,8 +242,8 @@ function renderInline(text: string, onLinkClick?: (href: string) => void): React
             }
           }}
           className="text-primary underline underline-offset-2 hover:opacity-80"
-          target={href.startsWith("http") ? "_blank" : undefined}
-          rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+          target={isAbsolute ? "_blank" : undefined}
+          rel={isAbsolute ? "noopener noreferrer" : undefined}
         >
           {label}
         </a>

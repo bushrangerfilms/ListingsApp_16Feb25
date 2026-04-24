@@ -105,6 +105,7 @@ export function AlChatModal({ open, onOpenChange }: Props) {
     isLoadingHistory,
     error,
     meta,
+    conversationId,
     sendMessage,
     reset,
     loadConversation,
@@ -312,7 +313,12 @@ export function AlChatModal({ open, onOpenChange }: Props) {
             <EmptyState suggestions={suggestions} onPick={handleSuggestion} />
           )}
           {messages.map((m) => (
-            <MessageRow key={m.id} message={m} onNavigate={handleNavigate} />
+            <MessageRow
+              key={m.id}
+              message={m}
+              onNavigate={handleNavigate}
+              conversationId={conversationId}
+            />
           ))}
           {error && (
             <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
@@ -443,9 +449,11 @@ function EmptyState({
 function MessageRow({
   message,
   onNavigate,
+  conversationId,
 }: {
   message: AlMessage;
   onNavigate: (path: string) => void;
+  conversationId?: string;
 }) {
   if (message.role === "user") {
     return (
@@ -471,7 +479,14 @@ function MessageRow({
           if (seg.kind === "text") {
             const text = seg.text.trim();
             if (!text && !message.streaming) return null;
-            return <Markdown key={i} text={text} onLinkClick={onNavigate} />;
+            return (
+              <Markdown
+                key={i}
+                text={text}
+                onLinkClick={onNavigate}
+                conversationId={conversationId}
+              />
+            );
           }
           return <AlFeedbackCard key={i} draft={seg.draft} />;
         })}

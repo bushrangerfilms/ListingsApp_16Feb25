@@ -132,14 +132,29 @@ export function useAlChat({ app, getRoute, getOrganizationId }: UseAlChatArgs) {
     [setConversationId]
   );
 
-  // On mount, restore the last active conversation for this app.
+  // On mount, restore the active conversation. We prefer the `al_conv` URL
+  // param (set by cross-subdomain links Al generates) over localStorage
+  // because localStorage is scoped per-subdomain and won't have the ID after
+  // a cross-subdomain navigation. The URL param strips itself after use so
+  // it doesn't stick in the browser history.
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlConvId = urlParams.get("al_conv");
     const stored = window.localStorage.getItem(ACTIVE_CONVERSATION_KEY);
-    if (stored) {
-      void loadConversation(stored);
+    const convId = urlConvId || stored;
+
+    if (urlConvId) {
+      // Strip our param from the URL without adding a history entry.
+      const cleaned = new URL(window.location.href);
+      cleaned.searchParams.delete("al_conv");
+      window.history.replaceState({}, "", cleaned.toString());
     }
-    // We deliberately only run this once on mount; subsequent app changes are ignored.
+
+    if (convId) {
+      void loadConversation(convId);
+    }
+    // Deliberately only runs once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
