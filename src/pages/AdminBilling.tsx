@@ -74,7 +74,12 @@ export default function AdminBilling() {
   const isTrialExpired = accountStatus === 'trial_expired';
   const hasActiveSubscription = billingProfile?.subscription_status === 'active';
   const needsPlanSelection = isOnTrial || isTrialExpired || !hasActiveSubscription;
-  const currentPlan = billingProfile?.subscription_plan || 'starter';
+  // Fallback when no active subscription is 'free' — matches what
+  // create-organization actually writes (see Listings CLAUDE.md "Signup &
+  // Onboarding"). The legacy 'starter' fallback referenced a plan that
+  // never existed in the active catalog and surfaced as "starter" in
+  // downstream displays (and, until 2026-04-24, as a row in plan_definitions).
+  const currentPlan = billingProfile?.subscription_plan || 'free';
 
   const handleSubscribe = async (planName: string) => {
     if (!organization?.id) {
@@ -301,31 +306,55 @@ export default function AdminBilling() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Platform Posts</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">Unlimited</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              included with your plan
-            </p>
-          </CardContent>
-        </Card>
+        {/* Plan-derived limits. Free plan has real caps (3 listings, 1 post/
+            listing/week, 2 lead magnets/week) — the previous "Unlimited"
+            copy was misleading and got flagged on 2026-04-24. `null` cap
+            means unlimited at that tier (multi-branch). */}
+        {(() => {
+          const plan = planDefinitions?.find(p => p.name === currentPlan);
+          const maxListings = plan?.max_listings ?? null;
+          const maxPostsPerListingPerWeek = plan?.max_posts_per_listing_per_week ?? null;
+          const maxLeadMagnetsPerWeek = plan?.max_lead_magnets_per_week ?? null;
+          const fmtCap = (v: number | null) => (v === null ? 'Unlimited' : `${v}`);
+          return (
+            <>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Listings</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {maxListings === null ? 'Unlimited' : `Up to ${maxListings}`}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">included with your plan</p>
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Video Generation</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">Unlimited</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              included with your plan
-            </p>
-          </CardContent>
-        </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Posts per Listing</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{fmtCap(maxPostsPerListingPerWeek)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">per listing per week</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Lead Magnets</CardTitle>
+                  <Sparkles className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{fmtCap(maxLeadMagnetsPerWeek)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">posts per week</p>
+                </CardContent>
+              </Card>
+            </>
+          );
+        })()}
       </div>
 
       <Tabs defaultValue="history" className="space-y-4">
