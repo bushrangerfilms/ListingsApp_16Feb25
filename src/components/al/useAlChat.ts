@@ -38,11 +38,10 @@ interface SsePayload {
 }
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/al-chat`;
-const ACTIVE_CONVERSATION_KEY_PREFIX = "al_chat_active_conversation_";
-
-function activeConversationKey(app: string) {
-  return `${ACTIVE_CONVERSATION_KEY_PREFIX}${app}`;
-}
+// Shared across both apps — one active conversation per user, regardless of
+// which app they opened the panel in. Users can be asking about Socials
+// features while sitting in Listings and have the thread follow them.
+const ACTIVE_CONVERSATION_KEY = "al_chat_active_conversation";
 
 async function* parseSse(response: Response): AsyncGenerator<SsePayload> {
   if (!response.body) return;
@@ -88,8 +87,8 @@ export function useAlChat({ app, getRoute, getOrganizationId }: UseAlChatArgs) {
       conversationIdRef.current = id;
       setConversationIdState(id);
       if (typeof window !== "undefined") {
-        if (id) window.localStorage.setItem(activeConversationKey(app), id);
-        else window.localStorage.removeItem(activeConversationKey(app));
+        if (id) window.localStorage.setItem(ACTIVE_CONVERSATION_KEY, id);
+        else window.localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
       }
     },
     [app]
@@ -136,7 +135,7 @@ export function useAlChat({ app, getRoute, getOrganizationId }: UseAlChatArgs) {
   // On mount, restore the last active conversation for this app.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(activeConversationKey(app));
+    const stored = window.localStorage.getItem(ACTIVE_CONVERSATION_KEY);
     if (stored) {
       void loadConversation(stored);
     }
@@ -266,14 +265,15 @@ export function useAlChat({ app, getRoute, getOrganizationId }: UseAlChatArgs) {
 // Recent conversations list — for the picker dropdown
 // ============================================================================
 
+// Lists the user's recent conversations across BOTH apps. The `app` field on
+// each row tells the caller where the conversation started so it can render a
+// badge, but no filter is applied here.
 export async function listRecentConversations(
-  app: "listings" | "socials",
-  limit = 10
+  limit = 15
 ): Promise<AlConversationSummary[]> {
   const { data: convs, error: convErr } = await supabase
     .from("al_conversations")
     .select("id, title, app, last_message_at")
-    .eq("app", app)
     .order("last_message_at", { ascending: false })
     .limit(limit);
   if (convErr || !convs) return [];
