@@ -13,7 +13,7 @@ export function AlFloatingButton() {
     const seen = window.localStorage.getItem(STORAGE_KEY);
     if (!seen) setPulse(true);
 
-    // If Al generated a cross-subdomain link, it tagged the URL with `al=open`
+    // If AL generated a cross-subdomain link, it tagged the URL with `al=open`
     // so we auto-reopen the panel here. The conversation itself is restored
     // separately via `al_conv` (handled inside useAlChat).
     const urlParams = new URLSearchParams(window.location.search);
@@ -44,7 +44,7 @@ export function AlFloatingButton() {
       {!open && (
         <button
           onClick={toggle}
-          aria-label="Open Al assistant"
+          aria-label="Open AL assistant"
           className={`fixed bottom-5 right-5 z-30 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform ${
             pulse ? "animate-pulse" : ""
           }`}

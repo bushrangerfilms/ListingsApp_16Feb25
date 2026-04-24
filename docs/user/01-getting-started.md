@@ -50,4 +50,4 @@ Once a listing is created and you have at least one social account connected:
 | Change your billing plan | **Billing** in the sidebar |
 | Invite team members | **Team** in the sidebar |
 
-If you ever can't find something, ask Al — the floating help button at the bottom-right of every page.
+If you ever can't find something, ask AL — the floating help button at the bottom-right of every page.

@@ -29,7 +29,7 @@ Sold and Withdrawn listings don't count toward your limit.
 - Lead magnets (all 5 types)
 - Email notifications and lead alerts
 - Up to 6 markets supported (IE, GB, US, CA, AU, NZ)
-- The Al chatbot assistant (with monthly query limits per tier)
+- The AL chatbot assistant (with monthly query limits per tier)
 
 ## What changes between tiers
 
@@ -38,7 +38,7 @@ Sold and Withdrawn listings don't count toward your limit.
 - **Custom domain** — paid plans only
 - **Team members** — Free is solo; paid plans allow team invites
 - **Branches** — Multi-Branch plans allow multiple branches with separate social accounts
-- **Al chatbot quota** — Free has 20 messages/month, paid plans have higher quotas
+- **AL chatbot quota** — Free has 20 messages/month, paid plans have higher quotas
 
 ## Upgrading or changing plans
 
