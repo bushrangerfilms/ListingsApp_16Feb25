@@ -37,6 +37,34 @@ const PLAN_LIMITS: Record<string, { monthly: number; daily: number }> = {
   "multi-branch-l": { monthly: 3000, daily: 400 },
 };
 
+// Concrete capabilities per plan, surfaced to the model so it can answer
+// "what's included on my plan" / "can I do X on my plan" accurately without
+// guessing.
+const PLAN_DETAILS: Record<string, string> = {
+  free:
+    "Free tier (€0). 1 active listing. Basic video style only — VS2 and VS4 (advanced motion) are disabled. No custom domain. Solo only (no team invites). Single branch.",
+  essentials:
+    "Essentials (€40/week). 10 active listings. All video styles unlocked (basic + VS2 + VS4). Custom domain. Team invites. Single branch.",
+  growth:
+    "Growth (€70/week). 25 active listings. All video styles. Custom domain. Team invites. Single branch.",
+  professional:
+    "Professional (€130/week). 100 active listings. All video styles. Custom domain. Team invites. Single branch.",
+  "multi-branch-s":
+    "Multi-Branch S (contact sales). 200 active listings. Multiple branches with separate social accounts per branch. All video styles. Custom domain. Team invites.",
+  "multi-branch-m":
+    "Multi-Branch M (contact sales). 500 active listings. Multiple branches. All video styles. Custom domain. Team invites.",
+  "multi-branch-l":
+    "Multi-Branch L (contact sales). Unlimited active listings. Multiple branches. All video styles. Custom domain. Team invites.",
+};
+
+function describePlan(planName: string, billingOverride: any): string {
+  const detail = PLAN_DETAILS[planName] ?? `Unknown plan: ${planName}`;
+  if (billingOverride && typeof billingOverride === "object") {
+    return `${detail} (BILLING OVERRIDE active — pilot/comp account; standard plan limits do not apply.)`;
+  }
+  return detail;
+}
+
 const HAIKU_MODEL = "claude-haiku-4-5";
 const SONNET_MODEL = "claude-sonnet-4-6";
 
@@ -177,6 +205,7 @@ interface LiveContext {
   organization_id: string;
   organization_name: string;
   plan: string;
+  plan_description: string;
   app: "listings" | "socials";
   route?: string;
   social_accounts_count: number;
@@ -190,14 +219,19 @@ function renderLiveContext(ctx: LiveContext): string {
 
 - User email: ${ctx.user_email}
 - Organisation: ${ctx.organization_name}
-- Plan: ${ctx.plan}
 - App: ${ctx.app}${ctx.is_super_admin ? " (user is super_admin viewing this org)" : ""}
 - Current page: ${ctx.route ?? "unknown"}
 - Connected social accounts: ${ctx.social_accounts_count}
 - Recent failed posts (last 7d): ${ctx.recent_failed_posts}
 - Onboarding complete: ${ctx.onboarding_complete}
 
-Use this to tailor your answer. For example, if connected_social_accounts is 0, posting questions should mention this as the likely cause.`;
+## Their plan
+- Plan tier: \`${ctx.plan}\`
+- What this plan includes: ${ctx.plan_description}
+
+Use these plan details when answering "what's included on my plan", "can I do X on my plan", or any feature-availability question. Do not invent limits or capabilities not listed here. If a user wants something their plan doesn't include, point them to upgrade at [Billing](/admin/billing).
+
+Use the rest of the context to tailor your answer. For example, if connected_social_accounts is 0, posting questions should mention this as the likely cause.`;
 }
 
 interface AuthorizedOrg {
@@ -205,6 +239,7 @@ interface AuthorizedOrg {
   organization_id: string;
   organization_name: string;
   plan: string;
+  plan_description: string;
   is_super_admin: boolean;
 }
 interface AuthError {
@@ -262,18 +297,20 @@ async function authorizeOrgAccess(
   // Load org details.
   const { data: org } = await supabase
     .from("organizations")
-    .select("business_name, current_plan_name")
+    .select("business_name, current_plan_name, billing_override")
     .eq("id", orgId)
     .maybeSingle();
   if (!org) {
     return { ok: false, status: 404, message: "Organisation not found" };
   }
 
+  const plan = (org.current_plan_name ?? "free").toLowerCase();
   return {
     ok: true,
     organization_id: orgId,
     organization_name: org.business_name ?? "Unknown",
-    plan: (org.current_plan_name ?? "free").toLowerCase(),
+    plan,
+    plan_description: describePlan(plan, org.billing_override),
     is_super_admin: isSuperAdmin,
   };
 }
@@ -310,6 +347,7 @@ async function hydrateContext(
     organization_id: authorized.organization_id,
     organization_name: authorized.organization_name,
     plan: authorized.plan,
+    plan_description: authorized.plan_description,
     app,
     route,
     social_accounts_count: socialCount,
