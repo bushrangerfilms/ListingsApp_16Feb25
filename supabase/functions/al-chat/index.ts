@@ -118,22 +118,35 @@ The user will see a preview card with Send / Edit / Cancel buttons. Always intro
 // KB loading
 // ============================================================================
 
-async function loadKb(supabase: any): Promise<KbBundle | null> {
+async function loadKb(
+  supabaseUrl: string,
+  serviceRoleKey: string
+): Promise<{ bundle: KbBundle | null; error?: string }> {
   if (kbCache && Date.now() - kbCache.loadedAt < KB_REFRESH_MS) {
-    return kbCache.bundle;
+    return { bundle: kbCache.bundle };
   }
   try {
-    const { data, error } = await supabase.storage
-      .from(KB_STORAGE_BUCKET)
-      .download(KB_STORAGE_FILE);
-    if (error) throw error;
-    const text = await data.text();
+    const url = `${supabaseUrl}/storage/v1/object/${KB_STORAGE_BUCKET}/${KB_STORAGE_FILE}`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+      },
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      const msg = `KB fetch ${res.status}: ${body.slice(0, 200)}`;
+      console.error("[al-chat]", msg);
+      return { bundle: kbCache?.bundle ?? null, error: msg };
+    }
+    const text = await res.text();
     const bundle = JSON.parse(text) as KbBundle;
     kbCache = { bundle, loadedAt: Date.now() };
-    return bundle;
-  } catch (e) {
-    console.error("[al-chat] failed to load KB:", e);
-    return kbCache?.bundle ?? null;
+    return { bundle };
+  } catch (e: any) {
+    const msg = `KB load exception: ${e?.message ?? String(e)}`;
+    console.error("[al-chat]", msg);
+    return { bundle: kbCache?.bundle ?? null, error: msg };
   }
 }
 
@@ -424,11 +437,14 @@ Deno.serve(async (req) => {
   );
   const history = await loadHistory(supabase, conversationId);
 
-  const kb = await loadKb(supabase);
-  if (!kb) {
-    return jsonError(503, "Knowledge base unavailable. Try again shortly.");
+  const kbResult = await loadKb(supabaseUrl, serviceRoleKey);
+  if (!kbResult.bundle) {
+    return jsonError(
+      503,
+      `Knowledge base unavailable. ${kbResult.error ?? "Try again shortly."}`
+    );
   }
-  const kbText = renderKb(kb, app);
+  const kbText = renderKb(kbResult.bundle, app);
   const liveContextText = renderLiveContext(ctx);
 
   const useVision = !!imageBase64 && !!imageMediaType;
