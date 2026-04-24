@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { Send, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAlChat, AlMessage } from "./useAlChat";
 import { Markdown, parseAssistantMessage } from "./AlMarkdown";
@@ -99,83 +93,99 @@ export function AlChatModal({ open, onOpenChange }: Props) {
   };
 
   const handleNavigate = (path: string) => {
-    onOpenChange(false);
+    // Don't auto-close — user can verify the navigation while panel stays open
     navigate(path);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] h-[80vh] max-h-[700px] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-4 py-3 border-b">
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Al — your AutoListing assistant
-            </DialogTitle>
-            {messages.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={reset}
-                disabled={isStreaming}
-                className="text-xs"
-              >
-                <RotateCcw className="h-3 w-3 mr-1" />
-                New chat
-              </Button>
+    <aside
+      aria-label="Al chat panel"
+      aria-hidden={!open}
+      className={`fixed top-0 right-0 bottom-0 w-full sm:w-[420px] z-40 bg-background border-l shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+        open ? "translate-x-0" : "translate-x-full pointer-events-none"
+      }`}
+      data-testid="al-chat-panel"
+    >
+      <header className="px-4 py-3 border-b flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Sparkles className="h-4 w-4 text-primary shrink-0" />
+          <div className="min-w-0">
+            <h2 className="font-semibold text-sm truncate">Al — your AutoListing assistant</h2>
+            {meta.remaining_month !== undefined && (
+              <p className="text-[10px] text-muted-foreground">
+                {meta.remaining_month} left this month
+                {meta.remaining_today !== undefined && ` · ${meta.remaining_today} today`}
+              </p>
             )}
           </div>
-          {meta.remaining_month !== undefined && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {meta.remaining_month} messages left this month
-              {meta.remaining_today !== undefined && ` · ${meta.remaining_today} today`}
-            </p>
-          )}
-        </DialogHeader>
-
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
-          {messages.length === 0 && (
-            <EmptyState suggestions={suggestions} onPick={handleSuggestion} />
-          )}
-          {messages.map((m) => (
-            <MessageRow key={m.id} message={m} onNavigate={handleNavigate} />
-          ))}
-          {error && (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
         </div>
-
-        <div className="border-t p-3">
-          <div className="flex items-end gap-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="Ask Al anything about AutoListing…"
-              className="min-h-[44px] max-h-[140px] resize-none text-sm"
+        <div className="flex items-center gap-1 shrink-0">
+          {messages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={reset}
               disabled={isStreaming}
-            />
-            <Button onClick={handleSend} disabled={!input.trim() || isStreaming} size="icon">
-              {isStreaming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
+              title="New chat"
+              className="h-8 w-8"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
             </Button>
-          </div>
-          <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
-            Al may make mistakes. For sensitive issues, use Send Feedback in the sidebar.
-          </p>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onOpenChange(false)}
+            title="Close"
+            className="h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </header>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        {messages.length === 0 && (
+          <EmptyState suggestions={suggestions} onPick={handleSuggestion} />
+        )}
+        {messages.map((m) => (
+          <MessageRow key={m.id} message={m} onNavigate={handleNavigate} />
+        ))}
+        {error && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+      </div>
+
+      <div className="border-t p-3">
+        <div className="flex items-end gap-2">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder="Ask Al anything about AutoListing…"
+            className="min-h-[44px] max-h-[140px] resize-none text-sm"
+            disabled={isStreaming}
+          />
+          <Button onClick={handleSend} disabled={!input.trim() || isStreaming} size="icon">
+            {isStreaming ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
+          Al may make mistakes. For sensitive issues, use Send Feedback in the sidebar.
+        </p>
+      </div>
+    </aside>
   );
 }
 
