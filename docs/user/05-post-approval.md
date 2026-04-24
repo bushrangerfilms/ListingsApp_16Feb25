@@ -12,12 +12,12 @@ By default, AutoListing posts go out automatically at their scheduled times. If 
 
 ## Turning approval on or off
 
-1. Open the **Socials** app → **Scheduling**
+1. Go to **Socials → Scheduling**
 2. Click the **Settings** icon (top right)
 3. Toggle **Require approval before posting**
 4. Optionally set **Auto-approve after** (e.g. 24 hours) — posts not reviewed in that window will auto-approve and go out
 
-You can also configure this during onboarding via the "Choose posting preferences" task on the Listings dashboard.
+You can also configure this during onboarding via the "Choose posting preferences" task on your dashboard.
 
 **Default for new signups:** approval is **on** by default for accounts created after April 2026. Existing accounts default to **off** unless you turn it on.
 

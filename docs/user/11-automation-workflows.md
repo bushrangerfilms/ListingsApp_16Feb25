@@ -8,7 +8,7 @@ plan_gates: [admin]
 
 # Automation (the Workflows monitor)
 
-The **Automation** menu item in the Socials sidebar (admin-only) opens the **Workflows monitor** at `/workflows`. It's a real-time view of your automation pipeline — useful when you want to see exactly what's happening to a listing behind the scenes.
+The **Automation** menu item in the Socials sidebar (admin-only) opens the **Workflows monitor**. It's a real-time view of your automation pipeline — useful when you want to see exactly what's happening to a listing behind the scenes.
 
 This page is an **admin tool**, not something everyday users need to look at. AutoListing's pipeline is designed to run silently. You'd visit Workflows when:
 

@@ -25,7 +25,7 @@ Al is read-only — Al can't change your settings or take actions in the app for
 
 ## 2. Send Feedback button
 
-In the left sidebar of both apps, there's a **Send Feedback** button. Use this for:
+The left sidebar has a **Send Feedback** button. Use this for:
 
 - Feature ideas
 - Bug reports
@@ -58,7 +58,7 @@ Bug reports and urgent issues get triaged first. Feature ideas are reviewed week
 
 For these, use the right channel instead:
 
-- **Billing question** — Listings → Billing → "Contact Support" link
+- **Billing question** — **Billing → Contact Support** link
 - **Lost access to your account** — email support@autolisting.io directly
 - **DNS / custom domain emergency** — see the Custom Domain doc, or escalate via Al
 - **Security concern or data privacy issue** — email security@autolisting.io directly

@@ -38,9 +38,9 @@ interface SsePayload {
 }
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/al-chat`;
-// Shared across both apps — one active conversation per user, regardless of
-// which app they opened the panel in. Users can be asking about Socials
-// features while sitting in Listings and have the thread follow them.
+// Shared across both subdomains — one active conversation per user, regardless
+// of where they opened the panel. The user experiences AutoListing as a single
+// product, so the chat thread follows them across the Socials / main-area split.
 const ACTIVE_CONVERSATION_KEY = "al_chat_active_conversation";
 
 async function* parseSse(response: Response): AsyncGenerator<SsePayload> {

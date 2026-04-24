@@ -20,7 +20,7 @@ You need:
 
 ## The setup steps
 
-1. Open **Listings → Settings → Custom Domain**
+1. Go to **Settings → Custom Domain**
 2. Enter the domain you want to use (e.g. `listings.smithproperty.com` or `smithproperty.com`)
 3. You'll see a list of **DNS records** to add — typically:
    - A `CNAME` record for the main domain

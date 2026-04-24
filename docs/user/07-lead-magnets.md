@@ -24,7 +24,7 @@ All lead magnets:
 
 - Live at public URLs you can share or post to social media
 - Are branded with your logo and colors
-- Drop new leads into your CRM (Listings → CRM)
+- Drop new leads into your CRM (the CRM)
 - Can be enabled/disabled per type
 - Auto-rotate posting on social media at the frequency you choose
 
@@ -63,7 +63,7 @@ For multi-area organisations, the Bio Hub asks visitors to pick their area first
 
 ## Where leads land
 
-All leads from any lead magnet land in **Listings → CRM**:
+All leads from any lead magnet land in **the CRM**:
 
 - Sellers (from valuations, ready-to-sell, worth-estimate) → Sellers kanban
 - Newsletter signups (Market Update, Tips & Advice) → Subscribers list

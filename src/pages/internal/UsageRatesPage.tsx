@@ -194,7 +194,7 @@ export default function UsageRatesPage() {
             Usage Rates
           </h1>
           <p className="text-muted-foreground mt-1">
-            Configure credit costs for features across both CRM and Socials apps
+            Configure credit costs for every billable feature across AutoListing
           </p>
         </div>
         {isSuperAdmin && (
@@ -210,7 +210,7 @@ export default function UsageRatesPage() {
           <CardTitle>Pricing Note</CardTitle>
           <CardDescription>
             At the current lowest pack price of €0.25 per credit, costs shown below are approximate Euro values.
-            Changes apply immediately to both AutoListing.io and the Socials app.
+            Changes apply immediately across AutoListing.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -424,8 +424,8 @@ export default function UsageRatesPage() {
               Delete Usage Rate
             </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the usage rate for "{deleteConfirm}"? 
-              This will affect credit consumption for both apps.
+              Are you sure you want to delete the usage rate for "{deleteConfirm}"?
+              This will affect credit consumption everywhere this feature is used.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

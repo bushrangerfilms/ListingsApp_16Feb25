@@ -8,24 +8,23 @@ plan_gates: []
 
 # Adding and editing listings
 
-All your properties live in the **Listings** app. Each listing automatically generates a public property page, gets included in your CRM lead-matching, and feeds the Socials app to create videos and posts.
+All your properties live in **Listings**. Each listing automatically generates a public property page, gets included in your CRM lead-matching, and drives social media videos and posts.
 
 ## Add a new listing
 
-1. Open the Listings app (`app.autolisting.io`)
-2. Click **Listings** in the left sidebar
-3. Click **+ Create Listing**
-4. Fill in the property details:
+1. Click **Listings** in the sidebar
+2. Click **+ Create Listing**
+3. Fill in the property details:
    - **Address** — used for map display and area-based lead matching
    - **Price** — what gets shown publicly (you can hide this if needed)
    - **Property type** — house, apartment, commercial, etc. Affects which lead-magnet quizzes apply.
    - **Bedrooms / bathrooms / floor area**
    - **Description** — sell the property. Used on the public page and as input for AI-generated captions.
    - **Photos** — upload at least 8 high-quality photos. The first photo is the hero image.
-5. Choose the **status** (see below)
-6. Click **Save**
+4. Choose the **status** (see below)
+5. Click **Save**
 
-Within a few minutes, the Socials app picks up the listing and starts generating videos and scheduling posts.
+Within a few minutes, AutoListing picks up the new listing and starts generating videos and scheduling social posts.
 
 ## Listing statuses
 

@@ -42,7 +42,7 @@ Sold and Withdrawn listings don't count toward your limit.
 
 ## Upgrading or changing plans
 
-1. Open **Listings → Billing**
+1. Go to **Billing** in the sidebar
 2. Click **Change Plan**
 3. Pick the new plan and confirm
 
