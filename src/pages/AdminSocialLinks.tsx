@@ -233,8 +233,8 @@ CREATE POLICY "Users can manage social links for their organization"
         <Alert className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            These are display links only - visitors click these icons to visit your social profiles. 
-            To connect accounts for posting content, use the Socials companion app settings.
+            These are display links only — visitors click these icons to visit your social profiles.
+            To connect accounts for posting content, use <strong>Socials → Social Accounts</strong>.
           </AlertDescription>
         </Alert>
 

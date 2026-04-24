@@ -12,11 +12,10 @@ To post content automatically, AutoListing needs to be connected to at least one
 
 ## How to connect
 
-1. Open the **Socials** app (`socials.autolisting.io`)
-2. Click **Social Accounts** in the left sidebar
-3. Click **Connect** next to the platform you want to add (Instagram, Facebook, TikTok, YouTube, Pinterest, or LinkedIn)
-4. You'll be taken to that platform's login page — sign in and grant permission
-5. You'll be returned to AutoListing with the account showing as connected
+1. Go to **Socials → Social Accounts**
+2. Click **Connect** next to the platform you want to add (Instagram, Facebook, TikTok, YouTube, Pinterest, or LinkedIn)
+3. You'll be taken to that platform's login page — sign in and grant permission
+4. You'll be returned to AutoListing with the account showing as connected
 
 You can connect multiple accounts on the same platform — for example, two Instagram accounts for two different branches.
 

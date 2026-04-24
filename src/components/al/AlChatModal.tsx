@@ -294,18 +294,7 @@ export function AlChatModal({ open, onOpenChange }: Props) {
               onClick={() => handlePickConversation(c.id)}
               className="block w-full text-left rounded-md border border-border bg-card hover:bg-accent px-3 py-2 transition-colors"
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-sm flex-1 min-w-0 truncate">{c.preview}</p>
-                <span
-                  className={`shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium uppercase tracking-wide ${
-                    c.app === "listings"
-                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
-                      : "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200"
-                  }`}
-                >
-                  {c.app}
-                </span>
-              </div>
+              <p className="text-sm truncate">{c.preview}</p>
               <p className="text-[10px] text-muted-foreground mt-0.5">
                 {formatDistanceToNow(new Date(c.last_message_at), { addSuffix: true })}
               </p>
