@@ -21,6 +21,7 @@ export interface AlSendMeta {
 export interface UseAlChatArgs {
   app: "listings" | "socials";
   getRoute: () => string;
+  getOrganizationId: () => string | undefined;
 }
 
 interface SsePayload {
@@ -60,7 +61,7 @@ async function* parseSse(response: Response): AsyncGenerator<SsePayload> {
   }
 }
 
-export function useAlChat({ app, getRoute }: UseAlChatArgs) {
+export function useAlChat({ app, getRoute, getOrganizationId }: UseAlChatArgs) {
   const [messages, setMessages] = useState<AlMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +107,7 @@ export function useAlChat({ app, getRoute }: UseAlChatArgs) {
         if (!accessToken) throw new Error("Not signed in");
 
         const route = getRoute();
+        const organizationId = getOrganizationId();
 
         const response = await fetch(FUNCTION_URL, {
           method: "POST",
@@ -118,6 +120,7 @@ export function useAlChat({ app, getRoute }: UseAlChatArgs) {
             message: trimmed,
             app,
             route,
+            organization_id: organizationId,
             image_base64: opts.image_base64,
             image_media_type: opts.image_media_type,
           }),
@@ -167,7 +170,7 @@ export function useAlChat({ app, getRoute }: UseAlChatArgs) {
         setIsStreaming(false);
       }
     },
-    [app, getRoute, isStreaming]
+    [app, getRoute, getOrganizationId, isStreaming]
   );
 
   return { messages, isStreaming, error, meta, sendMessage, reset };
