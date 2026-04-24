@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AlRole = "user" | "assistant";
@@ -9,6 +9,14 @@ export interface AlMessage {
   content: string;
   streaming?: boolean;
   has_image?: boolean;
+}
+
+export interface AlConversationSummary {
+  id: string;
+  title: string | null;
+  app: "listings" | "socials";
+  last_message_at: string;
+  preview: string;
 }
 
 export interface AlSendMeta {
@@ -30,6 +38,11 @@ interface SsePayload {
 }
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/al-chat`;
+const ACTIVE_CONVERSATION_KEY_PREFIX = "al_chat_active_conversation_";
+
+function activeConversationKey(app: string) {
+  return `${ACTIVE_CONVERSATION_KEY_PREFIX}${app}`;
+}
 
 async function* parseSse(response: Response): AsyncGenerator<SsePayload> {
   if (!response.body) return;
@@ -64,16 +77,79 @@ async function* parseSse(response: Response): AsyncGenerator<SsePayload> {
 export function useAlChat({ app, getRoute, getOrganizationId }: UseAlChatArgs) {
   const [messages, setMessages] = useState<AlMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState<AlSendMeta>({});
+  const [conversationId, setConversationIdState] = useState<string | undefined>(undefined);
   const conversationIdRef = useRef<string | undefined>(undefined);
+
+  const setConversationId = useCallback(
+    (id: string | undefined) => {
+      conversationIdRef.current = id;
+      setConversationIdState(id);
+      if (typeof window !== "undefined") {
+        if (id) window.localStorage.setItem(activeConversationKey(app), id);
+        else window.localStorage.removeItem(activeConversationKey(app));
+      }
+    },
+    [app]
+  );
+
+  const loadConversation = useCallback(
+    async (id: string): Promise<boolean> => {
+      setIsLoadingHistory(true);
+      setError(null);
+      try {
+        const { data, error: dbError } = await supabase
+          .from("al_messages")
+          .select("id, role, content, created_at")
+          .eq("conversation_id", id)
+          .order("created_at", { ascending: true });
+        if (dbError) throw dbError;
+        if (!data || data.length === 0) {
+          // Conversation is gone or empty — clear stored ID
+          setConversationId(undefined);
+          setMessages([]);
+          return false;
+        }
+        setMessages(
+          data.map((m) => ({
+            id: m.id,
+            role: m.role as AlRole,
+            content: m.content,
+          }))
+        );
+        setConversationId(id);
+        return true;
+      } catch (e: any) {
+        console.warn("[al-chat] failed to load conversation history:", e?.message);
+        setConversationId(undefined);
+        setMessages([]);
+        return false;
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    },
+    [setConversationId]
+  );
+
+  // On mount, restore the last active conversation for this app.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(activeConversationKey(app));
+    if (stored) {
+      void loadConversation(stored);
+    }
+    // We deliberately only run this once on mount; subsequent app changes are ignored.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const reset = useCallback(() => {
     setMessages([]);
     setError(null);
     setMeta({});
-    conversationIdRef.current = undefined;
-  }, []);
+    setConversationId(undefined);
+  }, [setConversationId]);
 
   const sendMessage = useCallback(
     async (
@@ -133,7 +209,7 @@ export function useAlChat({ app, getRoute, getOrganizationId }: UseAlChatArgs) {
 
         for await (const { event, data } of parseSse(response)) {
           if (event === "start") {
-            conversationIdRef.current = data.conversation_id;
+            setConversationId(data.conversation_id);
             setMeta({
               remaining_today: data.remaining_today,
               remaining_month: data.remaining_month,
@@ -170,8 +246,60 @@ export function useAlChat({ app, getRoute, getOrganizationId }: UseAlChatArgs) {
         setIsStreaming(false);
       }
     },
-    [app, getRoute, getOrganizationId, isStreaming]
+    [app, getRoute, getOrganizationId, isStreaming, setConversationId]
   );
 
-  return { messages, isStreaming, error, meta, sendMessage, reset };
+  return {
+    messages,
+    isStreaming,
+    isLoadingHistory,
+    error,
+    meta,
+    conversationId,
+    sendMessage,
+    reset,
+    loadConversation,
+  };
+}
+
+// ============================================================================
+// Recent conversations list — for the picker dropdown
+// ============================================================================
+
+export async function listRecentConversations(
+  app: "listings" | "socials",
+  limit = 10
+): Promise<AlConversationSummary[]> {
+  const { data: convs, error: convErr } = await supabase
+    .from("al_conversations")
+    .select("id, title, app, last_message_at")
+    .eq("app", app)
+    .order("last_message_at", { ascending: false })
+    .limit(limit);
+  if (convErr || !convs) return [];
+
+  // Fetch the first user message of each conversation as a preview
+  const ids = convs.map((c) => c.id);
+  if (ids.length === 0) return [];
+  const { data: previews } = await supabase
+    .from("al_messages")
+    .select("conversation_id, content, role, created_at")
+    .in("conversation_id", ids)
+    .eq("role", "user")
+    .order("created_at", { ascending: true });
+
+  const previewByConv = new Map<string, string>();
+  for (const m of previews ?? []) {
+    if (!previewByConv.has(m.conversation_id)) {
+      previewByConv.set(m.conversation_id, m.content);
+    }
+  }
+
+  return convs.map((c) => ({
+    id: c.id,
+    title: c.title,
+    app: c.app,
+    last_message_at: c.last_message_at,
+    preview: previewByConv.get(c.id)?.slice(0, 80) ?? "(empty)",
+  }));
 }
