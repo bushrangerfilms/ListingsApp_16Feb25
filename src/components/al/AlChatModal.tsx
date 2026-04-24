@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2, RotateCcw, Sparkles, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useOrganization } from "@/contexts/OrganizationContext";
 import { useAlChat, AlMessage } from "./useAlChat";
 import { Markdown, parseAssistantMessage } from "./AlMarkdown";
 import { AlFeedbackCard } from "./AlFeedbackCard";
@@ -64,11 +65,13 @@ interface Props {
 export function AlChatModal({ open, onOpenChange }: Props) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { organization } = useOrganization();
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const { messages, isStreaming, error, meta, sendMessage, reset } = useAlChat({
     app: "listings",
     getRoute: () => location.pathname,
+    getOrganizationId: () => organization?.id,
   });
 
   const suggestions =

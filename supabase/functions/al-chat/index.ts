@@ -182,6 +182,7 @@ interface LiveContext {
   social_accounts_count: number;
   recent_failed_posts: number;
   onboarding_complete: boolean;
+  is_super_admin: boolean;
 }
 
 function renderLiveContext(ctx: LiveContext): string {
@@ -190,7 +191,7 @@ function renderLiveContext(ctx: LiveContext): string {
 - User email: ${ctx.user_email}
 - Organisation: ${ctx.organization_name}
 - Plan: ${ctx.plan}
-- App: ${ctx.app}
+- App: ${ctx.app}${ctx.is_super_admin ? " (user is super_admin viewing this org)" : ""}
 - Current page: ${ctx.route ?? "unknown"}
 - Connected social accounts: ${ctx.social_accounts_count}
 - Recent failed posts (last 7d): ${ctx.recent_failed_posts}
@@ -199,58 +200,122 @@ function renderLiveContext(ctx: LiveContext): string {
 Use this to tailor your answer. For example, if connected_social_accounts is 0, posting questions should mention this as the likely cause.`;
 }
 
+interface AuthorizedOrg {
+  ok: true;
+  organization_id: string;
+  organization_name: string;
+  plan: string;
+  is_super_admin: boolean;
+}
+interface AuthError {
+  ok: false;
+  status: number;
+  message: string;
+}
+
+async function authorizeOrgAccess(
+  supabase: any,
+  userId: string,
+  requestedOrgId: string | undefined
+): Promise<AuthorizedOrg | AuthError> {
+  // Super admin can access any org
+  const { data: roleRow } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", ["super_admin"])
+    .maybeSingle();
+  const isSuperAdmin = !!roleRow;
+
+  // Resolve the org we're going to use.
+  let orgId = requestedOrgId;
+
+  if (!orgId) {
+    // Fall back to the user's first membership (deterministic by created_at).
+    const { data: firstMembership } = await supabase
+      .from("user_organizations")
+      .select("organization_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    orgId = firstMembership?.organization_id;
+  }
+
+  if (!orgId) {
+    return { ok: false, status: 403, message: "User has no organisation" };
+  }
+
+  // Verify access (membership OR super_admin).
+  if (!isSuperAdmin) {
+    const { data: membership } = await supabase
+      .from("user_organizations")
+      .select("organization_id")
+      .eq("user_id", userId)
+      .eq("organization_id", orgId)
+      .maybeSingle();
+    if (!membership) {
+      return { ok: false, status: 403, message: "User is not a member of this organisation" };
+    }
+  }
+
+  // Load org details.
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("business_name, current_plan_name")
+    .eq("id", orgId)
+    .maybeSingle();
+  if (!org) {
+    return { ok: false, status: 404, message: "Organisation not found" };
+  }
+
+  return {
+    ok: true,
+    organization_id: orgId,
+    organization_name: org.business_name ?? "Unknown",
+    plan: (org.current_plan_name ?? "free").toLowerCase(),
+    is_super_admin: isSuperAdmin,
+  };
+}
+
 async function hydrateContext(
   supabase: any,
   userId: string,
   app: "listings" | "socials",
-  route: string | undefined
+  route: string | undefined,
+  authorized: AuthorizedOrg
 ): Promise<LiveContext> {
-  const { data: userOrg } = await supabase
-    .from("user_organizations")
-    .select("organization_id, organizations!inner(business_name, current_plan_name)")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .single();
-
-  const orgId = userOrg?.organization_id;
-  const orgName = userOrg?.organizations?.business_name ?? "Unknown";
-  const plan = (userOrg?.organizations?.current_plan_name ?? "free").toLowerCase();
-
   const { data: userData } = await supabase.auth.admin.getUserById(userId);
   const userEmail = userData?.user?.email ?? "unknown";
 
-  let socialCount = 0;
-  let failedCount = 0;
-  if (orgId) {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const [socialRes, failedRes] = await Promise.all([
-      supabase
-        .from("organization_connected_socials")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", orgId)
-        .eq("is_active", true),
-      supabase
-        .from("listing_posting_schedule")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", orgId)
-        .eq("status", "failed")
-        .gte("scheduled_for", sevenDaysAgo),
-    ]);
-    socialCount = socialRes.count ?? 0;
-    failedCount = failedRes.count ?? 0;
-  }
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const [socialRes, failedRes] = await Promise.all([
+    supabase
+      .from("organization_connected_socials")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", authorized.organization_id)
+      .eq("is_active", true),
+    supabase
+      .from("listing_posting_schedule")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", authorized.organization_id)
+      .eq("status", "failed")
+      .gte("scheduled_for", sevenDaysAgo),
+  ]);
+  const socialCount = socialRes.count ?? 0;
+  const failedCount = failedRes.count ?? 0;
 
   return {
     user_email: userEmail,
-    organization_id: orgId ?? "",
-    organization_name: orgName,
-    plan,
+    organization_id: authorized.organization_id,
+    organization_name: authorized.organization_name,
+    plan: authorized.plan,
     app,
     route,
     social_accounts_count: socialCount,
     recent_failed_posts: failedCount,
     onboarding_complete: true,
+    is_super_admin: authorized.is_super_admin,
   };
 }
 
@@ -410,6 +475,7 @@ Deno.serve(async (req) => {
   const app = body.app === "listings" ? "listings" : "socials";
   const route = body.route ? String(body.route).slice(0, 200) : undefined;
   const conversationIdInput = body.conversation_id ? String(body.conversation_id) : undefined;
+  const requestedOrgId = body.organization_id ? String(body.organization_id) : undefined;
   const imageBase64 = body.image_base64 ? String(body.image_base64) : undefined;
   const imageMediaType = body.image_media_type ? String(body.image_media_type) : undefined;
 
@@ -418,10 +484,12 @@ Deno.serve(async (req) => {
     return jsonError(400, `message exceeds ${MAX_USER_MESSAGE_CHARS} character limit`);
   }
 
-  const ctx = await hydrateContext(supabase, userId, app, route);
-  if (!ctx.organization_id) {
-    return jsonError(403, "User has no organisation");
+  const authorized = await authorizeOrgAccess(supabase, userId, requestedOrgId);
+  if (!authorized.ok) {
+    return jsonError(authorized.status, authorized.message);
   }
+
+  const ctx = await hydrateContext(supabase, userId, app, route, authorized);
 
   const rateLimit = await checkRateLimit(supabase, ctx.organization_id, ctx.plan);
   if (!rateLimit.allowed) {
