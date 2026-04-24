@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useOrganization } from '@/contexts/OrganizationContext';
-import { getBillingProfile, getPlanByName } from '@/lib/billing/billingClient';
-import type { PlanDefinition, AccountStatus } from '@/lib/billing/types';
+import { getBillingProfile } from '@/lib/billing/billingClient';
+import { supabase } from '@/integrations/supabase/client';
+import type { AccountStatus } from '@/lib/billing/types';
 
 export interface PlanInfo {
   planName: string | null;
@@ -24,6 +25,13 @@ const FREE_DEFAULTS = {
   monthlyCredits: 0,
 };
 
+// Canonical plan source: `v_organization_plan_summary` resolves
+// effective_plan_name via COALESCE(billing_override->>'plan_equivalent',
+// current_plan_name, 'free') and joins plan_definitions for display + limits.
+// Same view powers Super Admin's org list, so Billing/onboarding/limits
+// stay in lockstep with what admins see. Stripe subscription state is
+// read separately from billing_profiles (needed to decide between
+// "Manage Subscription" and "Choose a Plan" CTAs).
 export function usePlanInfo() {
   const { organization } = useOrganization();
 
@@ -34,65 +42,40 @@ export function usePlanInfo() {
         throw new Error('No organization');
       }
 
-      const isTrialActive = organization.account_status === 'trial' &&
-        organization.trial_ends_at &&
+      const [summaryRes, billingProfile] = await Promise.all([
+        (supabase as any)
+          .from('v_organization_plan_summary')
+          .select(
+            'effective_plan_name, plan_display_name, max_users, max_listings, max_social_hubs, monthly_credits'
+          )
+          .eq('organization_id', organization.id)
+          .maybeSingle(),
+        getBillingProfile(organization.id).catch(() => null),
+      ]);
+
+      const summary = summaryRes?.data ?? null;
+
+      const isTrialActive =
+        organization.account_status === 'trial' &&
+        !!organization.trial_ends_at &&
         new Date(organization.trial_ends_at) > new Date();
 
-      if (isTrialActive || organization.account_status === 'trial') {
-        return {
-          planName: 'free',
-          displayName: 'Free Tier',
-          maxUsers: FREE_DEFAULTS.maxUsers,
-          maxListings: FREE_DEFAULTS.maxListings,
-          maxSocialHubs: FREE_DEFAULTS.maxSocialHubs,
-          monthlyCredits: FREE_DEFAULTS.monthlyCredits,
-          billingInterval: 'week',
-          isTrialActive: !!isTrialActive,
-          trialEndsAt: organization.trial_ends_at ? new Date(organization.trial_ends_at) : null,
-          subscriptionStatus: null,
-          accountStatus: organization.account_status,
-        };
-      }
-
-      const billingProfile = await getBillingProfile(organization.id);
-
-      if (!billingProfile?.subscription_plan) {
-        const isFree = organization.account_status === 'free';
-        return {
-          planName: isFree ? 'free' : null,
-          displayName: isFree ? 'Free' : 'No Plan',
-          maxUsers: FREE_DEFAULTS.maxUsers,
-          maxListings: FREE_DEFAULTS.maxListings,
-          maxSocialHubs: FREE_DEFAULTS.maxSocialHubs,
-          monthlyCredits: 0,
-          billingInterval: 'week',
-          isTrialActive: false,
-          trialEndsAt: organization.trial_ends_at ? new Date(organization.trial_ends_at) : null,
-          subscriptionStatus: billingProfile?.subscription_status || null,
-          accountStatus: organization.account_status,
-        };
-      }
-
-      const planName = billingProfile.subscription_plan;
-      let planDefinition: PlanDefinition | null = null;
-
-      try {
-        planDefinition = await getPlanByName(planName as any);
-      } catch (e) {
-        console.warn('Could not fetch plan definition, using defaults');
-      }
+      const planName: string = summary?.effective_plan_name ?? 'free';
+      const displayName: string =
+        summary?.plan_display_name ||
+        (planName === 'free' ? (isTrialActive ? 'Free Tier' : 'Free') : planName);
 
       return {
         planName,
-        displayName: planDefinition?.display_name || planName,
-        maxUsers: planDefinition?.max_users ?? FREE_DEFAULTS.maxUsers,
-        maxListings: planDefinition?.max_listings ?? null,
-        maxSocialHubs: planDefinition?.max_social_hubs ?? FREE_DEFAULTS.maxSocialHubs,
-        monthlyCredits: planDefinition?.monthly_credits ?? 0,
-        billingInterval: planDefinition?.billing_interval ?? 'week',
-        isTrialActive: false,
+        displayName,
+        maxUsers: summary?.max_users ?? FREE_DEFAULTS.maxUsers,
+        maxListings: summary?.max_listings ?? FREE_DEFAULTS.maxListings,
+        maxSocialHubs: summary?.max_social_hubs ?? FREE_DEFAULTS.maxSocialHubs,
+        monthlyCredits: summary?.monthly_credits ?? FREE_DEFAULTS.monthlyCredits,
+        billingInterval: 'week',
+        isTrialActive,
         trialEndsAt: organization.trial_ends_at ? new Date(organization.trial_ends_at) : null,
-        subscriptionStatus: billingProfile.subscription_status || null,
+        subscriptionStatus: billingProfile?.subscription_status || null,
         accountStatus: organization.account_status,
       };
     },

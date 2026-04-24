@@ -203,11 +203,20 @@ async function handleCheckoutCompleted(
         subscription_status: subscription.status,
         subscription_plan: planName,
         subscription_started_at: new Date(subscription.start_date * 1000).toISOString(),
-        subscription_ends_at: subscription.current_period_end 
-          ? new Date(subscription.current_period_end * 1000).toISOString() 
+        subscription_ends_at: subscription.current_period_end
+          ? new Date(subscription.current_period_end * 1000).toISOString()
           : null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'organization_id' });
+
+    // Mirror to organizations.current_plan_name so the canonical plan view
+    // (v_organization_plan_summary) and the Billing page reflect the new plan.
+    // Without this, paid subs used to show as "Free Plan" in Billing because
+    // it read only billing_profiles.subscription_plan.
+    await supabase
+      .from('organizations')
+      .update({ current_plan_name: planName, updated_at: new Date().toISOString() })
+      .eq('id', organizationId);
 
     const { data: existingGrant, error: checkError } = await supabase
       .from('credit_transactions')
