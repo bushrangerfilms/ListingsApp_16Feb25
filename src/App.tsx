@@ -106,6 +106,7 @@ const EmailQueuePage = lazyWithRetry(() => import("./pages/internal/EmailQueuePa
 const FailedPostsPage = lazyWithRetry(() => import("./pages/internal/FailedPostsPage"));
 const UsageRatesPage = lazyWithRetry(() => import("./pages/internal/UsageRatesPage"));
 const AITrainingPage = lazyWithRetry(() => import("./pages/internal/AITrainingPage"));
+const AlAdminPage = lazyWithRetry(() => import("./pages/internal/AlAdminPage"));
 const VideoMusicPage = lazyWithRetry(() => import("./pages/internal/VideoMusicPage"));
 const PilotSettingsPage = lazyWithRetry(() => import("./pages/internal/PilotSettingsPage"));
 const BroadcastsPage = lazyWithRetry(() => import("./pages/internal/BroadcastsPage"));
@@ -273,6 +274,7 @@ function AdminRoutes() {
         <Route path="/internal/failed-posts" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><FailedPostsPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/usage-rates" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><UsageRatesPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/ai-training" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><AITrainingPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/al-admin" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><AlAdminPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/video-music" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><VideoMusicPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/pilot" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><PilotSettingsPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
 
