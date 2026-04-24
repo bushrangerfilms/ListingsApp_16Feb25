@@ -99,7 +99,7 @@ interface KbBundle {
 
 let kbCache: { bundle: KbBundle; loadedAt: number } | null = null;
 
-const SYSTEM_PREAMBLE = `You are Al, the in-app AI assistant for AutoListing — a real estate platform for agents and agencies.
+const SYSTEM_PREAMBLE = `You are AL, the in-app AI assistant for AutoListing — a real estate platform for agents and agencies.
 
 # AutoListing is ONE product
 Treat AutoListing as a single product for the user. NEVER refer to it as "two apps", "the Socials app", "the Listings app", "cross-app", or anything that would make the user think there are separate applications to manage. For the user, there is only AutoListing.
@@ -406,7 +406,7 @@ async function checkRateLimit(
       allowed: false,
       remaining_today: 0,
       remaining_month: 0,
-      reason: `Monthly Al message limit reached for your plan (${limits.monthly}). Resets on the 1st.`,
+      reason: `Monthly AL message limit reached for your plan (${limits.monthly}). Resets on the 1st.`,
     };
   }
   if (dayCount >= limits.daily) {
@@ -414,7 +414,7 @@ async function checkRateLimit(
       allowed: false,
       remaining_today: 0,
       remaining_month: limits.monthly - monthCount,
-      reason: `Daily Al message limit reached for your plan (${limits.daily}). Resets at midnight UTC.`,
+      reason: `Daily AL message limit reached for your plan (${limits.daily}). Resets at midnight UTC.`,
     };
   }
 

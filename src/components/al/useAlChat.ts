@@ -133,7 +133,7 @@ export function useAlChat({ app, getRoute, getOrganizationId }: UseAlChatArgs) {
   );
 
   // On mount, restore the active conversation. We prefer the `al_conv` URL
-  // param (set by cross-subdomain links Al generates) over localStorage
+  // param (set by cross-subdomain links AL generates) over localStorage
   // because localStorage is scoped per-subdomain and won't have the ID after
   // a cross-subdomain navigation. The URL param strips itself after use so
   // it doesn't stick in the browser history.

@@ -61,7 +61,7 @@ const SUGGESTIONS_BY_ROUTE: Array<{ match: (path: string) => boolean; prompts: s
   {
     match: (p) => p.startsWith("/admin"),
     prompts: [
-      "What can I do with Al?",
+      "What can I do with AL?",
       "How do I add my first listing?",
       "What does the onboarding checklist do?",
     ],
@@ -69,7 +69,7 @@ const SUGGESTIONS_BY_ROUTE: Array<{ match: (path: string) => boolean; prompts: s
 ];
 
 const DEFAULT_PROMPTS = [
-  "What can I do with Al?",
+  "What can I do with AL?",
   "How do I get started?",
   "Where do I find my leads?",
 ];
@@ -204,7 +204,7 @@ export function AlChatModal({ open, onOpenChange }: Props) {
 
   return (
     <aside
-      aria-label="Al chat panel"
+      aria-label="AL chat panel"
       aria-hidden={!open}
       className={`fixed top-0 right-0 bottom-0 w-full sm:w-[420px] z-40 bg-background border-l shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
         open ? "translate-x-0" : "translate-x-full pointer-events-none"
@@ -239,7 +239,7 @@ export function AlChatModal({ open, onOpenChange }: Props) {
             <div className="flex items-center gap-2 min-w-0">
               <Sparkles className="h-4 w-4 text-primary shrink-0" />
               <div className="min-w-0">
-                <h2 className="font-semibold text-sm truncate">Al — your AutoListing assistant</h2>
+                <h2 className="font-semibold text-sm truncate">AL — your AutoListing assistant</h2>
                 {meta.remaining_month !== undefined && (
                   <p className="text-[10px] text-muted-foreground">
                     {meta.remaining_month} left this month
@@ -387,7 +387,7 @@ export function AlChatModal({ open, onOpenChange }: Props) {
               placeholder={
                 attachedImage
                   ? "Add a question (or send to ask 'what do you see?')"
-                  : "Ask Al anything about AutoListing… (paste an image to attach)"
+                  : "Ask AL anything about AutoListing… (paste an image to attach)"
               }
               className="min-h-[44px] max-h-[140px] resize-none text-sm"
               disabled={isStreaming}
@@ -406,7 +406,7 @@ export function AlChatModal({ open, onOpenChange }: Props) {
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
-            Al may make mistakes. For sensitive issues, use Send Feedback in the sidebar.
+            AL may make mistakes. For sensitive issues, use Send Feedback in the sidebar.
           </p>
         </div>
       )}
@@ -425,7 +425,7 @@ function EmptyState({
     <div className="space-y-4 pt-4">
       <div className="text-center">
         <Sparkles className="h-8 w-8 text-primary mx-auto mb-2 opacity-60" />
-        <h3 className="font-medium text-sm">Hi, I'm Al.</h3>
+        <h3 className="font-medium text-sm">Hi, I'm AL.</h3>
         <p className="text-xs text-muted-foreground mt-1">
           Ask me about features, troubleshooting, or what's on your screen.
         </p>

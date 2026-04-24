@@ -76,7 +76,7 @@ export function AlFeedbackCard({ draft }: Props) {
       if (error) throw error;
       setSubmittedAs("sent");
     } catch (e: any) {
-      console.error("Failed to send feedback via Al:", e);
+      console.error("Failed to send feedback via AL:", e);
       toast.error(e?.message ?? "Failed to send feedback");
     } finally {
       setSubmitting(false);

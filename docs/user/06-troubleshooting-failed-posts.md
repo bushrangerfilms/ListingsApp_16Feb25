@@ -65,7 +65,7 @@ If a post has been "Processing" for hours:
 
 ## Still stuck?
 
-If you've checked all of the above and still can't figure out why a post failed, ask Al — Al can read the post's detail and look up the specific error. If Al can't help, Al will offer to escalate it to support, sending the conversation context plus the failed post details to our team.
+If you've checked all of the above and still can't figure out why a post failed, ask AL — AL can read the post's detail and look up the specific error. If AL can't help, AL will offer to escalate it to support, sending the conversation context plus the failed post details to our team.
 
 ## What we monitor on our end
 

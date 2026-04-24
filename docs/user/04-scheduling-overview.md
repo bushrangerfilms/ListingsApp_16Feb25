@@ -66,4 +66,4 @@ A few common reasons:
 - **Listing status is Withdrawn or Off Market** — these don't post
 - **Listing reached its end-of-cycle** (Sold past 1 week, Sale Agreed past 2 weeks) — these stop posting on purpose
 
-If none of these apply, ask Al — there may be a deeper issue.
+If none of these apply, ask AL — there may be a deeper issue.
