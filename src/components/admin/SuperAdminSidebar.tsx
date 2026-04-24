@@ -37,6 +37,7 @@ import {
   Music,
   Rocket,
   AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import { useAdminPermissions } from "@/hooks/admin/useAdminPermissions";
 
@@ -74,6 +75,7 @@ const navSections: NavSection[] = [
       { path: '/internal/users', label: 'Users', icon: Users },
       { path: '/internal/feature-flags', label: 'Feature Flags', icon: Flag },
       { path: '/internal/ai-training', label: 'AI Training', icon: Brain, superAdminOnly: true },
+      { path: '/internal/al-admin', label: 'AL Knowledge Base', icon: Sparkles, superAdminOnly: true },
       { path: '/internal/video-music', label: 'Video Music', icon: Music, superAdminOnly: true },
     ]
   },

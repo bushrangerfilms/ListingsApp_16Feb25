@@ -79,7 +79,12 @@ const MAX_USER_MESSAGE_CHARS = 4000;
 const MAX_OUTPUT_TOKENS = 1024;
 const KB_STORAGE_BUCKET = "al-kb";
 const KB_STORAGE_FILE = "knowledge-base.json";
-const KB_REFRESH_MS = 15 * 60 * 1000;
+// 60-second TTL keeps AL's context fresh without rebuilding prompt-cache on
+// every request. When a docs PR merges, the GitHub Action rebuilds the bundle
+// in ~30s and this cache expires ~60s later → ~90s end-to-end propagation.
+// If the bundle bytes didn't change on refetch, Claude's prompt cache stays
+// valid (prefix match on bytes, not identity).
+const KB_REFRESH_MS = 60 * 1000;
 
 interface KbBundle {
   version: string;

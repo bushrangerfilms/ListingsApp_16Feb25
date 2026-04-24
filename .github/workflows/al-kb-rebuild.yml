@@ -1,0 +1,50 @@
+name: AL knowledge base rebuild
+
+# Rebuilds the AL chatbot's knowledge base from docs/user/*.md and uploads
+# the bundle to Supabase Storage. Fires on two triggers:
+#   1. Any push to `main` that touches docs/user/** or the bundler script
+#   2. Manual dispatch from the super-admin "Rebuild KB" button or the
+#      GitHub Actions UI (workflow_dispatch)
+#
+# The edge function refreshes its in-memory KB cache every 60 seconds, so a
+# push to main + this workflow + the cache refresh = ~90 seconds end-to-end
+# before AL sees the new docs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/user/**"
+      - "scripts/build-al-kb.mjs"
+      - ".github/workflows/al-kb-rebuild.yml"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why are you triggering this manually?"
+        required: false
+        default: "manual"
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build and upload KB bundle
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/build-al-kb.mjs --upload
+
+      - name: Summary
+        run: |
+          echo "### AL knowledge base rebuilt" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Bundle uploaded to \`al-kb/knowledge-base.json\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Edge function will pick up the new bundle within 60 seconds" >> $GITHUB_STEP_SUMMARY
+          echo "- Trigger reason: ${{ github.event.inputs.reason || github.event_name }}" >> $GITHUB_STEP_SUMMARY
