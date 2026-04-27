@@ -83,6 +83,13 @@ export default function SignupWizard() {
     setIsSubmitting(true);
     isCompletingSignupRef.current = true;
 
+    // Pass the geo-detected locale that seedLocaleFromGeo() wrote to localStorage.
+    // Edge function uses it as the strongest signal (with cf-ipcountry as fallback)
+    // so new orgs don't all default to IE/EUR/Europe/Dublin from the DB column defaults.
+    const detectedLocale = (() => {
+      try { return localStorage.getItem('autolisting_locale'); } catch { return null; }
+    })();
+
     try {
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-organization`,
@@ -102,6 +109,7 @@ export default function SignupWizard() {
             utmSource: utmSource || null,
             utmMedium: utmMedium || null,
             utmCampaign: utmCampaign || null,
+            locale: detectedLocale,
           }),
         }
       );

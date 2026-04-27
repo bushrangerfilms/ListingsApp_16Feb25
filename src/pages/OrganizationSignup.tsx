@@ -121,6 +121,8 @@ export default function OrganizationSignup() {
             password,
             firstName: firstName.trim(),
             lastName: lastName.trim(),
+            // Geo-detected locale (seeded into localStorage by seedLocaleFromGeo)
+            locale: (() => { try { return localStorage.getItem('autolisting_locale'); } catch { return null; } })(),
           }),
         }
       );
