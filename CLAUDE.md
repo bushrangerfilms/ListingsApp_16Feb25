@@ -211,6 +211,33 @@ RLS policies enforce org isolation. All queries scoped by `organization_id`.
 - All licence/registration displays use `regulatory.licenceDisplayLabel` (not hardcoded "PSRA")
 - DB column remains `psr_licence_number` (generic text field) — labels are locale-driven
 
+## AL — in-app AI chatbot (shipped 2026-04-27)
+
+The floating sparkle-button assistant available across both subdomains. Backend (edge functions, KB pipeline, DB tables) lives in this repo; the React components are mirrored into Socials.
+
+**Code map:**
+- Edge functions: `supabase/functions/al-chat`, `supabase/functions/al-kb-rebuild-trigger`
+- React components: `src/components/al/` (mirrored into `Socials/src/components/al/`)
+- Mounted unconditionally (no role gate as of 2026-04-27) from `src/components/AdminLayout.tsx` and `Socials/src/components/layout/DashboardLayout.tsx`
+- Knowledge base source: `docs/user/*.md` — bundled by `scripts/build-al-kb.mjs` to JSON, uploaded to Supabase Storage bucket `al-kb` (public-read)
+- Auto-rebuild Action: `.github/workflows/al-kb-rebuild.yml` — fires on push to main touching `docs/user/**` or the bundler script
+- Super admin page: `/internal/al-admin` (`src/pages/internal/AlAdminPage.tsx`); sidebar entry in `src/components/admin/SuperAdminSidebar.tsx`
+- DB: `public.al_conversations`, `public.al_messages`, `public.al_usage_counters` (migration `20260424120000_al_chatbot.sql`)
+
+**Editing the KB:** edit `docs/user/*.md` and merge to main. The Action rebuilds in ~30s, edge function in-memory cache (60s TTL) refreshes within 60s — AL has new content within ~90s end-to-end. Manual trigger available at `/internal/al-admin`.
+
+**Models & limits:** Haiku 4.5 default (~0.5¢/cached query), Sonnet 4.6 only when image attached. Per-tier message limits enforced server-side in `al-chat/index.ts` `PLAN_LIMITS`: Free 100/mo, Essentials 200, Growth 500, Professional 1000, Multi-Branch S/M/L 3000.
+
+**Branding rules** (load-bearing — see `memory/al-chatbot.md` and `memory/feedback_one_app_not_two.md`):
+- The bot's displayed name is **"AL" (both caps)** in user-facing copy. Never "Al" (looks like "AI" in sans-serif fonts). Code identifiers stay camelCase.
+- AutoListing is **one product**, not two apps. Never frame Socials/Listings as separate apps in user-facing copy. AL's system prompt has explicit linking rules for cross-subdomain navigation.
+
+**Secrets:**
+- Supabase: `ANTHROPIC_API_KEY_AUTOLISTING` (Claude API), `GITHUB_PAT` (fine-grained, Listings-only, Actions: read+write)
+- GitHub repo secrets: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (used by KB rebuild Action)
+
+**Full reference:** `~/.claude/projects/.../memory/al-chatbot.md`
+
 ## Known Technical Debt
 
 - `src/pages/signup/OrganizationSignup.tsx` — legacy signup flow kept at `/signup/legacy`
