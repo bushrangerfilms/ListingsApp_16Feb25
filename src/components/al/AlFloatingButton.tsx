@@ -80,7 +80,7 @@ export function AlFloatingButton() {
                 : "opacity-0 translate-y-2 pointer-events-none"
             }`}
           >
-            <div className="relative rounded-2xl bg-foreground text-background px-4 py-3 pr-9 text-sm shadow-xl">
+            <div className="relative rounded-2xl bg-primary text-primary-foreground px-4 py-3 pr-9 text-sm shadow-xl">
               <p className="leading-snug">
                 <span className="font-semibold">Hi, I'm AL.</span>{" "}
                 <span className="opacity-90">
@@ -90,12 +90,12 @@ export function AlFloatingButton() {
               <button
                 onClick={dismissWelcome}
                 aria-label="Dismiss welcome message"
-                className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full inline-flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-background/10 transition"
+                className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full inline-flex items-center justify-center opacity-70 hover:opacity-100 hover:bg-primary-foreground/10 transition"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
               {/* Tail pointing down toward the floating button */}
-              <span className="absolute -bottom-1.5 right-6 h-3 w-3 rotate-45 bg-foreground" />
+              <span className="absolute -bottom-1.5 right-6 h-3 w-3 rotate-45 bg-primary" />
             </div>
           </div>
 
