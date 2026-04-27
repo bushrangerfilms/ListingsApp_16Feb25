@@ -38,7 +38,7 @@ Sold and Withdrawn listings don't count toward your limit.
 - **Custom domain** — paid plans only
 - **Team members** — Free is solo; paid plans allow team invites
 - **Branches** — Multi-Branch plans allow multiple branches with separate social accounts
-- **AL chatbot quota** — Free has 20 messages/month, paid plans have higher quotas
+- **AL chatbot quota** — Free has 100 messages/month, paid plans have higher quotas
 
 ## Upgrading or changing plans
 
