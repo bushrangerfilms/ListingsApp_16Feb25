@@ -20,6 +20,8 @@ interface OrganizationData {
   property_services?: PropertyService[];
   primary_color?: string | null;
   secondary_color?: string | null;
+  country_code?: string | null;
+  locale?: string | null;
 }
 
 interface OrganizationViewContextType {
@@ -92,7 +94,7 @@ export const OrganizationViewProvider = ({ children }: OrganizationViewProviderP
         // Cast needed: property_services column added but Supabase types not regenerated yet
         const { data, error } = await (supabase as any)
           .from('organizations')
-          .select('id, business_name, slug, logo_url, favicon_url, is_active, domain, contact_name, contact_email, contact_phone, business_address, psr_licence_number, property_services')
+          .select('id, business_name, slug, logo_url, favicon_url, is_active, domain, contact_name, contact_email, contact_phone, business_address, psr_licence_number, property_services, country_code, locale')
           .order('business_name');
 
         if (error) throw error;

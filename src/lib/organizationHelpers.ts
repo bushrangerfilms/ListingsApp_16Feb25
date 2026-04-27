@@ -11,7 +11,7 @@ interface OrganizationUpdate {
   contact_email?: string;
   contact_phone?: string;
   business_address?: string;
-  psr_licence_number?: string;
+  psr_licence_number?: string | null;
   from_email?: string | null;
   from_name?: string | null;
   notification_emails?: string[];
@@ -21,6 +21,10 @@ interface OrganizationUpdate {
   hide_public_site?: boolean;
   default_brochure_certifications?: any;
   default_brochure_style_options?: any;
+  country_code?: string;
+  locale?: string;
+  currency?: string;
+  timezone?: string;
 }
 
 export async function uploadOrganizationLogo(file: File, orgId: string): Promise<string> {
