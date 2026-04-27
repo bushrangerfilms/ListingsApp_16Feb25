@@ -16,7 +16,7 @@ interface DetectionResult {
 
 export function useOnboardingAutoDetect() {
   const { organization } = useOrganization();
-  const { tasksCompleted, markTasksComplete, isLoading: onboardingLoading, isDismissed, isComplete } = useOnboarding();
+  const { tasksCompleted, markTasksComplete, isLoading: onboardingLoading, isComplete } = useOnboarding();
   const processedTasksRef = useRef<Set<string>>(new Set());
   const lastOrgIdRef = useRef<string | null>(null);
 
@@ -86,7 +86,7 @@ export function useOnboardingAutoDetect() {
         set_posting_preferences: false, // Only completed via explicit user interaction
       };
     },
-    enabled: !!organization?.id && !onboardingLoading && !isDismissed && !isComplete,
+    enabled: !!organization?.id && !onboardingLoading && !isComplete,
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnWindowFocus: true,
@@ -94,10 +94,9 @@ export function useOnboardingAutoDetect() {
 
   useEffect(() => {
     if (
-      detectionLoading || 
-      onboardingLoading || 
-      !detectedTasks || 
-      isDismissed ||
+      detectionLoading ||
+      onboardingLoading ||
+      !detectedTasks ||
       isComplete
     ) {
       return;
@@ -113,7 +112,7 @@ export function useOnboardingAutoDetect() {
     if (toMark.length > 0) {
       markTasksComplete(toMark);
     }
-  }, [detectedTasks, detectionLoading, onboardingLoading, tasksCompleted, markTasksComplete, isDismissed, isComplete]);
+  }, [detectedTasks, detectionLoading, onboardingLoading, tasksCompleted, markTasksComplete, isComplete]);
 
   return {
     detectedTasks,
