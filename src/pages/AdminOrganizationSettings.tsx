@@ -22,6 +22,18 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { Loader2 } from "lucide-react";
 import { getRegionConfig } from "@/lib/regionConfig";
 import type { SupportedLocale } from "@/lib/i18n";
+import { detectLocaleFromAddress, type AddressLocaleHit } from "@/lib/locale/detectFromAddress";
+import { LOCALE_NAMES } from "@/lib/locale/markets";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const organizationSchema = z.object({
   business_name: z.string().min(1, "Business name is required").max(100),
@@ -90,16 +102,29 @@ export default function AdminOrganizationSettings() {
     }
   }, [searchParams, loading]);
 
-  const onSubmit = async (data: OrganizationFormData) => {
+  // Pending state for the locale-mismatch confirmation dialog. Populated when an
+  // edit to business_address surfaces a country different from the org's current
+  // country_code AND the org already had an address (so the user has already
+  // committed to a locale at some point).
+  const [pendingLocaleDecision, setPendingLocaleDecision] = useState<{
+    formData: OrganizationFormData;
+    hit: AddressLocaleHit;
+  } | null>(null);
+
+  const performSave = async (data: OrganizationFormData, localeOverride: AddressLocaleHit | null) => {
     if (!targetOrg) return;
-
     setIsSaving(true);
-
     try {
       await updateOrganizationProfile(targetOrg.id, {
         ...data,
         logo_url: logoUrl,
         favicon_url: faviconUrl,
+        ...(localeOverride && {
+          country_code: localeOverride.country,
+          locale: localeOverride.locale,
+          currency: localeOverride.currency,
+          timezone: localeOverride.timezone,
+        }),
       });
 
       // Refresh org context so onboarding auto-detection sees updated data
@@ -113,13 +138,56 @@ export default function AdminOrganizationSettings() {
         }
       }, 0);
 
-      toast.success(`${t('admin:organisations.details')} saved successfully`);
+      if (localeOverride) {
+        toast.success(`Locale set to ${LOCALE_NAMES[localeOverride.locale]} based on your address`);
+      } else {
+        toast.success(`${t('admin:organisations.details')} saved successfully`);
+      }
     } catch (error) {
       console.error('Save error:', error);
       toast.error(error instanceof Error ? error.message : "Failed to update organization");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const onSubmit = async (data: OrganizationFormData) => {
+    if (!targetOrg) return;
+
+    // Look at the new address for a recognisable postcode and decide whether to
+    // touch the org's locale fields. Three branches:
+    //   1. No detection or detected country matches current → save as normal.
+    //   2. Mismatch and the org had no prior business_address → silent flip
+    //      with a toast (the user is committing for the first time).
+    //   3. Mismatch and the org already had a business_address → prompt before
+    //      changing locale; the address change saves either way.
+    const hit = detectLocaleFromAddress(data.business_address);
+    const currentCountry = (targetOrg as { country_code?: string | null }).country_code ?? null;
+    const hadPriorAddress = !!(targetOrg.business_address && targetOrg.business_address.trim());
+
+    if (!hit || hit.country === currentCountry) {
+      await performSave(data, null);
+      return;
+    }
+    if (!hadPriorAddress) {
+      await performSave(data, hit);
+      return;
+    }
+    setPendingLocaleDecision({ formData: data, hit });
+  };
+
+  const confirmSwitchLocale = async () => {
+    if (!pendingLocaleDecision) return;
+    const { formData, hit } = pendingLocaleDecision;
+    setPendingLocaleDecision(null);
+    await performSave(formData, hit);
+  };
+
+  const declineSwitchLocale = async () => {
+    if (!pendingLocaleDecision) return;
+    const { formData } = pendingLocaleDecision;
+    setPendingLocaleDecision(null);
+    await performSave(formData, null);
   };
 
   if (loading) {
@@ -315,6 +383,31 @@ export default function AdminOrganizationSettings() {
           setCustomDomain(domain || null);
         }}
       />
+
+      <AlertDialog
+        open={!!pendingLocaleDecision}
+        onOpenChange={(open) => { if (!open) setPendingLocaleDecision(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch account locale?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your business address looks {pendingLocaleDecision ? LOCALE_NAMES[pendingLocaleDecision.hit.locale] : ''}-based, but your account is set to{' '}
+              {LOCALE_NAMES[(targetOrg?.locale || 'en-IE') as keyof typeof LOCALE_NAMES]}. Switching changes the currency on your billing page,
+              the regulatory body label, and other locale-driven defaults. The address itself
+              will save either way.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={declineSwitchLocale} disabled={isSaving}>
+              Keep current
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSwitchLocale} disabled={isSaving}>
+              Switch to {pendingLocaleDecision ? LOCALE_NAMES[pendingLocaleDecision.hit.locale] : ''}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
