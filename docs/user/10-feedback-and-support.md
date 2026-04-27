@@ -21,7 +21,7 @@ AL is the floating help button at the bottom-right of every page. Click it to op
 
 AL is read-only — AL can't change your settings or take actions in the app for you. But AL can guide you to do it yourself, or escalate to support if it can't help.
 
-**Free plan:** 20 AL messages per month. **Paid plans:** higher quotas (200 / 750 / 3000 per month depending on tier).
+**Free plan:** 100 AL messages per month (up to 20 per day). **Paid plans:** higher quotas (200 / 500 / 1000 / 3000 per month depending on tier).
 
 ## 2. Send Feedback button
 

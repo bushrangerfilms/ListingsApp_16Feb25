@@ -28,7 +28,7 @@ const corsHeaders = {
 };
 
 const PLAN_LIMITS: Record<string, { monthly: number; daily: number }> = {
-  free: { monthly: 20, daily: 5 },
+  free: { monthly: 100, daily: 20 },
   essentials: { monthly: 200, daily: 30 },
   growth: { monthly: 500, daily: 60 },
   professional: { monthly: 1000, daily: 150 },
