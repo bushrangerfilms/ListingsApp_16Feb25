@@ -47,7 +47,7 @@ interface WelcomeModalProps {
 
 export function WelcomeModal({ onClose }: WelcomeModalProps) {
   const { organization } = useOrganization();
-  const { tasks, tasksCompleted, isComplete, isLoading } = useOnboarding();
+  const { tasks, tasksCompleted, isComplete, isDismissed, isLoading } = useOnboarding();
   const { planName, isLoading: planLoading } = usePlanInfo();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -64,11 +64,11 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
   const nextTask = visibleTasks.find(t => !tasksCompleted[t.id]);
 
   useEffect(() => {
-    if (!isLoading && !planLoading && !isComplete && organization && !isPilot && !isSnoozed(organization.id)) {
+    if (!isLoading && !planLoading && !isComplete && !isDismissed && organization && !isPilot && !isSnoozed(organization.id)) {
       const timer = setTimeout(() => setIsOpen(true), 500);
       return () => clearTimeout(timer);
     }
-  }, [isLoading, planLoading, isComplete, organization, isPilot]);
+  }, [isLoading, planLoading, isComplete, isDismissed, organization, isPilot]);
 
   const handleTaskNavigate = (task: OnboardingTask) => {
     if (organization) snoozeModal(organization.id);
@@ -94,7 +94,7 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
     onClose?.();
   };
 
-  if (isLoading || planLoading || isComplete) {
+  if (isLoading || planLoading || isComplete || isDismissed) {
     return null;
   }
 
