@@ -58,8 +58,9 @@ const LEGACY_LOCALE_ALLOWLIST = [
   // hardcoded "BER Rating" / locale-id literals.  "Eircode" defaults remain
   // behind same-line `// locale-allowed:` waivers because the metadata is
   // overridden at render via postcodeConfig.label / localizeQuestion.)
-  // CRM lead view — hardcoded €/Co./Eircode in quiz field labels.
-  "src/components/SellerProfileCard.tsx",
+  // (CRM lead view SellerProfileCard cleaned up in cleanup PR — €
+  // estimate now uses formatCurrency, "Co." prefix gated on
+  // addressConfig.countyPrefix, eircode label via postalCodeLabel.)
   // (Listing creation/review/edit + ValuationRequest + PropertyDetails were
   // migrated in the listing-forms cleanup PR — they no longer carry hardcoded
   // locale literals.  listingSchema.ts entry below also removed.)
