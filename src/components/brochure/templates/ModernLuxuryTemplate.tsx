@@ -19,25 +19,17 @@ import {
   getTypeOverrides,
   type LayoutDimensions,
 } from '@/lib/brochure/designTokens';
+import { getRegionConfig } from '@/lib/locale/config';
 import { BrochureHeader } from './shared/BrochureHeader';
 import { BrochureFooter } from './shared/BrochureFooter';
 import { BrochureRoomBlock } from './shared/BrochureRoomBlock';
+import { getSinglePageSize } from './shared/pageSizes';
 import {
   buildPageRenderContext,
   type PageRenderContext,
 } from './ClassicBrochureTemplate';
 
 // ── Helpers ──────────────────────────────────────────────────────────────
-
-function getBerLabel(locale: string): string {
-  switch (locale) {
-    case 'en-GB': return 'EPC';
-    case 'en-US': return 'HERS';
-    case 'en-AU': return 'NatHERS';
-    case 'en-CA': return 'EnerGuide';
-    default: return 'BER';
-  }
-}
 
 function BulletItem({ text, style }: { text: string; style?: 'keyFeature' | 'default' }) {
   const fontSize = style === 'keyFeature' ? TYPE.keyFeature.fontSize : TYPE.bullet.fontSize;
@@ -180,7 +172,7 @@ export function ModernCoverPageContent({ ctx, margins }: PageContentProps) {
               borderRadius: 3,
               marginLeft: 18,
             }}>
-              {getBerLabel(branding.locale)} {content.cover.energyRating}
+              {getRegionConfig(branding.locale).property.energyRatings.system} {content.cover.energyRating}
             </Text>
           )}
         </View>
@@ -597,9 +589,7 @@ export function ModernLuxuryTemplate({ content, branding }: ModernLuxuryTemplate
   const typeOverrides = getTypeOverrides('a4');
   const ctx = buildPageRenderContext(content, branding, dims, typeOverrides);
 
-  const pageSize = ['en-US', 'en-CA'].includes(branding.locale)
-    ? ('LETTER' as const)
-    : ('A4' as const);
+  const pageSize = getSinglePageSize(getRegionConfig(branding.locale));
 
   const p1m = getPageMargins(1, dims);
   const p2m = getPageMargins(2, dims);

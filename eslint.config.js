@@ -66,20 +66,14 @@ const LEGACY_LOCALE_ALLOWLIST = [
   "src/pages/ValuationRequest.tsx",
   "src/pages/PropertyDetails.tsx",
   "src/components/EditListingDialog.tsx",
-  // Brochure templates — hardcoded €, BER labels, Co. prefix.
+  // Brochure editors — hardcoded "Eircode" placeholder, default € examples.
+  // (The 8 brochure TEMPLATES under templates/ were migrated to canonical
+  // lookups in the brochure-cleanup PR — they're no longer on this list.)
   "src/pages/BrochureEditor.tsx",
   "src/components/brochure/BrochureCoverEditor.tsx",
   "src/components/brochure/BrochureLegalEditor.tsx",
   "src/components/brochure/BrochureHeaderEditor.tsx",
   "src/components/brochure/BrochureCertificationEditor.tsx",
-  "src/components/brochure/templates/ArchitecturalA5.tsx",
-  "src/components/brochure/templates/ArchitecturalTemplate.tsx",
-  "src/components/brochure/templates/ClassicBrochureA5.tsx",
-  "src/components/brochure/templates/ClassicBrochureTemplate.tsx",
-  "src/components/brochure/templates/ElegantTraditionalA5.tsx",
-  "src/components/brochure/templates/ElegantTraditionalTemplate.tsx",
-  "src/components/brochure/templates/ModernLuxuryA5.tsx",
-  "src/components/brochure/templates/ModernLuxuryTemplate.tsx",
   "src/lib/brochure/designTokens.ts",
   "src/lib/brochure/certificationLogos.ts",
   // Marketing footer / legal / public pages — IE company info + €fallbacks.
