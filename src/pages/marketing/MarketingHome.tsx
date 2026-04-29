@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getPlanDefinitions } from '@/lib/billing/billingClient';
 import { formatPrice, estimatePrice, type SupportedCurrency } from '@/lib/billing/pricing';
 import { useLocale } from '@/hooks/useLocale';
+import { getRegionConfig } from '@/lib/locale/config';
 import {
   ArrowRight,
   Check,
@@ -81,7 +82,7 @@ export default function MarketingHome() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const { currency: detectedCurrency, locale } = useLocale();
-  const optimizedWord = locale === 'en-US' ? 'optimized' : 'optimised';
+  const optimizedWord = getRegionConfig(locale).spelling === 'american' ? 'optimized' : 'optimised';
   const currency = detectedCurrency as SupportedCurrency;
 
   const { data: plans } = useQuery({

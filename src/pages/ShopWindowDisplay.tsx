@@ -10,9 +10,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { getLogosForLocale } from '@/lib/brochure/certificationLogos';
 import { getRegionConfig } from '@/lib/regionConfig';
 import type { SupportedLocale } from '@/lib/i18n';
+import { DEFAULT_LOCALE } from '@/lib/locale/config';
 import { useDisplayAnalytics } from '@/hooks/useDisplayAnalytics';
-import { getRegionConfig } from '@/lib/regionConfig';
-import type { SupportedLocale } from '@/lib/i18n';
 
 // ── Status badge colors ──────────────────────────────────────────────
 
@@ -42,7 +41,7 @@ function formatDisplayPrice(
   if (price === 0) return 'Price on Application';
   let formatted: string;
   try {
-    formatted = new Intl.NumberFormat(locale || 'en-IE', {
+    formatted = new Intl.NumberFormat(locale || DEFAULT_LOCALE, {
       style: 'currency',
       currency: currency || 'EUR',
       minimumFractionDigits: 0,
@@ -65,7 +64,7 @@ function buildPropertyDetails(
   config: DisplaySignageConfig,
   locale: string | null,
 ): { details: string[]; showBer: boolean } {
-  const measurements = getRegionConfig((locale || 'en-IE') as SupportedLocale).property.measurements;
+  const measurements = getRegionConfig((locale || DEFAULT_LOCALE) as SupportedLocale).property.measurements;
   const isLand = listing.building_type === 'Land';
   const isCommercial = listing.building_type === 'Commercial';
   const details: string[] = [];
@@ -486,7 +485,7 @@ function BrandingBar({
   totalSlides: number;
   compact?: boolean;
 }) {
-  const certLogos = getLogosForLocale(organization.locale || 'en-IE')
+  const certLogos = getLogosForLocale(organization.locale || DEFAULT_LOCALE)
     .filter(logo => logo.url);
 
   return (
@@ -532,7 +531,7 @@ function BrandingBar({
           <span>{organization.contact_phone}</span>
         )}
         {config.show_contact_info && organization.psr_licence_number && (
-          <span className="opacity-75">{getRegionConfig((organization.locale || 'en-IE') as SupportedLocale).legal.regulatory.licenceDisplayLabel}: {organization.psr_licence_number}</span>
+          <span className="opacity-75">{getRegionConfig((organization.locale || DEFAULT_LOCALE) as SupportedLocale).legal.regulatory.licenceDisplayLabel}: {organization.psr_licence_number}</span>
         )}
         {totalSlides > 1 && (
           <span className="opacity-75">{slideNumber} / {totalSlides}</span>

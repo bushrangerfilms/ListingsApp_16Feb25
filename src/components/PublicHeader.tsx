@@ -8,6 +8,7 @@ import { OrganizationViewSelector } from "@/components/OrganizationViewSelector"
 import { OrganizationLogo } from "@/components/OrganizationLogo";
 import { getRegionConfig } from "@/lib/regionConfig";
 import type { SupportedLocale } from "@/lib/i18n";
+import { DEFAULT_LOCALE } from "@/lib/locale/config";
 
 export const PublicHeader = () => {
   const { isAdmin } = useAuth();
@@ -49,7 +50,7 @@ export const PublicHeader = () => {
 
   const businessName = organization.business_name;
   const psrLicence = organization.psr_licence_number;
-  const regulatory = getRegionConfig((organization.locale || 'en-IE') as SupportedLocale).legal.regulatory;
+  const regulatory = getRegionConfig((organization.locale || DEFAULT_LOCALE) as SupportedLocale).legal.regulatory;
   const homeLink = orgSlug ? `/${orgSlug}` : '/';
   const valuationLink = orgSlug ? `/${orgSlug}/request-valuation` : '/request-valuation';
 

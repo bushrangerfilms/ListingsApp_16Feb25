@@ -494,7 +494,7 @@ export default function AdminEmailCampaignAnalytics() {
                           </TableCell>
                           <TableCell>
                             {template.lastSent
-                              ? new Date(template.lastSent).toLocaleDateString("en-US", {
+                              ? new Date(template.lastSent).toLocaleDateString("en-US", { // locale-allowed: super-admin email campaign analytics — deliberate Mon DD format
                                   month: "short",
                                   day: "numeric",
                                 })
@@ -724,7 +724,7 @@ export default function AdminEmailCampaignAnalytics() {
                         </TableCell>
                         <TableCell>
                           {profile.lastEngagement
-                            ? new Date(profile.lastEngagement).toLocaleDateString("en-US", {
+                            ? new Date(profile.lastEngagement).toLocaleDateString("en-US", { // locale-allowed: super-admin email campaign analytics — deliberate Mon DD HH:MM format
                                 month: "short",
                                 day: "numeric",
                                 hour: "2-digit",

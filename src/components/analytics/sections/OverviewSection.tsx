@@ -85,7 +85,7 @@ export default function OverviewSection() {
 
       // Time series comes pre-built from the RPC
       const timeSeries = (data.time_series || []).map((day: any) => ({
-        date: new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: new Date(day.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }), // locale-allowed: admin chart x-axis label, deliberate Mon DD format
         listings: day.views ?? 0,
         enquiries: day.enquiries ?? 0,
         emails: day.emails ?? 0,

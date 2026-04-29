@@ -75,9 +75,9 @@ const PILOT_CHECKOUT_ENDPOINT = `${import.meta.env.VITE_SUPABASE_URL || 'https:/
 const PILOT_CHECKOUT_KEY = '305ffd8fd1d3d1183e61753e96e266908a44a41a4ecb881c8ea49bd58db6410d';
 
 const PILOT_PLANS = [
-  { priceId: 'price_1T5YUQIncirHB4pnb6Mi7eO4', label: 'AutoListing — \u20AC60/week' },
-  { priceId: 'price_1T5YRtIncirHB4pnYzxb7Baf', label: 'AutoListing — \u20AC70/week' },
-  { priceId: 'price_1T5YVDIncirHB4pnl4FqCLRV', label: 'AutoListing — \u20AC100/week' },
+  { priceId: 'price_1T5YUQIncirHB4pnb6Mi7eO4', label: 'AutoListing — \u20AC60/week' }, // locale-allowed: super-admin pilot plans bound to legacy EUR-only Stripe Price IDs
+  { priceId: 'price_1T5YRtIncirHB4pnYzxb7Baf', label: 'AutoListing — \u20AC70/week' }, // locale-allowed: super-admin pilot plans bound to legacy EUR-only Stripe Price IDs
+  { priceId: 'price_1T5YVDIncirHB4pnl4FqCLRV', label: 'AutoListing — \u20AC100/week' }, // locale-allowed: super-admin pilot plans bound to legacy EUR-only Stripe Price IDs
 ];
 
 function generateInviteCode(): string {

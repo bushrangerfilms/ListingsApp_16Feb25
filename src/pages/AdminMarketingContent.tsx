@@ -18,6 +18,7 @@ import { Loader2, Save, Image, FileText, Megaphone, Pipette, ClipboardCopy, Link
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { useLocale } from "@/hooks/useLocale";
+import { getRegionConfig } from "@/lib/locale/config";
 
 interface MarketingContent {
   id?: string;
@@ -87,7 +88,7 @@ export default function AdminMarketingContent() {
   const { organization, loading: orgLoading } = useOrganization();
   const { selectedOrganization, isOrganizationView } = useOrganizationView();
   const { locale } = useLocale();
-  const isUS = locale === 'en-US';
+  const isUS = getRegionConfig(locale).spelling === 'american';
   const customizeWord = isUS ? 'Customize' : 'Customise';
   const customizedWord = isUS ? 'customized' : 'customised';
   const organizationWord = isUS ? 'organization' : 'organisation';

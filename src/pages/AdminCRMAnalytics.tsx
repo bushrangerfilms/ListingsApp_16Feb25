@@ -194,7 +194,7 @@ export default function AdminCRMAnalytics() {
         });
 
         const timeline = last30Days.map(date => ({
-          date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), // locale-allowed: admin chart x-axis label, deliberate Mon DD format
           count: activities.filter(a => a.created_at?.startsWith(date)).length
         }));
 

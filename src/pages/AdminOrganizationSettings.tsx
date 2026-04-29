@@ -24,6 +24,7 @@ import { getRegionConfig } from "@/lib/regionConfig";
 import type { SupportedLocale } from "@/lib/i18n";
 import { detectLocaleFromAddress, type AddressLocaleHit } from "@/lib/locale/detectFromAddress";
 import { LOCALE_NAMES } from "@/lib/locale/markets";
+import { DEFAULT_LOCALE } from "@/lib/locale/config";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,7 +63,7 @@ export default function AdminOrganizationSettings() {
 
   // Use the viewed organization if super admin is viewing as another org
   const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
-  const regionConfig = getRegionConfig((targetOrg?.locale || 'en-IE') as SupportedLocale);
+  const regionConfig = getRegionConfig((targetOrg?.locale || DEFAULT_LOCALE) as SupportedLocale);
   const regulatory = regionConfig.legal.regulatory;
 
   const form = useForm<OrganizationFormData>({
@@ -393,7 +394,7 @@ export default function AdminOrganizationSettings() {
             <AlertDialogTitle>Switch account locale?</AlertDialogTitle>
             <AlertDialogDescription>
               Your business address looks {pendingLocaleDecision ? LOCALE_NAMES[pendingLocaleDecision.hit.locale] : ''}-based, but your account is set to{' '}
-              {LOCALE_NAMES[(targetOrg?.locale || 'en-IE') as keyof typeof LOCALE_NAMES]}. Switching changes the currency on your billing page,
+              {LOCALE_NAMES[(targetOrg?.locale || DEFAULT_LOCALE) as keyof typeof LOCALE_NAMES]}. Switching changes the currency on your billing page,
               the regulatory body label, and other locale-driven defaults. The address itself
               will save either way.
             </AlertDialogDescription>

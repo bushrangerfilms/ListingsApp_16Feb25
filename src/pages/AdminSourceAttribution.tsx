@@ -167,7 +167,7 @@ export default function AdminSourceAttribution() {
         const dateStr = date.toISOString().split("T")[0];
 
         const dataPoint: TimeSeriesSource = {
-          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }), // locale-allowed: admin chart x-axis label, deliberate Mon DD format
         };
 
         sources.forEach((source) => {

@@ -228,7 +228,7 @@ export default function AdminMatchingAnalytics() {
         ).length;
 
         timeSeries.push({
-          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }), // locale-allowed: admin chart x-axis label, deliberate Mon DD format
           matches: dayMatches,
           engaged: dayEngaged,
         });

@@ -315,7 +315,7 @@ export default function AdminPredictiveAnalytics() {
       const dayActivities = activities.filter((a) => a.created_at?.startsWith(dateStr)).length;
 
       trends.push({
-        date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }), // locale-allowed: admin chart x-axis label, deliberate Mon DD format
         actual: dayActivities,
       });
     }
@@ -333,7 +333,7 @@ export default function AdminPredictiveAnalytics() {
       const confidence = Math.max(0, 100 - (i * 10)); // Confidence decreases further out
 
       trends.push({
-        date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }), // locale-allowed: admin chart x-axis label, deliberate Mon DD format
         predicted,
         confidence,
       });
