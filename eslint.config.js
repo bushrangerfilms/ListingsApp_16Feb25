@@ -16,11 +16,7 @@ const LOCALE_CANONICAL_FILES = [
   "supabase/functions/_shared/locale.config.ts",
   // Back-compat shim over the canonical
   "src/lib/regionConfig/index.ts",
-  // Pre-canonical edge-function locale data + postcode helpers — older twin
-  // of the canonical above. Will be migrated to the canonical mirror in a
-  // later checkpoint; exempt for now because they DO need to carry the
-  // per-locale literals that drive user-facing output.
-  "supabase/functions/_shared/locale-config.ts",
+  // Postcode helpers — per-market regex/labels ARE the data.
   "supabase/functions/_shared/postcodes.ts",
   "src/lib/regionConfig/postcodes.ts",
   // Locale-detection helpers — input is a raw locale string; comparisons

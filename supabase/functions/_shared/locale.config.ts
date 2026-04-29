@@ -3,7 +3,7 @@
 // repo, then run `npx tsx locale-config/sync.ts` to regenerate every mirror.
 // Drift between mirrors is detected at CI time via the SHA below — a mirror
 // is in-sync iff sha256(content-after-banner) === canonical-sha256.
-// canonical-sha256: 76bb82afec1e20cac1bc7eab8bfd65136c93eccb202dcd1da98385eb5b00a0bc
+// canonical-sha256: 6a722901689faa73ef7560517d2dafde38ac9bebc14ea419ccfdc8f75ca6a346
 
 /**
  * locale.config.ts — CANONICAL SOURCE OF TRUTH FOR ALL LOCALE-SPECIFIC BEHAVIOUR.
@@ -832,4 +832,55 @@ export function licenceRegex(config: RegionConfig): RegExp | null {
   const src = config.legal.regulatory.licencePatternSource;
   if (!src) return null;
   return new RegExp(src, config.legal.regulatory.licencePatternFlags ?? '');
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// AI prompt fragment helpers — used by edge functions that send region-aware
+// prompts to Claude / Gemini.  Each helper returns a small chunk of text that
+// can be concatenated into a system prompt; they all read from RegionConfig
+// so a region-specific prompt is built mechanically rather than hand-rolled.
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Format a date using a region's locale.  Long-form ("Friday, 5 April 2026"). */
+export function formatEdgeDate(date: Date, config: RegionConfig): string {
+  return date.toLocaleDateString(config.locale, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+/** AI prompt fragment describing the region's measurement / currency / energy units. */
+export function getUnitsPromptSection(config: RegionConfig): string {
+  const m = config.property.measurements;
+  const e = config.property.energyRatings;
+  const lines = [
+    `Measurements: Use ${m.areaLabel} (${m.areaSymbol}) for property sizes.`,
+    `Land: Use ${m.landUnit} for land areas.`,
+    `Currency: Use ${config.financial.currencySymbol} (${config.financial.currency}).`,
+    `Dates: Use ${config.dateTime.dateFormat} format.`,
+  ];
+  if (e.enabled) {
+    lines.push(`Energy Rating: Use ${e.system} (${e.label}).`);
+  }
+  return lines.join('\n');
+}
+
+/** AI prompt fragment with example towns + price examples for the region. */
+export function getLocationExamplesPrompt(config: RegionConfig): string {
+  const ex = config.aiPromptHints.locationExamples;
+  return `Example locations: ${ex.towns.join(', ')}. Example prices: ${ex.priceExamples.join(', ')}.`;
+}
+
+/** AI prompt fragment describing the region's property / legal terminology. */
+export function getTerminologyPrompt(config: RegionConfig): string {
+  const t = config.legal.terminology;
+  return [
+    `Use "${t.apartment}" (not "flat" or "condo" unless that's the local term).`,
+    `Use "${t.terrace}" for row houses.`,
+    `Use "${t.groundFloor}" for the entry level.`,
+    `Use "${t.estateAgent}" for the property professional.`,
+    `Use "${t.solicitor}" for the legal professional.`,
+    `Use ${config.spelling} English spelling.`,
+  ].join('\n');
 }
