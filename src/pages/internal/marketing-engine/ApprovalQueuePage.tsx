@@ -55,6 +55,7 @@ interface MarketingPost {
 }
 
 const STATUS_TONE: Record<string, string> = {
+  planning: "bg-slate-500/10 text-slate-600 border-slate-500/20",
   review_queue: "bg-amber-500/10 text-amber-600 border-amber-500/20",
   pending_approval: "bg-amber-500/10 text-amber-600 border-amber-500/20",
   approved: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
@@ -75,10 +76,14 @@ export default function ApprovalQueuePage() {
       const { data } = await supabase
         .from("marketing_engine_posts")
         .select("*")
-        .in("status", ["review_queue", "pending_approval", "approved", "rejected", "failed"])
+        .in("status", ["planning", "review_queue", "pending_approval", "approved", "rejected", "failed"])
         .order("created_at", { ascending: false })
         .limit(50);
       return (data ?? []) as MarketingPost[];
+    },
+    refetchInterval: (query) => {
+      const data = query.state.data as MarketingPost[] | undefined;
+      return (data ?? []).some((p) => p.status === "planning") ? 5000 : false;
     },
   });
 
@@ -120,8 +125,8 @@ export default function ApprovalQueuePage() {
       return json;
     },
     onSuccess: (data) => {
-      toast.success("Draft generated", {
-        description: `Topic: ${data.topic}. Cost: $${Number(data.cost_usd).toFixed(4)}.`,
+      toast.success("Draft started", {
+        description: `Topic: ${data.topic}. Producer running in background — the card will populate when ready (~30s for static, ~3min for video).`,
       });
       queryClient.invalidateQueries({ queryKey: ["marketing-engine-queue"] });
       if (data.post_id) setPendingScrollId(data.post_id);
