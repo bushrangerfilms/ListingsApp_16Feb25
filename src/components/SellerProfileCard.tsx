@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Mail, Phone, MapPin, Calendar, FileText, Zap, Target, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useAddressConfig } from "@/hooks/useRegionConfig";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { SequenceControls } from "@/components/SequenceControls";
 import { EmailAnalytics } from "@/components/EmailAnalytics";
@@ -44,7 +45,7 @@ const SELLER_STAGES = [
 ];
 
 export function SellerProfileCard({ seller, onUpdate, isNew = false }: SellerProfileCardProps) {
-  const { locale } = useLocale();
+  const { locale, formatCurrency } = useLocale();
   const [showTimeline, setShowTimeline] = useState(false);
   const [automationStatus, setAutomationStatus] = useState<{ active: boolean; sequence_name: string } | null>(null);
   const [leadSubmission, setLeadSubmission] = useState<any>(null);
@@ -243,7 +244,7 @@ export function SellerProfileCard({ seller, onUpdate, isNew = false }: SellerPro
                   <div className="text-muted-foreground">Estimate</div>
                   <div className="font-medium flex items-center gap-1.5">
                     <TrendingUp className="h-3.5 w-3.5 text-green-600" />
-                    {`€${leadSubmission.estimate_low.toLocaleString()} – €${leadSubmission.estimate_high.toLocaleString()}`}
+                    {`${formatCurrency(leadSubmission.estimate_low)} – ${formatCurrency(leadSubmission.estimate_high)}`}
                     {leadSubmission.confidence && (
                       <Badge variant="outline" className="text-[10px]">{leadSubmission.confidence}</Badge>
                     )}
@@ -323,10 +324,10 @@ export function SellerProfileCard({ seller, onUpdate, isNew = false }: SellerPro
 }
 
 // Key → display-label mapping mirrored from worthEstimateSteps in
-// LeadMagnetQuiz.tsx. TODO (Issue #6): lift to shared locale config
-// so non-Irish markets can swap labels.
+// LeadMagnetQuiz.tsx.  The `eircode` key carries the IE default label which
+// is overridden at render time below via addressConfig.postalCodeLabel.
 const QUIZ_FIELD_LABELS: Record<string, string> = {
-  eircode: "Eircode",
+  eircode: "Eircode", // locale-allowed: IE default, overridden at render via addressConfig.postalCodeLabel
   town: "Town / area (user-typed)",
   county: "County (user-typed)",
   property_type: "Property type",
@@ -374,6 +375,21 @@ function QuizResponsesSection({
   resolvedCounty,
   resolutionConfidence,
 }: QuizResponsesSectionProps) {
+  const addressConfig = useAddressConfig();
+
+  // Override the IE-default labels for fields whose name varies by market.
+  const fieldLabel = (key: string): string => {
+    if (key === "eircode") return addressConfig.postalCodeLabel;
+    return QUIZ_FIELD_LABELS[key] ?? key;
+  };
+
+  // Location prefix is "Co. " only for IE; everywhere else the region/state
+  // appears unprefixed.
+  const formatLocation = (town: string, region: string): string =>
+    addressConfig.countyPrefix
+      ? `${town}, ${addressConfig.countyPrefix}${region}`
+      : `${town}, ${region}`;
+
   const renderedKeys = QUIZ_FIELD_ORDER.filter((k) => {
     const v = answers[k];
     return v !== undefined && v !== null && v !== "";
@@ -388,7 +404,7 @@ function QuizResponsesSection({
         <div className="p-3 rounded-md bg-muted/40 space-y-1">
           <p className="text-xs text-muted-foreground">AI-resolved location</p>
           <p className="text-sm font-medium">
-            {resolvedTown}, Co. {resolvedCounty}
+            {formatLocation(resolvedTown, resolvedCounty)}
             {resolutionConfidence && (
               <Badge variant="outline" className="ml-2 text-[10px]">
                 {resolutionConfidence} confidence
@@ -401,7 +417,7 @@ function QuizResponsesSection({
         <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
           {renderedKeys.map((key) => (
             <Fragment key={key}>
-              <dt className="text-muted-foreground">{QUIZ_FIELD_LABELS[key] ?? key}</dt>
+              <dt className="text-muted-foreground">{fieldLabel(key)}</dt>
               <dd className="font-medium">{String(answers[key])}</dd>
             </Fragment>
           ))}
