@@ -8,7 +8,7 @@ export const COMPANY_INFO = {
   registeredAddress: {
     street: "Castleblakeney",
     city: "Ballinasloe",
-    county: "Co. Galway",
+    county: "Co. Galway", // locale-allowed: this is the platform company's own registered Irish address — fixed truth, not user-facing formatted output
     country: "Ireland",
     eircode: "H53 YA97",
   },

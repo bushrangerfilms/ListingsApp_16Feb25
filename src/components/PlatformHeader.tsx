@@ -266,7 +266,7 @@ export const PlatformHeader = () => {
                                   <p className="text-sm font-medium truncate">{enquiry.name}</p>
                                   <p className="text-xs text-muted-foreground truncate">{enquiry.property_title}</p>
                                   <p className="text-xs text-muted-foreground mt-1">
-                                    {new Date(enquiry.created_at).toLocaleDateString('en-US', { 
+                                    {new Date(enquiry.created_at).toLocaleDateString('en-US', { // locale-allowed: super-admin org header recent activity — deliberate Mon DD HH:MM format
                                       month: 'short', 
                                       day: 'numeric',
                                       hour: '2-digit',
@@ -306,7 +306,7 @@ export const PlatformHeader = () => {
                                   <p className="text-sm font-medium truncate">{valuation.name}</p>
                                   <p className="text-xs text-muted-foreground truncate">{valuation.property_address}</p>
                                   <p className="text-xs text-muted-foreground mt-1">
-                                    {new Date(valuation.created_at).toLocaleDateString('en-US', { 
+                                    {new Date(valuation.created_at).toLocaleDateString('en-US', { // locale-allowed: super-admin org header recent activity — deliberate Mon DD HH:MM format
                                       month: 'short', 
                                       day: 'numeric',
                                       hour: '2-digit',

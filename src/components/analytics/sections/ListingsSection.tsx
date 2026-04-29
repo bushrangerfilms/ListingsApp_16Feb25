@@ -41,7 +41,7 @@ export default function ListingsSection() {
         const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
         const dateStr = date.toISOString().split("T")[0];
         timeSeries.push({
-          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }), // locale-allowed: admin chart x-axis label, deliberate Mon DD format
           views: (views || []).filter((v) => v.viewed_at?.startsWith(dateStr)).length,
           enquiries: (enquiries || []).filter((e) => e.created_at?.startsWith(dateStr)).length,
         });

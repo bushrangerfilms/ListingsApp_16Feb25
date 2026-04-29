@@ -12,6 +12,7 @@ import { useOrganizationView } from '@/contexts/OrganizationViewContext';
 import { supabase } from '@/integrations/supabase/client';
 import { SITE_COPY_FIELDS, SITE_COPY_GROUPS, DEFAULT_LOCALE, SiteCopyField } from '@/lib/siteContentKeys';
 import { useLocale } from '@/hooks/useLocale';
+import { getRegionConfig } from '@/lib/locale/config';
 
 interface ContentValues {
   [key: string]: string;
@@ -20,7 +21,7 @@ interface ContentValues {
 export default function AdminContent() {
   const { toast } = useToast();
   const { locale } = useLocale();
-  const customizeWord = locale === 'en-US' ? 'Customize' : 'Customise';
+  const customizeWord = getRegionConfig(locale).spelling === 'american' ? 'Customize' : 'Customise';
   const { organization } = useOrganization();
   const { selectedOrganization, isOrganizationView } = useOrganizationView();
   const [values, setValues] = useState<ContentValues>({});

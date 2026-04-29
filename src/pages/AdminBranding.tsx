@@ -9,6 +9,7 @@ import { useOrganizationView } from "@/contexts/OrganizationViewContext";
 import { updateOrganizationProfile } from "@/lib/organizationHelpers";
 import { Loader2, Pipette, RotateCcw, ExternalLink } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
+import { getRegionConfig } from "@/lib/locale/config";
 
 interface ColorPickerProps {
   label: string;
@@ -97,7 +98,7 @@ export default function AdminBranding() {
   const { organization, loading } = useOrganization();
   const { selectedOrganization, isOrganizationView } = useOrganizationView();
   const { locale } = useLocale();
-  const isUS = locale === 'en-US';
+  const isUS = getRegionConfig(locale).spelling === 'american';
   const colourWord = isUS ? 'Color' : 'Colour';
   const coloursWord = isUS ? 'colors' : 'colours';
   const customiseWord = isUS ? 'Customize' : 'Customise';

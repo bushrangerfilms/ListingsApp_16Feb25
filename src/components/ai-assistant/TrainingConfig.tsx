@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Save } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
+import { getRegionConfig } from "@/lib/locale/config";
 
 const personalities = [
   { value: "professional", label: "Professional", description: "Formal and business-focused" },
@@ -60,7 +61,7 @@ export const TrainingConfig = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { t, locale } = useLocale();
-  const customizeWord = locale === 'en-US' ? 'Customize' : 'Customise';
+  const customizeWord = getRegionConfig(locale).spelling === 'american' ? 'Customize' : 'Customise';
   const [hasChanges, setHasChanges] = useState(false);
 
   const { data: config, isLoading } = useQuery({

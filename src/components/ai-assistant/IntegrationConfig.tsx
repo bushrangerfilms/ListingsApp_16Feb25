@@ -12,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Save, Eye, Code, Copy, Check, ExternalLink } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useLocale } from "@/hooks/useLocale";
+import { getRegionConfig } from "@/lib/locale/config";
 
 interface OrganizationData {
   organization_id: string;
@@ -25,7 +26,7 @@ export const IntegrationConfig = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { t, locale } = useLocale();
-  const customizeWord = locale === 'en-US' ? 'Customize' : 'Customise';
+  const customizeWord = getRegionConfig(locale).spelling === 'american' ? 'Customize' : 'Customise';
   const [hasChanges, setHasChanges] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedEmbed, setCopiedEmbed] = useState(false);

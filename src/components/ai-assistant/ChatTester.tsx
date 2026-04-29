@@ -63,7 +63,7 @@ export const ChatTester = () => {
       // Mock response based on question
       let mockResponse = "";
       if (userMessage.toLowerCase().includes("3-bed")) {
-        mockResponse = "I'd be happy to help you find 3-bedroom houses under €300k! Based on our current listings, we have several great options in Waterford area. Would you like me to show you properties in specific neighbourhoods, or would you prefer to see all available options?";
+        mockResponse = "I'd be happy to help you find 3-bedroom houses under €300k! Based on our current listings, we have several great options in Waterford area. Would you like me to show you properties in specific neighbourhoods, or would you prefer to see all available options?"; // locale-allowed: ChatTester is super-admin AI training tool; mock conversation copy uses Bridge Auctioneers (IE) example data
       } else if (userMessage.toLowerCase().includes("market")) {
         mockResponse = "The Waterford property market has been quite active recently. We're seeing steady demand for family homes, with average prices holding stable. First-time buyers are particularly active, and properties with good energy ratings are attracting premium interest. Would you like more specific information about any particular area?";
       } else if (userMessage.toLowerCase().includes("services")) {

@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useLocale } from "@/hooks/useLocale";
+import { getRegionConfig } from "@/lib/locale/config";
 import {
   Table,
   TableBody,
@@ -58,7 +59,7 @@ type SortDirection = "asc" | "desc";
 
 export default function AdminListingAnalytics() {
   const { locale } = useLocale();
-  const enquiriesWord = locale === 'en-US' ? 'Inquiries' : 'Enquiries';
+  const enquiriesWord = getRegionConfig(locale).spelling === 'american' ? 'Inquiries' : 'Enquiries';
   const [listingMetrics, setListingMetrics] = useState<ListingMetrics[]>([]);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,7 +153,7 @@ export default function AdminListingAnalytics() {
         const dayEnquiries = enquiries.filter((e) => e.created_at?.startsWith(dateStr)).length;
 
         timeSeries.push({
-          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }), // locale-allowed: admin chart x-axis label, deliberate Mon DD format
           views: dayViews,
           enquiries: dayEnquiries,
         });
@@ -398,7 +399,7 @@ export default function AdminListingAnalytics() {
                           </TableCell>
                           <TableCell>
                             {listing.lastViewed
-                              ? new Date(listing.lastViewed).toLocaleDateString("en-US", {
+                              ? new Date(listing.lastViewed).toLocaleDateString("en-US", { // locale-allowed: super-admin listing analytics — deliberate Mon DD HH:MM format
                                   month: "short",
                                   day: "numeric",
                                   hour: "2-digit",

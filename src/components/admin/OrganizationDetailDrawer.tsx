@@ -9,6 +9,7 @@ import {
   PlanDefinition,
 } from '@/lib/admin/adminApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { DEFAULT_LOCALE } from '@/lib/locale/config';
 import { useSuperAdminPermissions } from '@/hooks/useSuperAdminPermissions';
 import {
   Sheet,
@@ -973,7 +974,7 @@ export function OrganizationDetailDrawer({
         onClose={() => setRegionSettingsOpen(false)}
         organizationId={organizationId || ''}
         organizationName={org?.business_name || ''}
-        currentLocale={org?.locale || 'en-IE'}
+        currentLocale={org?.locale || DEFAULT_LOCALE}
         currentCurrency={org?.currency || 'EUR'}
         currentTimezone={org?.timezone || 'Europe/Dublin'}
       />

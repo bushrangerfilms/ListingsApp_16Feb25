@@ -4,6 +4,7 @@ import { EmailSettingsCard } from "@/components/EmailSettingsCard";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
+import { getRegionConfig } from "@/lib/locale/config";
 
 export default function AdminEmailSettings() {
   const { organization, loading } = useOrganization();
@@ -35,7 +36,7 @@ export default function AdminEmailSettings() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Email Settings</h2>
-        <p className="text-muted-foreground">Configure how emails are sent from your {locale === 'en-US' ? 'organization' : 'organisation'}</p>
+        <p className="text-muted-foreground">Configure how emails are sent from your {getRegionConfig(locale).spelling === 'american' ? 'organization' : 'organisation'}</p>
       </div>
 
       <EmailSettingsCard organizationId={targetOrg.id} />

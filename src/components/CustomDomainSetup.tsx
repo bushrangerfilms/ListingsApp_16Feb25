@@ -28,6 +28,8 @@ interface CustomDomainSetupProps {
   onDomainChange: (domain: string) => void;
 }
 
+const DOMAIN_REGISTRAR_PRICING_HINT = "Don't have a domain? You can buy one from providers like Namecheap, GoDaddy, or Cloudflare for around $10-15/year."; // locale-allowed: third-party domain registrar USD pricing, not platform pricing
+
 export function CustomDomainSetup({
   organizationId,
   organizationName,
@@ -306,7 +308,7 @@ export function CustomDomainSetup({
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Don't have a domain? You can buy one from providers like Namecheap, GoDaddy, or Cloudflare for around $10-15/year.
+              {DOMAIN_REGISTRAR_PRICING_HINT}
             </p>
 
             <div className="bg-muted/50 rounded-md p-3">

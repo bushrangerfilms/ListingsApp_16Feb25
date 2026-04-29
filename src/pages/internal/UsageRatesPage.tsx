@@ -67,6 +67,11 @@ const FEATURE_TYPE_LABELS: Record<string, { label: string; hint: string }> = Obj
   FEATURE_TYPE_OPTIONS.map(opt => [opt.value, { label: opt.label, hint: opt.hint }])
 );
 
+const pricingNoteText = 'At the current lowest pack price of €0.25 per credit, costs shown below are approximate Euro values. Changes apply immediately across AutoListing.'; // locale-allowed: super-admin usage-rates page — credit costs tracked in EUR (platform accounting currency)
+const calculateEuroCost = (credits: number): string => (credits * 0.25).toFixed(2);
+const formatEuroCost = (credits: number): string => `€${calculateEuroCost(credits)}`; // locale-allowed: super-admin usage-rates page — EUR is platform accounting currency
+const approxCostLine = (credits: number): string => `Approximate cost: €${calculateEuroCost(credits)} at €0.25/credit`; // locale-allowed: super-admin usage-rates page — EUR is platform accounting currency
+
 export default function UsageRatesPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -161,10 +166,6 @@ export default function UsageRatesPage() {
     return FEATURE_TYPE_LABELS[featureType]?.hint || '';
   };
 
-  const calculateEuroCost = (credits: number) => {
-    return (credits * 0.25).toFixed(2);
-  };
-
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -209,8 +210,7 @@ export default function UsageRatesPage() {
         <CardHeader>
           <CardTitle>Pricing Note</CardTitle>
           <CardDescription>
-            At the current lowest pack price of €0.25 per credit, costs shown below are approximate Euro values.
-            Changes apply immediately across AutoListing.
+            {pricingNoteText}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -264,7 +264,7 @@ export default function UsageRatesPage() {
                       {rate.credits_per_use}
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      €{calculateEuroCost(rate.credits_per_use)}
+                      {formatEuroCost(rate.credits_per_use)}
                     </TableCell>
                     <TableCell>
                       <Badge variant={rate.is_active ? 'default' : 'secondary'}>
@@ -375,7 +375,7 @@ export default function UsageRatesPage() {
                 data-testid="input-credits-per-use"
               />
               <p className="text-xs text-muted-foreground">
-                Approximate cost: €{calculateEuroCost(formData.credits_per_use)} at €0.25/credit
+                {approxCostLine(formData.credits_per_use)}
               </p>
             </div>
             <div className="space-y-2">

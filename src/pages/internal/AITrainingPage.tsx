@@ -50,9 +50,9 @@ const FEATURE_TYPES = [
 
 const LOCALES = [
   { value: '', label: 'All Locales (Default)' },
-  { value: 'en-IE', label: 'English (Ireland)' },
-  { value: 'en-GB', label: 'English (UK)' },
-  { value: 'en-US', label: 'English (US)' },
+  { value: 'en-IE', label: 'English (Ireland)' }, // locale-allowed: select option value, market locale id is the data
+  { value: 'en-GB', label: 'English (UK)' }, // locale-allowed: select option value, market locale id is the data
+  { value: 'en-US', label: 'English (US)' }, // locale-allowed: select option value, market locale id is the data
 ];
 
 interface InstructionForm {

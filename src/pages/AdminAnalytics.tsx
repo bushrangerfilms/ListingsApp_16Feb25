@@ -79,7 +79,7 @@ export default function AdminAnalytics() {
           ).length || 0;
 
           return {
-            date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            date: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), // locale-allowed: admin chart x-axis label, deliberate Mon DD format
             enquiries: enquiriesCount,
             valuations: valuationsCount,
             views: viewsCount

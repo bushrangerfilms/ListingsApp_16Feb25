@@ -154,7 +154,7 @@ export default function AdminUnifiedAnalytics() {
         const dateStr = date.toISOString().split("T")[0];
         
         timeSeries.push({
-          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          date: date.toLocaleDateString("en-US", { month: "short", day: "numeric" }), // locale-allowed: admin chart x-axis label, deliberate Mon DD format
           listings: listingViews.filter((v) => v.created_at?.startsWith(dateStr)).length,
           enquiries: enquiries.filter((e) => e.created_at?.startsWith(dateStr)).length,
           emails: emailsSent.filter((e) => e.sent_at?.startsWith(dateStr)).length,

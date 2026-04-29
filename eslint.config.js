@@ -47,99 +47,23 @@ const LOCALE_CANONICAL_FILES = [
   "scripts/render-brochure.tsx",
   // Auto-generated DB types — can't be edited.
   "src/integrations/supabase/types.ts",
+  // Locale picker UI — the LOCALE_OPTIONS table IS the data.
+  "src/components/admin/OrganizationLocaleSelector.tsx",
+  // Locale preview toggle — LOCALE_LABELS table IS the data.
+  "src/components/admin/LocalePreviewToggle.tsx",
+  // Site-content keys — module exports its own DEFAULT_LOCALE constant.
+  "src/lib/siteContentKeys.ts",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────
-// Locale-rules legacy allowlist  —  files that pre-date the canonical rollout
-// and still contain hardcoded locale literals.  Each entry is a TODO; ship a
-// per-file cleanup PR that routes through `regionConfig` / `formatPrice` /
-// `formatLocation`, then remove the file from this list.  Once the list is
-// empty, the legacy work is done.
+// Locale-rules legacy allowlist  —  empty.  Every file that pre-dated the
+// canonical rollout has either been migrated to `regionConfig` / `formatPrice`
+// / `formatLocation` helpers or carries an explicit same-line
+// `// locale-allowed: <reason>` waiver.  Add entries here only as a temporary
+// staging area when introducing a new file that can't yet route through the
+// canonical helpers; pair every entry with a follow-up cleanup PR.
 // ─────────────────────────────────────────────────────────────────────────
-const LEGACY_LOCALE_ALLOWLIST = [
-  // (Lead-magnet quiz + landing pages cleaned up — they no longer carry
-  // hardcoded "BER Rating" / locale-id literals.  "Eircode" defaults remain
-  // behind same-line `// locale-allowed:` waivers because the metadata is
-  // overridden at render via postcodeConfig.label / localizeQuestion.)
-  // (CRM lead view SellerProfileCard cleaned up in cleanup PR — €
-  // estimate now uses formatCurrency, "Co." prefix gated on
-  // addressConfig.countyPrefix, eircode label via postalCodeLabel.)
-  // (Listing creation/review/edit + ValuationRequest + PropertyDetails were
-  // migrated in the listing-forms cleanup PR — they no longer carry hardcoded
-  // locale literals.  listingSchema.ts entry below also removed.)
-  // (Brochure editors cluster cleaned up in cleanup PR — DEFAULT_LOCALE
-  // fallbacks, addressConfig.postalCodeLabel for Eircode placeholder,
-  // certificationLogos moved to canonical-files exemption since `locales`
-  // is the data, designTokens spaceCurrency regex carries a same-line
-  // waiver.  BrochureHeaderEditor was not on this list.)
-  // Marketing footer / legal / public pages — IE company info + €fallbacks.
-  "src/components/marketing/MarketingFooter.tsx",
-  "src/pages/marketing/SupportPage.tsx",
-  "src/pages/marketing/MarketingHome.tsx",
-  "src/pages/marketing/PricingPage.tsx",
-  "src/pages/marketing/FeaturesPage.tsx",
-  "src/pages/TermsConditions.tsx",
-  "src/pages/PrivacyPolicy.tsx",
-  "src/pages/CookiePolicy.tsx",
-  // Public site / shop window — €fallback when org currency is null.
-  "src/pages/AdminShopWindowDisplay.tsx",
-  "src/pages/ShopWindowDisplay.tsx",
-  "src/pages/PublicListings.tsx",
-  // Listings schema helpers (listingSchema.ts cleaned up in listing-forms PR).
-  "src/lib/listingSearch.ts",
-  "src/config/company.ts",
-  // Admin pages — €in usage rates, IE defaults.
-  "src/pages/internal/UsageRatesPage.tsx",
-  "src/pages/internal/AITrainingPage.tsx",
-  "src/pages/internal/PilotSettingsPage.tsx",
-  "src/pages/AdminBranding.tsx",
-  "src/pages/AdminEmailSettings.tsx",
-  "src/pages/AdminMatchingAnalytics.tsx",
-  "src/pages/AdminEmailCampaignAnalytics.tsx",
-  "src/pages/AdminWebsiteSettings.tsx",
-  "src/pages/AdminCRMAnalytics.tsx",
-  "src/pages/AdminTeamPerformance.tsx",
-  "src/pages/AdminSourceAttribution.tsx",
-  "src/pages/AdminPredictiveAnalytics.tsx",
-  "src/pages/AdminMarketingContent.tsx",
-  "src/pages/AdminAnalytics.tsx",
-  "src/pages/AdminUnifiedAnalytics.tsx",
-  "src/pages/AdminContent.tsx",
-  "src/pages/AdminListingAnalytics.tsx",
-  "src/pages/AdminOrganizationSettings.tsx",
-  // Admin components touching locale.
-  "src/components/admin/OrganizationLocaleSelector.tsx",
-  "src/components/admin/OrganizationDetailDrawer.tsx",
-  "src/components/admin/LocalePreviewToggle.tsx",
-  // AI assistant — has IE example outputs in mock content.
-  "src/components/ai-assistant/ChatTester.tsx",
-  "src/components/ai-assistant/IntegrationConfig.tsx",
-  "src/components/ai-assistant/TrainingConfig.tsx",
-  // Misc components.
-  "src/components/PublicHeader.tsx",
-  "src/components/PlatformHeader.tsx",
-  "src/components/CustomDomainSetup.tsx",
-  "src/components/analytics/sections/ListingsSection.tsx",
-  "src/components/analytics/sections/OverviewSection.tsx",
-  // Hooks & lib.
-  "src/hooks/useFeatureFlag.ts",
-  "src/hooks/useOrgContent.ts",
-  "src/lib/siteContentKeys.ts",
-  "src/lib/organizationHelpers.ts",
-  "src/lib/admin/adminApi.ts",
-  // App/routing/contexts.
-  "src/App.tsx",
-  "src/contexts/OrganizationViewContext.tsx",
-  "src/contexts/OrganizationContext.tsx",
-  // (Listings edge functions all migrated — see Tier 4 task 19 batch
-  // cleanup PR.  al-chat / create-organization / enhance-listing-copy /
-  // extract-property-details / generate-brochure-content / lead-magnet-
-  // activity-digest / lead-magnet-api / notify-agent / process-email-
-  // sequences / stripe-setup / submit-property-enquiry / submit-valuation-
-  // request / update-listing-details now use DEFAULT_LOCALE for fallbacks,
-  // ${currencySymbol} interpolation in AI prompts, and same-line waivers
-  // on legacy back-compat payload keys.)
-];
+const LEGACY_LOCALE_ALLOWLIST = [];
 
 const LOCALE_RULES_ON = {
   "locale/no-hardcoded-currency-symbol": "error",
@@ -177,5 +101,7 @@ export default tseslint.config(
   // Canonical / locale-data files — locale literals here are the data.
   { files: LOCALE_CANONICAL_FILES, rules: LOCALE_RULES_OFF },
   // Legacy allowlist — files awaiting per-file cleanup PRs.
-  { files: LEGACY_LOCALE_ALLOWLIST, rules: LOCALE_RULES_OFF },
+  ...(LEGACY_LOCALE_ALLOWLIST.length
+    ? [{ files: LEGACY_LOCALE_ALLOWLIST, rules: LOCALE_RULES_OFF }]
+    : []),
 );

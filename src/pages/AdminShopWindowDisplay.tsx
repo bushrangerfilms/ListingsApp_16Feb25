@@ -17,6 +17,7 @@ import { DEFAULT_DISPLAY_CONFIG, ALL_DISPLAY_STATUSES } from '@/lib/display-sign
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Monitor, ExternalLink, Copy, BarChart3, Plus, Trash2, Pencil } from 'lucide-react';
 import { useDisplayAnalyticsQuery } from '@/hooks/useDisplayAnalyticsQuery';
+import { DEFAULT_LOCALE } from '@/lib/locale/config';
 
 export default function AdminShopWindowDisplay() {
   const { organization, loading: orgLoading } = useOrganization();
@@ -698,7 +699,7 @@ function PreviewSlide({
   let priceText = '';
   if (config.show_price && listing.price) {
     try {
-      priceText = new Intl.NumberFormat(organization.locale || 'en-IE', {
+      priceText = new Intl.NumberFormat(organization.locale || DEFAULT_LOCALE, {
         style: 'currency', currency: organization.currency || 'EUR',
         minimumFractionDigits: 0, maximumFractionDigits: 0,
       }).format(listing.price);
