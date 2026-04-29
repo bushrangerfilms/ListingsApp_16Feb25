@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle, AlertCircle, Home, ArrowRight, ArrowLeft, TrendingUp, FileText, Scale, Calendar, Wrench, DollarSign, Phone, MessageSquare } from "lucide-react";
 import { useLocale } from "@/hooks/useLocale";
 import { getPostcodeConfig, type PostcodeConfig } from "@/lib/regionConfig/postcodes";
+import { getRegionConfig, countryToLocale } from "@/lib/locale/config";
 import { ContactCTA } from "./ContactCTA";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -526,9 +527,9 @@ export function LeadMagnetQuiz() {
               {normalizedType === "WORTH_ESTIMATE" && gatedResult.resolved_town && gatedResult.resolved_county && (
                 <p className="text-sm text-muted-foreground">
                   {gatedResult.resolution_confidence === "low" ? (
-                    <>Estimate based on <span className="font-medium">{gatedResult.resolved_town}, Co. {gatedResult.resolved_county}</span> as a best guess.</>
+                    <>Estimate based on <span className="font-medium">{gatedResult.resolved_town}, {postcodeConfig.countryCode === "IE" ? `Co. ${gatedResult.resolved_county}` : gatedResult.resolved_county}</span> as a best guess.</>
                   ) : (
-                    <>Based on your Eircode, we found your property near <span className="font-medium">{gatedResult.resolved_town}, Co. {gatedResult.resolved_county}</span>.</>
+                    <>Based on your {postcodeConfig.label}, we found your property near <span className="font-medium">{gatedResult.resolved_town}, {postcodeConfig.countryCode === "IE" ? `Co. ${gatedResult.resolved_county}` : gatedResult.resolved_county}</span>.</>
                   )}
                 </p>
               )}
@@ -1412,7 +1413,7 @@ const readyToSellSteps = [
       },
       {
         key: "ber_rating",
-        label: "BER Rating (if known)",
+        label: "BER Rating (if known)", // locale-allowed: IE default, overridden by localizeQuestion->energyRatings.label at render
         type: "select",
         required: false,
         options: [
@@ -1492,18 +1493,12 @@ function localizeQuestion(question: any, countryCode: string): any {
     }
   }
 
-  // Energy rating label adapt. IE BER and GB EPC both use A-G; others use
-  // different scales, but the "Don't know" fallback covers everyone.
+  // Energy-rating label comes from the canonical regionConfig.  IE BER and
+  // GB EPC both use A-G; others use different scales, but the "Don't know"
+  // fallback covers everyone.
   if (q.key === "ber_rating") {
-    const energyLabels: Record<string, string> = {
-      IE: "BER Rating",
-      GB: "EPC Rating",
-      US: "Energy Rating",
-      CA: "EnerGuide Rating",
-      AU: "NatHERS Rating",
-      NZ: "Home Energy Rating",
-    };
-    const label = energyLabels[countryCode] || "Energy Rating";
+    const cfg = getRegionConfig(countryToLocale(countryCode));
+    const label = cfg.property.energyRatings.label;
     if (label !== q.label) q = { ...q, label };
   }
 
@@ -1532,7 +1527,7 @@ const worthEstimateSteps = [
     // questions kept as metadata for handleSubmit / validation introspection;
     // the actual UI is rendered by PropertyLocationStep.
     questions: [
-      { key: "eircode", label: "Eircode", type: "text", required: false },
+      { key: "eircode", label: "Eircode", type: "text", required: false }, // locale-allowed: IE default, overridden by postcodeConfig.label at render
       { key: "town", label: "Town or area", type: "text", required: false },
       { key: "county", label: "County", type: "select", required: false, options: IE_COUNTIES },
     ],
@@ -1659,7 +1654,7 @@ const worthEstimateSteps = [
       },
       {
         key: "ber_rating",
-        label: "BER Rating",
+        label: "BER Rating", // locale-allowed: IE default, overridden by localizeQuestion->energyRatings.label at render
         type: "select",
         required: false,
         options: [

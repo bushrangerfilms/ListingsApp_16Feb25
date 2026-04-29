@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocale } from "@/hooks/useLocale";
+import { useRegionConfig } from "@/hooks/useRegionConfig";
+import { DEFAULT_LOCALE } from "@/lib/locale/config";
 import {
   Loader2, TrendingUp, TrendingDown, Minus, BarChart3, Mail,
   CheckCircle, ArrowRight, AlertCircle, Building2, MessageSquare,
@@ -106,6 +108,7 @@ export default function MarketUpdatePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { locale } = useLocale();
+  const regionConfig = useRegionConfig();
 
   const [resolvedOrgSlug, setResolvedOrgSlug] = useState<string | null>(orgSlugParam || null);
   const [loading, setLoading] = useState(true);
@@ -364,24 +367,13 @@ export default function MarketUpdatePage() {
     }
   };
 
-  const currencySymbol = useMemo(() => {
-    if (!locale) return "€";
-    if (locale.startsWith("en-GB")) return "£";
-    if (locale.startsWith("en-US")) return "$";
-    if (locale.startsWith("en-CA")) return "C$";
-    if (locale.startsWith("en-AU")) return "A$";
-    if (locale.startsWith("en-NZ")) return "NZ$";
-    return "€";
-  }, [locale]);
-
-  const areaUnit = useMemo(() => {
-    if (!locale) return "m²";
-    if (locale.startsWith("en-US") || locale.startsWith("en-CA")) return "sqft";
-    return "m²";
-  }, [locale]);
+  // Currency symbol + area unit + locale all come from the canonical
+  // regionConfig (which derives from the org's locale via OrgLocaleSync).
+  const currencySymbol = regionConfig.financial.currencySymbol;
+  const areaUnit = regionConfig.property.measurements.areaSymbol;
 
   const formatNum = (n: number | undefined) =>
-    typeof n === "number" ? n.toLocaleString(locale || "en-IE") : "—";
+    typeof n === "number" ? n.toLocaleString(locale || DEFAULT_LOCALE) : "—";
 
   if (loading) {
     return (
