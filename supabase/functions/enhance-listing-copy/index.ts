@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { getEdgeLocaleConfig, type EdgeLocaleConfig } from '../_shared/locale-config.ts';
+import { DEFAULT_LOCALE } from '../_shared/locale.config.ts';
 
 // CORS headers set per-request below
 
@@ -232,7 +233,7 @@ serve(async (req) => {
       console.log(`Loaded ${customInstructions.length} custom instruction set(s) for ${featureType}`);
     }
 
-    const localeConfig = getEdgeLocaleConfig(locale || 'en-IE');
+    const localeConfig = getEdgeLocaleConfig(locale || DEFAULT_LOCALE);
     
     // Build prompt with custom instructions appended
     const basePrompt = type === 'description' 

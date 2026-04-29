@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
+import { DEFAULT_LOCALE } from '../_shared/locale.config.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -129,7 +130,7 @@ Deno.serve(async (req) => {
         // Append enquiry note to existing notes
         const existingNotes = existingProfile.notes || '';
         const updatedNotes = existingNotes 
-          ? `${existingNotes}\n\n---\n${new Date().toLocaleDateString(orgData.locale || 'en-IE')}: ${enquiryNote}`
+          ? `${existingNotes}\n\n---\n${new Date().toLocaleDateString(orgData.locale || DEFAULT_LOCALE)}: ${enquiryNote}`
           : enquiryNote;
         
         const { error: updateError } = await supabaseCrm

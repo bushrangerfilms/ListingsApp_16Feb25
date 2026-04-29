@@ -39,16 +39,19 @@ const PLAN_LIMITS: Record<string, { monthly: number; daily: number }> = {
 
 // Concrete capabilities per plan, surfaced to the model so it can answer
 // "what's included on my plan" / "can I do X on my plan" accurately without
-// guessing.
+// guessing.  Prices below are EUR canonical — AL's system prompt should
+// instruct the model to convert to the org's currency at response time
+// (TODO: wire describePlan() to use the org's per-currency price column
+// and render the right symbol via the canonical formatPrice helper).
 const PLAN_DETAILS: Record<string, string> = {
   free:
-    "Free tier (€0). 1 active listing. Basic video style only — VS2 and VS4 (advanced motion) are disabled. No custom domain. Solo only (no team invites). Single branch.",
+    "Free tier (no charge). 1 active listing. Basic video style only — VS2 and VS4 (advanced motion) are disabled. No custom domain. Solo only (no team invites). Single branch.",
   essentials:
-    "Essentials (€40/week). 10 active listings. All video styles unlocked (basic + VS2 + VS4). Custom domain. Team invites. Single branch.",
+    "Essentials (40 EUR/week canonical price). 10 active listings. All video styles unlocked (basic + VS2 + VS4). Custom domain. Team invites. Single branch.", // locale-allowed: AI prompt context (EUR canonical, model converts to org currency)
   growth:
-    "Growth (€70/week). 25 active listings. All video styles. Custom domain. Team invites. Single branch.",
+    "Growth (70 EUR/week canonical price). 25 active listings. All video styles. Custom domain. Team invites. Single branch.", // locale-allowed: AI prompt context (EUR canonical)
   professional:
-    "Professional (€130/week). 100 active listings. All video styles. Custom domain. Team invites. Single branch.",
+    "Professional (130 EUR/week canonical price). 100 active listings. All video styles. Custom domain. Team invites. Single branch.", // locale-allowed: AI prompt context (EUR canonical)
   "multi-branch-s":
     "Multi-Branch S (contact sales). 200 active listings. Multiple branches with separate social accounts per branch. All video styles. Custom domain. Team invites.",
   "multi-branch-m":

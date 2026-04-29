@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getEdgeLocaleConfig } from "../_shared/locale-config.ts";
+import { DEFAULT_LOCALE } from "../_shared/locale.config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,12 +81,12 @@ serve(async (req) => {
 
   try {
     const { image, text, organizationId, locale } = await req.json();
-    const localeConfig = getEdgeLocaleConfig(locale || 'en-IE');
+    const localeConfig = getEdgeLocaleConfig(locale || DEFAULT_LOCALE);
     const currencySymbol = localeConfig.currency.symbol;
     const postalCodeLabel = localeConfig.postalCode.label;
     const areaUnit = localeConfig.measurements.area === 'sqft' ? 'sqft' : 'sqm';
 
-    console.log('Extracting property details from input, locale:', locale || 'en-IE');
+    console.log('Extracting property details from input, locale:', locale || DEFAULT_LOCALE);
 
     const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY');
     if (!GOOGLE_AI_API_KEY) {
@@ -131,9 +132,9 @@ When extracting descriptions, especially from multiple screenshots:
           text: `Carefully extract ALL property details from this image. Pay special attention to:
 
 CATEGORY: Determine if this is:
-- "Listing" - Property for SALE (has asking price, look for "for sale", "price", "€X" without rental terms)
-- "Rental" - Long-term RENTAL (monthly rate, look for "to let", "per month", "€X pcm", "monthly rent", "lease")
-- "Holiday Rental" - Short-term rental (look for "per night", "per week", "€X pw", "holiday let", "Airbnb", "vacation rental", "self-catering")
+- "Listing" - Property for SALE (has asking price, look for "for sale", "price", "${currencySymbol}X" without rental terms)
+- "Rental" - Long-term RENTAL (monthly rate, look for "to let", "per month", "${currencySymbol}X pcm", "monthly rent", "lease")
+- "Holiday Rental" - Short-term rental (look for "per night", "per week", "${currencySymbol}X pw", "holiday let", "Airbnb", "vacation rental", "self-catering")
 
 PRICE: Extract the numeric price value ONLY (no currency symbols or text). Look for:
 - Sale prices: "${currencySymbol}250,000", "250000", "${currencySymbol}250k"
@@ -183,9 +184,9 @@ If any field is not visible in the image, leave it empty. Be thorough and extrac
 
 Pay special attention to:
 - CATEGORY: Determine if this is:
-  * "Listing" - Property for SALE (has asking price, keywords: "for sale", "price", "€X" without rental terms)
-  * "Rental" - Long-term RENTAL (monthly rate, keywords: "to let", "per month", "€X pcm", "monthly rent", "lease")
-  * "Holiday Rental" - Short-term rental (keywords: "per night", "per week", "€X pw", "holiday let", "Airbnb", "vacation rental", "self-catering")
+  * "Listing" - Property for SALE (has asking price, keywords: "for sale", "price", "${currencySymbol}X" without rental terms)
+  * "Rental" - Long-term RENTAL (monthly rate, keywords: "to let", "per month", "${currencySymbol}X pcm", "monthly rent", "lease")
+  * "Holiday Rental" - Short-term rental (keywords: "per night", "per week", "${currencySymbol}X pw", "holiday let", "Airbnb", "vacation rental", "self-catering")
 - PRICE: Extract the numeric price value ONLY (no currency symbols or text). Look for:
   * Sale prices: "${currencySymbol}250,000", "250000", "${currencySymbol}250k"
   * Monthly rental rates: "${currencySymbol}4,500 per month", "${currencySymbol}4500 pcm", "From ${currencySymbol}X per month", "${currencySymbol}X/month"
@@ -243,7 +244,7 @@ Be thorough and extract all available information.`
           },
           price: {
             type: 'string',
-            description: 'Numeric price value ONLY (no €, commas, or text). Extract from phrases like "€4,500 per month" → "4500", "From €250,000" → "250000". Set to "0" if isPOA is true'
+            description: `Numeric price value ONLY (no ${currencySymbol}, commas, or text). Extract from phrases like "${currencySymbol}4,500 per month" → "4500", "From ${currencySymbol}250,000" → "250000". Set to "0" if isPOA is true`
           },
           bedrooms: {
             type: 'string',

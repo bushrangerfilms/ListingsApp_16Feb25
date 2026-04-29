@@ -131,23 +131,14 @@ const LEGACY_LOCALE_ALLOWLIST = [
   "src/App.tsx",
   "src/contexts/OrganizationViewContext.tsx",
   "src/contexts/OrganizationContext.tsx",
-  // Edge functions  —  these are the next-priority cleanups (they hit posting/email/AI flows).
-  "supabase/functions/al-chat/index.ts",
-  // (create-organization migrated — now imports MarketLocale/MarketCountry/
-  // COUNTRY_TO_LOCALE/LOCALE_CONFIGS from the canonical mirror at
-  // _shared/locale.config.ts.)
-  "supabase/functions/enhance-listing-copy/index.ts",
-  "supabase/functions/extract-property-details/index.ts",
-  "supabase/functions/generate-brochure-content/index.ts",
-  "supabase/functions/lead-magnet-activity-digest/index.ts",
-  // (lead-magnet-api migrated — local LOCALE_TO_COUNTRY_EDGE map deleted,
-  // imports LOCALE_TO_COUNTRY/DEFAULT_LOCALE from canonical mirror.)
-  "supabase/functions/notify-agent/index.ts",
-  "supabase/functions/process-email-sequences/index.ts",
-  "supabase/functions/stripe-setup/index.ts",
-  "supabase/functions/submit-property-enquiry/index.ts",
-  "supabase/functions/submit-valuation-request/index.ts",
-  "supabase/functions/update-listing-details/index.ts",
+  // (Listings edge functions all migrated — see Tier 4 task 19 batch
+  // cleanup PR.  al-chat / create-organization / enhance-listing-copy /
+  // extract-property-details / generate-brochure-content / lead-magnet-
+  // activity-digest / lead-magnet-api / notify-agent / process-email-
+  // sequences / stripe-setup / submit-property-enquiry / submit-valuation-
+  // request / update-listing-details now use DEFAULT_LOCALE for fallbacks,
+  // ${currencySymbol} interpolation in AI prompts, and same-line waivers
+  // on legacy back-compat payload keys.)
 ];
 
 const LOCALE_RULES_ON = {

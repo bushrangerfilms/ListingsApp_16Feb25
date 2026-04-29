@@ -117,7 +117,7 @@ serve(async (req) => {
         price = matchingPrice;
         console.log(`  Price exists: ${price.id}`);
       } else if (dryRun) {
-        console.log(`  [DRY RUN] Would create price: €${plan.priceCents / 100}/${plan.interval}`);
+        console.log(`  [DRY RUN] Would create price: EUR ${plan.priceCents / 100}/${plan.interval}`);
         planResults[plan.name] = { productId: product.id, priceId: 'dry_run' };
         continue;
       } else {
@@ -182,7 +182,7 @@ serve(async (req) => {
         price = matchingPrice;
         console.log(`  Price exists: ${price.id}`);
       } else if (dryRun) {
-        console.log(`  [DRY RUN] Would create price: €${pack.priceCents / 100}`);
+        console.log(`  [DRY RUN] Would create price: EUR ${pack.priceCents / 100}`);
         creditPackResults[pack.credits] = { productId: product.id, priceId: 'dry_run' };
         continue;
       } else {

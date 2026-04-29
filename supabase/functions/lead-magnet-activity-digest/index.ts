@@ -14,6 +14,7 @@
 // Idempotent: safe to call repeatedly.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { DEFAULT_LOCALE } from "../_shared/locale.config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
   const dayEnd = new Date(dayStart);
   dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
   const digestDateIso = dayStart.toISOString().slice(0, 10); // YYYY-MM-DD
-  const digestDateHuman = dayStart.toLocaleDateString("en-IE", {
+  const digestDateHuman = dayStart.toLocaleDateString(DEFAULT_LOCALE, {
     year: "numeric",
     month: "long",
     day: "numeric",
