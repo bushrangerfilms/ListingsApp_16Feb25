@@ -140,7 +140,8 @@ const LEGACY_LOCALE_ALLOWLIST = [
   "supabase/functions/extract-property-details/index.ts",
   "supabase/functions/generate-brochure-content/index.ts",
   "supabase/functions/lead-magnet-activity-digest/index.ts",
-  "supabase/functions/lead-magnet-api/index.ts",
+  // (lead-magnet-api migrated — local LOCALE_TO_COUNTRY_EDGE map deleted,
+  // imports LOCALE_TO_COUNTRY/DEFAULT_LOCALE from canonical mirror.)
   "supabase/functions/notify-agent/index.ts",
   "supabase/functions/process-email-sequences/index.ts",
   "supabase/functions/stripe-setup/index.ts",
