@@ -16,7 +16,8 @@
     "locale:check": "npx tsx locale-config/locale.config.check.ts && npx tsx locale-config/sync.ts --check",
     "locale:sync": "npx tsx locale-config/sync.ts",
     "lint:locale": "npx tsx scripts/lint-locale.ts",
-    "ci:check": "npm run lint:locale && npm run locale:check"
+    "ci:check": "npm run lint:locale && npm run locale:check",
+    "prepare": "husky"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -108,6 +109,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
+    "husky": "^9.1.7",
     "postcss": "^8.5.6",
     "puppeteer": "^24.41.0",
     "tailwindcss": "^3.4.17",
