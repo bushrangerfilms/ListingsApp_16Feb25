@@ -14,6 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganization } from "@/contexts/OrganizationContext";
 import { useLocale } from "@/hooks/useLocale";
+import { useAddressConfig, useBuildingTypes, useEnergyRatings } from "@/hooks/useRegionConfig";
 import type { ListingFormData } from "@/lib/listingSchema";
 import { extractPlanLimitError, type PlanLimitError } from "@/lib/planLimitError";
 import { UpgradePlanDialog } from "@/components/billing/UpgradePlanDialog";
@@ -26,6 +27,9 @@ const ReviewListing = () => {
   const queryClient = useQueryClient();
   const { organization } = useOrganization();
   const { config } = useLocale();
+  const addressConfig = useAddressConfig();
+  const buildingTypes = useBuildingTypes();
+  const energyRatings = useEnergyRatings();
   const currencySymbol = new Intl.NumberFormat(config.currencyLocale, { style: 'currency', currency: config.currency }).formatToParts(0).find(p => p.type === 'currency')?.value || config.currency;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -694,12 +698,9 @@ const ReviewListing = () => {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Detached">Detached</SelectItem>
-                      <SelectItem value="Semi-Detached">Semi-Detached</SelectItem>
-                      <SelectItem value="Terrace">Terrace</SelectItem>
-                      <SelectItem value="Apartment">Apartment</SelectItem>
-                      <SelectItem value="Commercial">Commercial</SelectItem>
-                      <SelectItem value="Land">Land</SelectItem>
+                      {buildingTypes.map((type) => (
+                        <SelectItem key={type.code} value={type.code}>{type.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -828,31 +829,31 @@ const ReviewListing = () => {
 
                 {(formData.category === 'Listing' || formData.category === 'Rental') && (
                   <div>
-                    <Label htmlFor="eircode">Eircode (Optional)</Label>
+                    <Label htmlFor="eircode">{addressConfig.postalCodeLabel} (Optional)</Label>
                     <Input
                       id="eircode"
                       value={formData.eircode}
                       onChange={(e) => handleFieldUpdate("eircode", e.target.value)}
-                      placeholder="Y35N677"
+                      placeholder={addressConfig.postalCodePlaceholder}
                     />
                   </div>
                 )}
               </div>
 
-              {/* BER Rating - Not for Holiday Rental */}
-              {formData.category !== 'Holiday Rental' && (
+              {/* Energy rating - Not for Holiday Rental, only for markets that surface it */}
+              {formData.category !== 'Holiday Rental' && energyRatings.enabled && (
                 <div>
-                  <Label htmlFor="berRating">BER Rating (Optional)</Label>
+                  <Label htmlFor="berRating">{energyRatings.label} (Optional)</Label>
                   <Select
                     value={formData.berRating}
                     onValueChange={(value) => handleFieldUpdate("berRating", value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select BER rating" />
+                      <SelectValue placeholder={`Select ${energyRatings.label.toLowerCase()}`} />
                     </SelectTrigger>
                     <SelectContent>
-                      {["A1", "A2", "A3", "B1", "B2", "B3", "C1", "C2", "C3", "D1", "D2", "E1", "E2", "F", "G", "EXEMPT"].map(rating => (
-                        <SelectItem key={rating} value={rating}>{rating}</SelectItem>
+                      {energyRatings.ratings.map(rating => (
+                        <SelectItem key={rating.code} value={rating.code}>{rating.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -907,7 +908,7 @@ const ReviewListing = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Location</CardTitle>
-                <CardDescription>Property location based on Eircode</CardDescription>
+                <CardDescription>Property location based on {addressConfig.postalCodeLabel}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="w-full h-[400px] rounded-lg overflow-hidden">

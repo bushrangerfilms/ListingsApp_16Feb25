@@ -145,11 +145,15 @@ Deno.serve(async (req) => {
     const supabaseFields: any = {};
     if (fields['Listing Title']) supabaseFields.title = fields['Listing Title'];
     if (fields['Description']) supabaseFields.description = fields['Description'];
-    if (fields['Price €']) supabaseFields.price = fields['Price €'];
+    // 'Price' (canonical) + 'Price €' (legacy IE-flavoured key) accepted for compat
+    if (fields['Price'] !== undefined) supabaseFields.price = fields['Price'];
+    else if (fields['Price €'] !== undefined) supabaseFields.price = fields['Price €'];
     if (fields['Bedrooms']) supabaseFields.bedrooms = fields['Bedrooms'];
     if (fields['Bathrooms']) supabaseFields.bathrooms = fields['Bathrooms'];
     if (fields['Building Type']) supabaseFields.building_type = fields['Building Type'];
-    if (fields['BER Rating']) supabaseFields.ber_rating = fields['BER Rating'];
+    // 'EnergyRating' (canonical) + 'BER Rating' (legacy IE-flavoured) for compat
+    if (fields['EnergyRating'] !== undefined) supabaseFields.ber_rating = fields['EnergyRating'];
+    else if (fields['BER Rating'] !== undefined) supabaseFields.ber_rating = fields['BER Rating'];
     if (fields['Category']) supabaseFields.category = fields['Category'];
     if (fields['Furnishing Status']) supabaseFields.furnished = fields['Furnishing Status'];
     if (fields['Booking Platform Link']) supabaseFields.booking_link = fields['Booking Platform Link'];
@@ -158,7 +162,9 @@ Deno.serve(async (req) => {
     if (fields['Address Line 1'] !== undefined) supabaseFields.address_detail = fields['Address Line 1'];
     if (fields['Address Town'] !== undefined) supabaseFields.address_town = fields['Address Town'];
     if (fields['County'] !== undefined) supabaseFields.county = fields['County'];
-    if (fields['Eircode'] !== undefined) supabaseFields.eircode = fields['Eircode'];
+    // 'PostalCode' (canonical) + 'Eircode' (legacy IE-flavoured) for compat
+    if (fields['PostalCode'] !== undefined) supabaseFields.eircode = fields['PostalCode'];
+    else if (fields['Eircode'] !== undefined) supabaseFields.eircode = fields['Eircode'];
     if (fields['Folio Number'] !== undefined) supabaseFields.folio_number = fields['Folio Number'];
     if (fields['Exclude AI Motion'] !== undefined) supabaseFields.exclude_ai_motion = fields['Exclude AI Motion'];
     if (fields['Exclude from Social Media'] !== undefined) supabaseFields.automation_enabled = !fields['Exclude from Social Media'];

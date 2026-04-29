@@ -13,6 +13,7 @@ import { PublicHeader } from '@/components/PublicHeader';
 import { Footer } from '@/components/Footer';
 import { CookieConsent } from '@/components/CookieConsent';
 import { SEO } from '@/components/SEO';
+import { useEnergyRatings } from '@/hooks/useRegionConfig';
 import { AIAssistantWidget } from '@/components/AIAssistantWidget';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,6 +52,7 @@ export default function PropertyDetails() {
   const { organization, setOrganizationBySlug } = useOrganization();
   const { organization: domainOrg, isPublicSite: isDomainBased, loading: domainLoading } = usePublicListings();
   const { formatCurrency } = useLocale();
+  const energyRatings = useEnergyRatings();
   const [property, setProperty] = useState<PropertyDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -531,7 +533,7 @@ export default function PropertyDetails() {
 
                  {property.berRating && (
                    <div>
-                     <p className="text-sm text-muted-foreground">BER Rating</p>
+                     <p className="text-sm text-muted-foreground">{energyRatings.label}</p>
                      <Badge variant="outline">{property.berRating}</Badge>
                    </div>
                  )}

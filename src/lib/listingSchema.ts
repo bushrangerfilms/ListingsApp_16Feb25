@@ -58,12 +58,18 @@ export const listingSchema = z.object({
     .max(100, "Town must be less than 100 characters")
     .optional(),
   
+  // County / state / region — required in IE, optional everywhere else.
+  // Schema accepts the value as optional and the form layer decides whether
+  // to enforce based on `addressConfig.countyRequired`.
   county: z.string()
-    .min(2, "County is required")
-    .max(100, "County must be less than 100 characters"),
-  
+    .max(100, "Must be less than 100 characters")
+    .optional(),
+
+  // Postal code — field stored as `eircode` for legacy reasons; the canonical
+  // shape includes ZIP / Postcode / Postal Code etc.  Validation is length-only;
+  // format checking happens via `addressConfig.postalCodePattern` at the form layer.
   eircode: z.string()
-    .max(20, "Eircode must be less than 20 characters")
+    .max(20, "Postal code must be less than 20 characters")
     .optional(),
   
   // Energy ratings vary by region: IE (BER A1-G), UK (EPC A-G), US (HERS optional)

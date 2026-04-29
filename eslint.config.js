@@ -60,12 +60,9 @@ const LEGACY_LOCALE_ALLOWLIST = [
   "src/pages/lead-magnet/TipsAdvicePage.tsx",
   // CRM lead view — hardcoded €/Co./Eircode in quiz field labels.
   "src/components/SellerProfileCard.tsx",
-  // Listing creation/review — hardcoded "Eircode" form-state, IE building types.
-  "src/pages/CreateListing.tsx",
-  "src/pages/ReviewListing.tsx",
-  "src/pages/ValuationRequest.tsx",
-  "src/pages/PropertyDetails.tsx",
-  "src/components/EditListingDialog.tsx",
+  // (Listing creation/review/edit + ValuationRequest + PropertyDetails were
+  // migrated in the listing-forms cleanup PR — they no longer carry hardcoded
+  // locale literals.  listingSchema.ts entry below also removed.)
   // Brochure editors — hardcoded "Eircode" placeholder, default € examples.
   // (The 8 brochure TEMPLATES under templates/ were migrated to canonical
   // lookups in the brochure-cleanup PR — they're no longer on this list.)
@@ -89,8 +86,7 @@ const LEGACY_LOCALE_ALLOWLIST = [
   "src/pages/AdminShopWindowDisplay.tsx",
   "src/pages/ShopWindowDisplay.tsx",
   "src/pages/PublicListings.tsx",
-  // Listings schema + helpers — county.min(2), €in error messages.
-  "src/lib/listingSchema.ts",
+  // Listings schema helpers (listingSchema.ts cleaned up in listing-forms PR).
   "src/lib/listingSearch.ts",
   "src/config/company.ts",
   // Admin pages — €in usage rates, IE defaults.
