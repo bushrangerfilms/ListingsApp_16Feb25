@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
     const { data: orgData, error: orgError } = await supabase
       .from('organizations')
-      .select('id, business_name, notification_emails, country_code')
+      .select('id, business_name, notification_emails, contact_email, country_code')
       .eq('slug', clientSlug)
       .single();
 
@@ -142,9 +142,14 @@ Deno.serve(async (req) => {
         console.log('Seller confirmation email sent successfully');
       }
 
-      const notificationEmails = orgData.notification_emails?.length > 0 
-        ? orgData.notification_emails 
-        : [Deno.env.get('ADMIN_EMAIL')].filter(Boolean);
+      let notificationEmails: string[];
+      if (orgData.notification_emails?.length > 0) {
+        notificationEmails = orgData.notification_emails;
+      } else if (orgData.contact_email && orgData.contact_email.trim()) {
+        notificationEmails = [orgData.contact_email.trim()];
+      } else {
+        notificationEmails = [Deno.env.get('ADMIN_EMAIL')].filter(Boolean) as string[];
+      }
       
       for (const adminEmail of notificationEmails) {
         if (adminEmail) {
