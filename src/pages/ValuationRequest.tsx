@@ -16,6 +16,7 @@ import { useOrganization } from '@/contexts/OrganizationContext';
 import { usePublicListings } from '@/contexts/PublicListingsContext';
 import { getPostcodeConfig } from '@/lib/regionConfig/postcodes';
 import { LOCALE_TO_COUNTRY, isMarketLocale } from '@/lib/locale/markets';
+import { DEFAULT_LOCALE } from '@/lib/locale/config';
 
 export default function ValuationRequest() {
   const { orgSlug } = useParams<{ orgSlug?: string }>();
@@ -56,8 +57,8 @@ export default function ValuationRequest() {
   // (Eircode for IE, Postcode for GB, ZIP Code for US, etc.) regardless of
   // where the visitor is browsing from.
   const postcodeConfig = useMemo(() => {
-    const activeLocale = (isDomainBased ? domainOrg?.locale : organization?.locale) || 'en-IE';
-    const countryCode = isMarketLocale(activeLocale) ? LOCALE_TO_COUNTRY[activeLocale] : 'IE';
+    const activeLocale = (isDomainBased ? domainOrg?.locale : organization?.locale) || DEFAULT_LOCALE;
+    const countryCode = isMarketLocale(activeLocale) ? LOCALE_TO_COUNTRY[activeLocale] : LOCALE_TO_COUNTRY[DEFAULT_LOCALE];
     return getPostcodeConfig(countryCode);
   }, [isDomainBased, domainOrg?.locale, organization?.locale]);
   

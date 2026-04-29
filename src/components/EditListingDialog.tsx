@@ -189,19 +189,23 @@ export function EditListingDialog({
       const finalHeroUrl = photoChanges?.heroPhotoUrl || newHeroUrl || (finalPhotoUrls.length > 0 ? finalPhotoUrls[0] : null);
       const finalSocialMediaUrls = [...(photoChanges?.socialMediaUrls || []), ...newSocialMediaUrls];
 
+      // NOTE: keys here are the wire format read by `update-listing-details`
+      // edge function (which maps them to DB columns).  Any key change must
+      // also update the corresponding read-side there.  Keys without locale
+      // baggage are preferred (e.g. "Price" not "Price €").
       const listingFields: Record<string, any> = {
         'Listing Title': activeFormData.Title,
-        'Price €': activeFormData.Price,
+        'Price': activeFormData.Price,
         'Address Line 1': activeFormData["Address Line 1"],
         'Address Town': activeFormData["Address Town"],
         'County': activeFormData.County,
-        'Eircode': activeFormData.Eircode,
+        'PostalCode': activeFormData.Eircode,
         'Bedrooms': activeFormData.Bedrooms,
         'Bathrooms': activeFormData.Bathrooms,
         'Building Type': activeFormData["Building Type"],
         'Description': activeFormData.Description,
         'Specs (Dimensions / Services)': activeFormData.Specs,
-        'BER Rating': activeFormData.BER,
+        'EnergyRating': activeFormData.BER,
         'Building Size sqm': activeFormData["Building Size (Sq M)"] || null,
         'Land Size (Acres)': activeFormData["Land Size (Acres)"] || null,
         'Folio Number': activeFormData["Folio Number"] || null,

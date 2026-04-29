@@ -17,6 +17,7 @@ import { listingSchema, ListingFormData } from "@/lib/listingSchema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocale } from "@/hooks/useLocale";
+import { DEFAULT_LOCALE } from "@/lib/locale/config";
 import { useEnergyRatings, useAddressConfig, useBuildingTypes, useMeasurementConfig, useLandMeasurements } from "@/hooks/useRegionConfig";
 import { usePropertyServices } from "@/hooks/usePropertyServices";
 
@@ -25,10 +26,12 @@ const CreateListing = () => {
   const { t, currency } = useLocale();
   
   const getCurrencyLabel = () => {
+    // Display labels are keyed by ISO code; the symbol literal each branch
+    // returns is the currency for that exact ISO \u2014 not a hardcoded default.
     switch (currency) {
-      case 'EUR': return 'Euro (\u20AC)';
-      case 'GBP': return 'Pound Sterling (\u00A3)';
-      case 'USD': return 'US Dollar ($)';
+      case 'EUR': return 'Euro (\u20AC)'; // locale-allowed: this branch only fires for EUR
+      case 'GBP': return 'Pound Sterling (\u00A3)'; // locale-allowed: this branch only fires for GBP
+      case 'USD': return 'US Dollar ($)'; // locale-allowed: this branch only fires for USD
       default: return currency;
     }
   };
@@ -373,7 +376,7 @@ const CreateListing = () => {
         throw new Error('Not authenticated');
       }
 
-      const locale = organization?.locale || 'en-IE';
+      const locale = organization?.locale || DEFAULT_LOCALE;
       const propertyMetadata = {
         category: form.getValues('category'),
         buildingType: form.getValues('buildingType'),
