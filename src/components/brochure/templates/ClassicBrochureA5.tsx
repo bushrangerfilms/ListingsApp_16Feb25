@@ -7,7 +7,9 @@ import {
   COLORS,
   TYPE,
 } from '@/lib/brochure/designTokens';
+import { getRegionConfig } from '@/lib/locale/config';
 import { BrochureHeader } from './shared/BrochureHeader';
+import { getBookletPageSize, getLandscapeSpreadSize } from './shared/pageSizes';
 import {
   buildPageRenderContext,
   CoverPageContent,
@@ -47,23 +49,6 @@ const styles = StyleSheet.create({
   },
 });
 
-function getA5PageSize(locale: string): 'A5' | [number, number] {
-  // US/CA use Half-Letter (5.5" × 8.5" = 396pt × 612pt)
-  if (['en-US', 'en-CA'].includes(locale)) {
-    return [396, 612];
-  }
-  return 'A5';
-}
-
-function getLandscapePageSize(locale: string): [number, number] {
-  // US/CA: Letter landscape (11" × 8.5" = 792pt × 612pt)
-  if (['en-US', 'en-CA'].includes(locale)) {
-    return [792, 612];
-  }
-  // A4 landscape (297mm × 210mm = 841.89pt × 595.28pt)
-  return [841.89, 595.28];
-}
-
 // ── A5 Reader ─────────────────────────────────────────────────────────
 // 4 individual A5 pages in reading order (1, 2, 3, 4)
 
@@ -71,7 +56,7 @@ export function ClassicBrochureA5Reader({ content, branding }: A5Props) {
   const dims = getLayoutDimensions('a5');
   const typeOverrides = getTypeOverrides('a5');
   const ctx = buildPageRenderContext(content, branding, dims, typeOverrides);
-  const pageSize = getA5PageSize(branding.locale);
+  const pageSize = getBookletPageSize(getRegionConfig(branding.locale));
 
   const p1m = getPageMargins(1, dims);
   const p2m = getPageMargins(2, dims);
@@ -115,7 +100,7 @@ export function ClassicBrochureA5PrintReady({ content, branding }: A5Props) {
   const dims = getLayoutDimensions('a5');
   const typeOverrides = getTypeOverrides('a5');
   const ctx = buildPageRenderContext(content, branding, dims, typeOverrides);
-  const landscapeSize = getLandscapePageSize(branding.locale);
+  const landscapeSize = getLandscapeSpreadSize(getRegionConfig(branding.locale));
 
   const p1m = getPageMargins(1, dims);
   const p2m = getPageMargins(2, dims);
