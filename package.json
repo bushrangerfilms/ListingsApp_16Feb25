@@ -17,6 +17,7 @@
     "locale:sync": "npx tsx locale-config/sync.ts",
     "lint:locale": "npx tsx scripts/lint-locale.ts",
     "ci:check": "npm run lint:locale && npm run locale:check",
+    "stripe:seed-prices": "npx tsx scripts/seed-stripe-prices.ts",
     "prepare": "husky"
   },
   "dependencies": {
