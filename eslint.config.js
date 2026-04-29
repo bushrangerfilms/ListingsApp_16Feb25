@@ -54,10 +54,10 @@ const LOCALE_CANONICAL_FILES = [
 // empty, the legacy work is done.
 // ─────────────────────────────────────────────────────────────────────────
 const LEGACY_LOCALE_ALLOWLIST = [
-  // Lead magnet quiz + landing pages — IE counties, "Eircode", "Co.", "BER".
-  "src/pages/lead-magnet/LeadMagnetQuiz.tsx",
-  "src/pages/lead-magnet/MarketUpdatePage.tsx",
-  "src/pages/lead-magnet/TipsAdvicePage.tsx",
+  // (Lead-magnet quiz + landing pages cleaned up — they no longer carry
+  // hardcoded "BER Rating" / locale-id literals.  "Eircode" defaults remain
+  // behind same-line `// locale-allowed:` waivers because the metadata is
+  // overridden at render via postcodeConfig.label / localizeQuestion.)
   // CRM lead view — hardcoded €/Co./Eircode in quiz field labels.
   "src/components/SellerProfileCard.tsx",
   // (Listing creation/review/edit + ValuationRequest + PropertyDetails were
