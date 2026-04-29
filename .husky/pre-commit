@@ -1,0 +1,15 @@
+# Run the same locale-architecture gate that CI enforces (npm run ci:check),
+# so drift is caught at commit time instead of in PR review.
+#
+# What this checks:
+#   1. lint:locale  — zero `locale/*` ESLint rule violations.  Pre-existing
+#      lint debt (any/prefer-const/no-require-imports) is out of scope.
+#   2. locale:check — canonical /locale-config/locale.config.ts is exhaustive
+#      across all 6 markets AND all generated mirrors body-sha-256-match
+#      the canonical.
+#
+# Bypass for emergencies: `git commit --no-verify`.
+# If this is regularly slow, profile npm run ci:check and narrow it down —
+# don't disable the hook globally.
+
+npm run ci:check
