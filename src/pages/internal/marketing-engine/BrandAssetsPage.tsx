@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import MascotReferenceSet from "./MascotReferenceSet";
 
 type AssetType =
   | "image"
@@ -146,6 +147,8 @@ export default function BrandAssetsPage() {
             </CardContent>
           </Card>
         )}
+
+        <MascotReferenceSet />
 
         {TYPE_ORDER.map((type) => {
           const items = grouped[type] ?? [];
