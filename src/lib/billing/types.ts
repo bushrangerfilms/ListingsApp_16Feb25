@@ -183,6 +183,19 @@ export interface PlanDefinition {
   allowed_video_styles?: string[];
   stripe_monthly_price_id?: string;
   stripe_annual_price_id?: string;
+  // Per-currency pricing (EUR is canonical; others populated by
+  // scripts/seed-stripe-prices.ts).  null = currency not yet activated;
+  // stripe-checkout falls back to EUR pricing.
+  price_cents_gbp?: number | null;
+  price_cents_usd?: number | null;
+  price_cents_cad?: number | null;
+  price_cents_aud?: number | null;
+  price_cents_nzd?: number | null;
+  stripe_monthly_price_id_gbp?: string | null;
+  stripe_monthly_price_id_usd?: string | null;
+  stripe_monthly_price_id_cad?: string | null;
+  stripe_monthly_price_id_aud?: string | null;
+  stripe_monthly_price_id_nzd?: string | null;
   features: string[];
   limits?: Record<string, any>;
   is_active: boolean;

@@ -31,8 +31,15 @@ export default function AdminBilling() {
   const [isLoadingCheckout, setIsLoadingCheckout] = useState<string | null>(null);
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
 
-  const formatLocalPrice = (eurCents: number) =>
-    formatPrice(currency === 'EUR' ? eurCents : estimatePrice(eurCents, currency), currency);
+  // Per-currency price resolution: use plan_definitions.price_cents_<currency>
+  // when populated; FX-estimate from EUR canonical otherwise.
+  const resolvePriceCents = (plan: { monthly_price_cents: number } & Partial<Record<`price_cents_${'gbp' | 'usd' | 'cad' | 'aud' | 'nzd'}`, number | null>>): number => {
+    if (currency === 'EUR') return plan.monthly_price_cents;
+    const realCents = plan[`price_cents_${currency.toLowerCase()}` as keyof typeof plan] as number | null | undefined;
+    if (typeof realCents === 'number' && realCents > 0) return realCents;
+    return estimatePrice(plan.monthly_price_cents, currency);
+  };
+  const formatLocalPrice = (cents: number) => formatPrice(cents, currency);
 
   const { data: planDefinitions } = useQuery({
     queryKey: ['plan-definitions-billing'],
@@ -255,7 +262,7 @@ export default function AdminBilling() {
                     <CardTitle>{plan.display_name}</CardTitle>
                     <CardDescription>{plan.description}</CardDescription>
                     <div className="mt-2">
-                      <span className="text-3xl font-bold">{formatLocalPrice(plan.monthly_price_cents)}</span>
+                      <span className="text-3xl font-bold">{formatLocalPrice(resolvePriceCents(plan))}</span>
                       <span className="text-muted-foreground">/{plan.billing_interval}</span>
                     </div>
                   </CardHeader>
@@ -306,7 +313,7 @@ export default function AdminBilling() {
               {(() => {
                 if (!isFreePlan) {
                   const plan = planDefinitions?.find(p => p.name === currentPlan);
-                  return plan ? `${formatLocalPrice(plan.monthly_price_cents)}/${plan.billing_interval}` : '';
+                  return plan ? `${formatLocalPrice(resolvePriceCents(plan))}/${plan.billing_interval}` : '';
                 }
                 if (isOnTrial && organization?.trial_ends_at) {
                   return `${getTrialDaysRemaining(organization.trial_ends_at) || 0} days remaining`;
