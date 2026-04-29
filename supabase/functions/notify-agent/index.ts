@@ -65,10 +65,17 @@ serve(async (req) => {
     // Format property preferences
     let preferencesHtml = '';
     if (leadInfo.lead_type === 'buyer' && qualifiedData) {
+      // Budget line is currently EUR-only; agent notification emails should
+      // eventually carry the org's currency through and use formatPrice.
+      const budgetMin = qualifiedData.budget_min?.toLocaleString() || '?';
+      const budgetMax = qualifiedData.budget_max?.toLocaleString() || '?';
+      const budgetLine = (qualifiedData.budget_min || qualifiedData.budget_max)
+        ? `<li><strong>Budget:</strong> €${budgetMin} - €${budgetMax}</li>` // locale-allowed: agent notification email (EUR-only — TODO per-org currency)
+        : '';
       preferencesHtml = `
         <h3 style="color: #1f2937; margin-top: 24px;">Property Preferences:</h3>
         <ul style="color: #4b5563;">
-          ${qualifiedData.budget_min || qualifiedData.budget_max ? `<li><strong>Budget:</strong> €${qualifiedData.budget_min?.toLocaleString() || '?'} - €${qualifiedData.budget_max?.toLocaleString() || '?'}</li>` : ''}
+          ${budgetLine}
           ${qualifiedData.bedrooms ? `<li><strong>Bedrooms:</strong> ${qualifiedData.bedrooms.join(', ')}</li>` : ''}
           ${qualifiedData.location ? `<li><strong>Location:</strong> ${qualifiedData.location}</li>` : ''}
           ${qualifiedData.timeline ? `<li><strong>Timeline:</strong> ${qualifiedData.timeline}</li>` : ''}

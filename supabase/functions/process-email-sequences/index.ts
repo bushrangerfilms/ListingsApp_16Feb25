@@ -193,9 +193,10 @@ Deno.serve(async (req) => {
                   ? profile.bedrooms_required.join(', ')
                   : profile.bedrooms_required
                 : '',
+              // GB-flavoured email template — TODO migrate to per-org currency via formatPrice.
               budget:
                 profile.budget_min && profile.budget_max
-                  ? `£${profile.budget_min.toLocaleString()} - £${profile.budget_max.toLocaleString()}`
+                  ? `£${profile.budget_min.toLocaleString()} - £${profile.budget_max.toLocaleString()}` // locale-allowed: GB email template
                   : '',
               queueId: queueItem.id,
               preferencesToken: profile.email_preferences_token || null,

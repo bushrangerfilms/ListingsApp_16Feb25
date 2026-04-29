@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { getEdgeLocaleConfig, type EdgeLocaleConfig } from '../_shared/locale-config.ts';
+import { DEFAULT_LOCALE, LOCALE_CONFIGS, type MarketLocale } from '../_shared/locale.config.ts';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -494,7 +495,7 @@ serve(async (req) => {
     }
 
     // Fetch custom AI instructions
-    const effectiveLocale = locale || org.locale || 'en-IE';
+    const effectiveLocale = locale || org.locale || DEFAULT_LOCALE;
     const customInstructions = await fetchAIInstructions(supabase, 'brochure_generation', organizationId, effectiveLocale);
     const customInstructionsSection = buildCustomInstructionsSection(customInstructions);
 
@@ -595,14 +596,10 @@ serve(async (req) => {
       contactPhone: org.contact_phone || '',
       businessAddress: org.business_address || '',
       psrLicenceNumber: org.psr_licence_number || null,
-      licenceDisplayLabel: ({
-        'en-IE': 'PSRA Licence',
-        'en-GB': 'Propertymark No.',
-        'en-US': 'License No.',
-        'en-CA': 'Reg. No.',
-        'en-AU': 'Licence No.',
-        'en-NZ': 'REA Licence',
-      } as Record<string, string>)[effectiveLocale] || 'Licence No.',
+      // Per-locale licence display label comes from the canonical regionConfig.
+      licenceDisplayLabel:
+        LOCALE_CONFIGS[(effectiveLocale as MarketLocale) in LOCALE_CONFIGS ? (effectiveLocale as MarketLocale) : DEFAULT_LOCALE]
+          .legal.regulatory.licenceDisplayLabel,
       locale: effectiveLocale,
       currency: org.currency || localeConfig.currency.code,
       countryCode: org.country_code || 'IE',

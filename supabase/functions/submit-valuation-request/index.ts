@@ -1,21 +1,21 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.58.0';
+import {
+  COUNTRY_TO_LOCALE,
+  DEFAULT_LOCALE,
+  LOCALE_CONFIGS,
+  type MarketCountry,
+} from '../_shared/locale.config.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const POSTCODE_LABELS: Record<string, string> = {
-  IE: 'Eircode',
-  GB: 'Postcode',
-  US: 'ZIP Code',
-  CA: 'Postal Code',
-  AU: 'Postcode',
-  NZ: 'Postcode',
-};
-
 function getPostcodeLabel(countryCode: string | null | undefined): string {
-  return POSTCODE_LABELS[(countryCode || 'IE').toUpperCase()] || 'Postcode';
+  const cc = (countryCode || LOCALE_CONFIGS[DEFAULT_LOCALE].countryCode).toUpperCase() as MarketCountry;
+  const locale = COUNTRY_TO_LOCALE[cc];
+  if (!locale) return LOCALE_CONFIGS[DEFAULT_LOCALE].address.postalCodeLabel;
+  return LOCALE_CONFIGS[locale].address.postalCodeLabel;
 }
 
 Deno.serve(async (req) => {
