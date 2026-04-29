@@ -9,10 +9,14 @@ import {
   Upload,
   Save,
   Loader2,
-  Pipette,
   Plus,
   Trash2,
 } from "lucide-react";
+
+// AutoListing brand blue (matches the logo). Used as the color-picker
+// fallback when a value is missing — clicking opens at brand color, not
+// black.
+const BRAND_BLUE_DEFAULT = "#1F1FCC";
 import {
   Card,
   CardContent,
@@ -421,19 +425,24 @@ function ValueEditor({
   if (asset.asset_type === "color") {
     return (
       <div className="flex items-center gap-2">
-        <input
-          type="color"
-          value={value || "#000000"}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-10 h-9 rounded cursor-pointer border-0 p-0"
-        />
+        <label
+          className="relative inline-flex items-center justify-center w-10 h-9 rounded border cursor-pointer overflow-hidden"
+          style={{ backgroundColor: value || BRAND_BLUE_DEFAULT }}
+          title="Open color picker"
+        >
+          <input
+            type="color"
+            value={value || BRAND_BLUE_DEFAULT}
+            onChange={(e) => onChange(e.target.value)}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
+        </label>
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="#0F172A"
+          placeholder={BRAND_BLUE_DEFAULT}
           className="font-mono text-xs h-8 max-w-[140px]"
         />
-        <Pipette className="h-4 w-4 text-muted-foreground" />
       </div>
     );
   }
@@ -577,16 +586,22 @@ function NewAssetButton({ onCreated }: { onCreated: () => void }) {
               <Label className="text-xs">Value</Label>
               {type === "color" ? (
                 <div className="flex gap-2 items-center">
-                  <input
-                    type="color"
-                    value={value || "#000000"}
-                    onChange={(e) => setValue(e.target.value)}
-                    className="w-10 h-9 rounded border-0"
-                  />
+                  <label
+                    className="relative inline-flex items-center justify-center w-10 h-9 rounded border cursor-pointer overflow-hidden"
+                    style={{ backgroundColor: value || BRAND_BLUE_DEFAULT }}
+                    title="Open color picker"
+                  >
+                    <input
+                      type="color"
+                      value={value || BRAND_BLUE_DEFAULT}
+                      onChange={(e) => setValue(e.target.value)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                  </label>
                   <Input
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    placeholder="#0F172A"
+                    placeholder={BRAND_BLUE_DEFAULT}
                     className="font-mono"
                   />
                 </div>
