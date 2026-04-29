@@ -63,11 +63,28 @@ serve(async (req) => {
       );
     }
 
-    // If planName provided without priceId, look up the Stripe price from plan_definitions
+    // If planName provided without priceId, look up the Stripe price by org currency.
+    // Org currency in {EUR, GBP, USD, CAD, AUD, NZD}; corresponding column is
+    // stripe_monthly_price_id (canonical, EUR) or stripe_monthly_price_id_<lower>.
     if (!priceId && planName) {
+      // Pre-fetch org currency so we know which Stripe price column to read.
+      // Need requestedOrgId at this point; the membership-validation block below
+      // happens after this — but we trust the org_id here only to read currency,
+      // and the membership check still gates the actual checkout.
+      const { data: orgRow } = await supabase
+        .from('organizations')
+        .select('currency')
+        .eq('id', requestedOrgId)
+        .single();
+      const orgCurrency = (orgRow?.currency ?? 'EUR').toUpperCase();
+      const priceColumn =
+        orgCurrency === 'EUR'
+          ? 'stripe_monthly_price_id'
+          : `stripe_monthly_price_id_${orgCurrency.toLowerCase()}`;
+
       const { data: planDef, error: planError } = await supabase
         .from('plan_definitions')
-        .select('stripe_monthly_price_id, name')
+        .select(`name, stripe_monthly_price_id, ${priceColumn}`)
         .eq('name', planName)
         .eq('is_active', true)
         .single();
@@ -80,17 +97,25 @@ serve(async (req) => {
         );
       }
 
-      if (!planDef.stripe_monthly_price_id) {
-        console.error('Plan has no Stripe price configured:', planName);
+      // Prefer the currency-specific column; fall back to EUR canonical if not seeded yet.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const currencySpecific = (planDef as any)[priceColumn] as string | null | undefined;
+      priceId = currencySpecific || planDef.stripe_monthly_price_id || null;
+
+      if (!priceId) {
+        console.error(`Plan '${planName}' has no Stripe price for ${orgCurrency} or EUR`);
         return new Response(
-          JSON.stringify({ error: `Plan '${planName}' is not yet available for purchase` }),
+          JSON.stringify({
+            error: 'pricing_unavailable',
+            message: `Plan '${planName}' isn't yet available in ${orgCurrency}. Please contact support.`,
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      priceId = planDef.stripe_monthly_price_id;
       mode = mode || 'subscription';
-      console.log(`[STRIPE] Resolved plan '${planName}' to price ${priceId}`);
+      const billedIn = currencySpecific ? orgCurrency : `EUR (no ${orgCurrency} pricing yet)`;
+      console.log(`[STRIPE] Resolved plan '${planName}' (org currency ${orgCurrency}) to price ${priceId} — billed in ${billedIn}`);
     }
 
     if (!priceId) {
@@ -138,16 +163,28 @@ serve(async (req) => {
         );
       }
     } else if (mode === 'subscription') {
-      // Validate price exists in plan_definitions (check both column names for compatibility)
+      // Validate price exists in plan_definitions across ALL currency columns.
+      // The price-resolution block above already picked the right column for
+      // the org's currency, but a caller can also pass `priceId` directly —
+      // in which case the price might match any of EUR / GBP / USD / CAD / AUD / NZD.
       const { data: planDef, error: planError } = await supabase
         .from('plan_definitions')
-        .select('stripe_monthly_price_id, name')
-        .eq('stripe_monthly_price_id', priceId)
+        .select('name, stripe_monthly_price_id, stripe_monthly_price_id_gbp, stripe_monthly_price_id_usd, stripe_monthly_price_id_cad, stripe_monthly_price_id_aud, stripe_monthly_price_id_nzd')
+        .or(
+          [
+            `stripe_monthly_price_id.eq.${priceId}`,
+            `stripe_monthly_price_id_gbp.eq.${priceId}`,
+            `stripe_monthly_price_id_usd.eq.${priceId}`,
+            `stripe_monthly_price_id_cad.eq.${priceId}`,
+            `stripe_monthly_price_id_aud.eq.${priceId}`,
+            `stripe_monthly_price_id_nzd.eq.${priceId}`,
+          ].join(','),
+        )
         .eq('is_active', true)
         .single();
 
       if (planError || !planDef) {
-        console.error('Invalid subscription price ID:', priceId);
+        console.error('Invalid subscription price ID (no per-currency match):', priceId);
         return new Response(
           JSON.stringify({ error: 'Invalid subscription price' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -15,8 +15,19 @@ export default function PricingPage() {
   const { currency: detectedCurrency } = useLocale();
   const currency = detectedCurrency as SupportedCurrency;
 
-  const formatLocalPrice = (eurCents: number) =>
-    formatPrice(currency === 'EUR' ? eurCents : estimatePrice(eurCents, currency), currency);
+  // Per-currency price resolution.  If the plan has price_cents_<currency>
+  // populated (seeded via scripts/seed-stripe-prices.ts), show that real
+  // amount.  Otherwise FX-estimate from EUR canonical (legacy fallback).
+  // The estimated path also returns `estimated: true` so the UI can label.
+  const resolvePriceForPlan = (plan: { monthly_price_cents: number } & Partial<Record<`price_cents_${'gbp' | 'usd' | 'cad' | 'aud' | 'nzd'}`, number | null>>): { cents: number; estimated: boolean } => {
+    if (currency === 'EUR') return { cents: plan.monthly_price_cents, estimated: false };
+    const realCents = plan[`price_cents_${currency.toLowerCase()}` as keyof typeof plan] as number | null | undefined;
+    if (typeof realCents === 'number' && realCents > 0) {
+      return { cents: realCents, estimated: false };
+    }
+    return { cents: estimatePrice(plan.monthly_price_cents, currency), estimated: true };
+  };
+  const formatLocalPrice = (cents: number) => formatPrice(cents, currency);
 
   const { data: plans } = useQuery({
     queryKey: ['plan-definitions-pricing'],
@@ -62,12 +73,20 @@ export default function PricingPage() {
                     <div className="mt-4">
                       {isFree ? (
                         <span className="text-4xl font-bold">Free</span>
-                      ) : (
-                        <>
-                          <span className="text-4xl font-bold">{formatLocalPrice(plan.monthly_price_cents)}</span>
-                          <span className="text-muted-foreground">/{plan.billing_interval}</span>
-                        </>
-                      )}
+                      ) : (() => {
+                        const { cents, estimated } = resolvePriceForPlan(plan);
+                        return (
+                          <>
+                            <span className="text-4xl font-bold">{formatLocalPrice(cents)}</span>
+                            <span className="text-muted-foreground">/{plan.billing_interval}</span>
+                            {estimated && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Approximate — billed in EUR until local pricing is activated
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col">
