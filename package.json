@@ -13,7 +13,7 @@
     "setup-db": "node setup-database.js",
     "i18n:lint": "npx tsx scripts/i18n-lint.ts",
     "i18n:check": "npx tsx scripts/i18n-check.ts",
-    "locale:check": "npx tsx locale-config/locale.config.check.ts && npx tsx locale-config/sync.ts --check",
+    "locale:check": "npx tsx locale-config/locale.config.check.ts && npx tsx locale-config/locale.config.snapshot.ts && npx tsx locale-config/sync.ts --check",
     "locale:sync": "npx tsx locale-config/sync.ts",
     "lint:locale": "npx tsx scripts/lint-locale.ts",
     "ci:check": "npm run lint:locale && npm run locale:check",
