@@ -3,8 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
-import { getEdgeLocaleConfig, type EdgeLocaleConfig } from '../_shared/locale-config.ts';
-import { DEFAULT_LOCALE } from '../_shared/locale.config.ts';
+import { getRegionConfig, DEFAULT_LOCALE, type RegionConfig } from '../_shared/locale.config.ts';
 
 // CORS headers set per-request below
 
@@ -96,18 +95,18 @@ function buildCustomInstructionsSection(instructions: AIInstructionSet[]): strin
   return `\n\nCUSTOM REQUIREMENTS:\n${sections.join('\n\n')}`;
 }
 
-const getSpellingLabel = (config: EdgeLocaleConfig): string =>
+const getSpellingLabel = (config: RegionConfig): string =>
   config.spelling === 'british' ? 'British English' : 'American English';
 
-const getDescriptionPrompt = (content: string, localeConfig: EdgeLocaleConfig, metadata: any) => {
+const getDescriptionPrompt = (content: string, localeConfig: RegionConfig, metadata: any) => {
   const spellingLabel = getSpellingLabel(localeConfig);
   return `You are an expert real estate copywriter. Enhance this property description to be more engaging and sales-focused while maintaining complete accuracy.
 
 LOCALE REQUIREMENTS (${spellingLabel}):
 - Use ${spellingLabel} spelling (e.g., "colour" not "color" for British, "center" not "centre" for American)
-- Use ${localeConfig.currency.symbol} for any currency references
-- Use ${localeConfig.measurements.areaSymbol} for measurements
-- Reference ${localeConfig.energyRating.system} for energy ratings
+- Use ${localeConfig.financial.currencySymbol} for any currency references
+- Use ${localeConfig.property.measurements.areaSymbol} for measurements
+- Reference ${localeConfig.property.energyRatings.system} for energy ratings
 
 PROPERTY CONTEXT:
 ${metadata?.category ? `- Category: ${metadata.category}` : ''}
@@ -133,12 +132,12 @@ ${content}
 Return ONLY the enhanced description text, no explanations or markers. Preserve paragraph breaks using double newlines.`;
 };
 
-const getSpecsPrompt = (content: string, localeConfig: EdgeLocaleConfig) => {
-  const dimensionExample = localeConfig.measurements.area === 'sqft'
+const getSpecsPrompt = (content: string, localeConfig: RegionConfig) => {
+  const dimensionExample = localeConfig.property.measurements.areaUnit === 'sqft'
     ? '"Living Room: 17ft x 14ft"'
     : '"Living Room: 5.2m x 4.1m"';
 
-  const abbreviationRule = localeConfig.measurements.area === 'sqft'
+  const abbreviationRule = localeConfig.property.measurements.areaUnit === 'sqft'
     ? 'Standardize to sq ft (not sf, not sqft)'
     : 'Standardize to m² (not sqm, not sq m)';
 
@@ -147,14 +146,14 @@ const getSpecsPrompt = (content: string, localeConfig: EdgeLocaleConfig) => {
   return `You are a property specifications formatter. Clean up and format these property specifications for clarity and consistency.
 
 LOCALE REQUIREMENTS:
-- Use ${localeConfig.measurements.areaSymbol} for all area measurements
+- Use ${localeConfig.property.measurements.areaSymbol} for all area measurements
 - Use ${spellingLabel} spelling
-- Use ${localeConfig.terminology.groundFloor} for ground level, ${localeConfig.terminology.firstFloor} for the next level up
+- Use ${localeConfig.legal.terminology.groundFloor} for ground level, ${localeConfig.legal.terminology.firstFloor} for the next level up
 
 FORMATTING RULES:
 1. Put each room/item on its own line
 2. Use consistent format: "Room Name: dimensions" (e.g., ${dimensionExample})
-3. Convert any inconsistent measurements to ${localeConfig.measurements.areaSymbol}
+3. Convert any inconsistent measurements to ${localeConfig.property.measurements.areaSymbol}
 4. Group related items (bedrooms together, reception rooms together, etc.)
 5. Use bullet points (•) for features that don't have dimensions
 6. ${abbreviationRule}
@@ -233,7 +232,7 @@ serve(async (req) => {
       console.log(`Loaded ${customInstructions.length} custom instruction set(s) for ${featureType}`);
     }
 
-    const localeConfig = getEdgeLocaleConfig(locale || DEFAULT_LOCALE);
+    const localeConfig = getRegionConfig(locale || DEFAULT_LOCALE);
     
     // Build prompt with custom instructions appended
     const basePrompt = type === 'description' 

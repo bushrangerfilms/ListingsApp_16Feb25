@@ -3,8 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
-import { getEdgeLocaleConfig, type EdgeLocaleConfig } from '../_shared/locale-config.ts';
-import { DEFAULT_LOCALE, LOCALE_CONFIGS, type MarketLocale } from '../_shared/locale.config.ts';
+import { getRegionConfig, DEFAULT_LOCALE, LOCALE_CONFIGS, type MarketLocale, type RegionConfig } from '../_shared/locale.config.ts';
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -213,7 +212,7 @@ async function analyzeAllPhotos(
 
 function buildFullBrochurePrompt(
   listing: Record<string, unknown>,
-  localeConfig: EdgeLocaleConfig,
+  localeConfig: RegionConfig,
   customInstructions: string,
   photoDescriptions?: Map<string, string>
 ): string {
@@ -227,7 +226,7 @@ function buildFullBrochurePrompt(
   const hasDescriptions = photoDescriptions && photoDescriptions.size > 0;
 
   const spellingLabel = localeConfig.spelling === 'british' ? 'British English' : 'American English';
-  const measurementNote = localeConfig.measurements.area === 'sqm'
+  const measurementNote = localeConfig.property.measurements.areaUnit === 'sqm'
     ? 'Use both imperial (feet/inches) as primary and metric in parentheses.'
     : 'Use imperial (feet and inches). Also include metric in parentheses.';
 
@@ -236,25 +235,25 @@ Generate a complete brochure content in JSON format for the following property l
 
 LOCALE REQUIREMENTS:
 - Write in ${spellingLabel}
-- Currency: ${localeConfig.currency.symbol} (${localeConfig.currency.code})
-- Area unit: ${localeConfig.measurements.areaSymbol}
-- Energy rating system: ${localeConfig.energyRating.system}
-- Postal code term: ${localeConfig.postalCode.label}
+- Currency: ${localeConfig.financial.currencySymbol} (${localeConfig.financial.currency})
+- Area unit: ${localeConfig.property.measurements.areaSymbol}
+- Energy rating system: ${localeConfig.property.energyRatings.system}
+- Postal code term: ${localeConfig.address.postalCodeLabel}
 - Measurements: ${measurementNote}
-- Country: ${localeConfig.country}
+- Country: ${localeConfig.regionName}
 
 PROPERTY DATA:
 - Title: ${listing.title || 'Untitled'}
 - Address: ${listing.address || ''}, ${listing.address_town || ''}, ${listing.county || ''}
-- ${localeConfig.postalCode.label}: ${listing.eircode || 'Not provided'}
+- ${localeConfig.address.postalCodeLabel}: ${listing.eircode || 'Not provided'}
 - Category: ${listing.category || 'Listing'}
 - Building Type: ${listing.building_type || 'Not specified'}
 - Bedrooms: ${listing.bedrooms || 'Not specified'}
 - Bathrooms: ${listing.bathrooms || 'Not specified'}
 - Ensuites: ${listing.ensuite || 'Not specified'}
-- Floor Area: ${listing.floor_area_size ? `${listing.floor_area_size} ${localeConfig.measurements.areaSymbol}` : 'Not specified'}
+- Floor Area: ${listing.floor_area_size ? `${listing.floor_area_size} ${localeConfig.property.measurements.areaSymbol}` : 'Not specified'}
 - Land Size: ${listing.land_size ? `${listing.land_size} acres` : 'Not specified'}
-- Price: ${listing.price ? `${localeConfig.currency.symbol} ${Number(listing.price).toLocaleString()}` : 'Price on Application'}
+- Price: ${listing.price ? `${localeConfig.financial.currencySymbol} ${Number(listing.price).toLocaleString()}` : 'Price on Application'}
 - Energy Rating: ${listing.ber_rating || 'Not provided'}
 - Category: ${listing.category === 'Rental' ? 'To Let' : listing.category === 'Holiday Rental' ? 'Holiday Let' : 'For Sale'}
 
@@ -282,7 +281,7 @@ INSTRUCTIONS:
 
 3. Parse the specs/description text into individual rooms. For each room, extract:
    - Room name (e.g., "Living Room", "Master Bedroom", "Kitchen/Dining")
-   - Floor level ("${localeConfig.terminology.groundFloor}", "${localeConfig.terminology.firstFloor}", "Basement", etc.)
+   - Floor level ("${localeConfig.legal.terminology.groundFloor}", "${localeConfig.legal.terminology.firstFloor}", "Basement", etc.)
    - Dimensions if mentioned (format: imperial with metric in parentheses for Irish, or as appropriate for locale)
    - A very brief description (max 10 words, e.g., "Laminate flooring, recessed lighting, feature fireplace")
    - photoUrl: ${hasDescriptions ? 'Use the PHOTO DESCRIPTIONS above to assign the best matching photo URL. Match room type names (e.g., "Kitchen", "Master Bedroom") to the photo descriptions.' : 'Assign the best matching photo URL from the available photos.'}
@@ -292,7 +291,7 @@ INSTRUCTIONS:
 
 5. Generate an external features list (garden, parking, views, etc.) from the description. Keep to 3-5 items.
 
-6. Write a location description in EXACTLY 2 sentences about ${listing.address_town || 'the area'}, ${listing.county || ''}, ${localeConfig.country}. Mention the town and 2-3 key nearby amenities.
+6. Write a location description in EXACTLY 2 sentences about ${listing.address_town || 'the area'}, ${listing.county || ''}, ${localeConfig.regionName}. Mention the town and 2-3 key nearby amenities.
 
 7. For the gallery, select up to 4 visually interesting photos from the available photos list. These are used as accent photos throughout the brochure. ${hasDescriptions ? 'Use the photo descriptions to understand what each photo shows, but write captions as short buyer-appeal marketing copy (2-4 words), NOT literal descriptions. Examples: "Outdoor space potential", "Generous rear garden", "Period character features", "Countryside setting".' : 'Write captions as short buyer-appeal marketing copy (2-4 words), e.g. "Generous rear garden", "Period character features".'}
 
@@ -303,7 +302,7 @@ RESPOND WITH ONLY VALID JSON matching this exact structure (no markdown, no code
 {
   "cover": {
     "headline": "string - e.g. '3 Bed Detached House' or descriptive headline",
-    "address": "string - full address with ${localeConfig.postalCode.label}",
+    "address": "string - full address with ${localeConfig.address.postalCodeLabel}",
     "price": "string - formatted price with currency symbol, or 'Price on Application'",
     "saleMethod": "string - e.g. 'For Sale by Private Treaty'",
     "heroPhotoUrl": "string - URL of hero photo",
@@ -341,7 +340,7 @@ RESPOND WITH ONLY VALID JSON matching this exact structure (no markdown, no code
     }
   ],
   "legal": {
-    "disclaimer": "string - standard legal disclaimer for ${localeConfig.country}",
+    "disclaimer": "string - standard legal disclaimer for ${localeConfig.regionName}",
     "psrLicenceNumber": "string or null"
   },
   "visibleSections": {
@@ -362,17 +361,17 @@ function buildSectionRegeneratePrompt(
   section: string,
   listing: Record<string, unknown>,
   existingContent: Record<string, unknown>,
-  localeConfig: EdgeLocaleConfig,
+  localeConfig: RegionConfig,
   customInstructions: string
 ): string {
   const spellingLabel = localeConfig.spelling === 'british' ? 'British English' : 'American English';
-  const measurementNote = localeConfig.measurements.area === 'sqm'
+  const measurementNote = localeConfig.property.measurements.areaUnit === 'sqm'
     ? 'Use both imperial (feet/inches) as primary and metric in parentheses.'
     : 'Use imperial (feet and inches). Also include metric in parentheses.';
 
   return `You are an expert real estate copywriter. Regenerate ONLY the "${section}" section of a property brochure.
 
-LOCALE: ${spellingLabel}, ${localeConfig.currency.symbol}, ${localeConfig.country}
+LOCALE: ${spellingLabel}, ${localeConfig.financial.currencySymbol}, ${localeConfig.regionName}
 Measurements: ${measurementNote}
 
 PROPERTY: ${listing.title || ''} at ${listing.address || ''}, ${listing.address_town || ''}, ${listing.county || ''}
@@ -499,7 +498,7 @@ serve(async (req) => {
     const customInstructions = await fetchAIInstructions(supabase, 'brochure_generation', organizationId, effectiveLocale);
     const customInstructionsSection = buildCustomInstructionsSection(customInstructions);
 
-    const localeConfig = getEdgeLocaleConfig(effectiveLocale);
+    const localeConfig = getRegionConfig(effectiveLocale);
 
     // Build the prompt
     const prompt = regenerateSection
@@ -573,7 +572,7 @@ serve(async (req) => {
     if (!brochureContent.legal?.disclaimer) {
       brochureContent.legal = {
         ...brochureContent.legal,
-        disclaimer: localeConfig.legalDisclaimer,
+        disclaimer: localeConfig.aiPromptHints.legalDisclaimer,
       };
     }
 
@@ -601,7 +600,7 @@ serve(async (req) => {
         LOCALE_CONFIGS[(effectiveLocale as MarketLocale) in LOCALE_CONFIGS ? (effectiveLocale as MarketLocale) : DEFAULT_LOCALE]
           .legal.regulatory.licenceDisplayLabel,
       locale: effectiveLocale,
-      currency: org.currency || localeConfig.currency.code,
+      currency: org.currency || localeConfig.financial.currency,
       countryCode: org.country_code || 'IE',
       styleOptions: {
         templateId: 'classic-1',

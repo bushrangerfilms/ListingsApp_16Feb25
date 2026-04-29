@@ -3,8 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.75.0";
 import { publicCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
-import { LOCALE_TO_COUNTRY, DEFAULT_LOCALE, type MarketLocale } from '../_shared/locale.config.ts';
-import { getEdgeLocaleConfig, formatEdgePrice } from '../_shared/locale-config.ts';
+import { LOCALE_TO_COUNTRY, DEFAULT_LOCALE, getRegionConfig, formatPrice, type MarketLocale, type RegionConfig } from '../_shared/locale.config.ts';
 import { getPostcodeConfig as getEdgePostcodeConfig, normalizePostcode as normalizeEdgePostcode, routingKeyFor as edgeRoutingKeyFor } from '../_shared/postcodes.ts';
 import { getDefaultMarketResearch as getEdgeDefaultMarketResearch } from '../_shared/market-defaults.ts';
 import { verifyPriceTrend } from './market-index/index.ts';
@@ -1317,9 +1316,10 @@ const MARKET_RESEARCH_TOOL = {
   strict: true,
 } as const;
 
-function buildMarketResearchTool(edgeLocale: ReturnType<typeof getEdgeLocaleConfig>, postcodeCfg: ReturnType<typeof getEdgePostcodeConfig>): any {
-  const { country, currency, measurements } = edgeLocale;
-  const unit = measurements.areaSymbol;
+function buildMarketResearchTool(edgeLocale: RegionConfig, postcodeCfg: ReturnType<typeof getEdgePostcodeConfig>): any {
+  const country = edgeLocale.regionName;
+  const currency = edgeLocale.financial.currency;
+  const unit = edgeLocale.property.measurements.areaSymbol;
   return {
     name: "report_market_research",
     description:
@@ -1329,15 +1329,15 @@ function buildMarketResearchTool(edgeLocale: ReturnType<typeof getEdgeLocaleConf
       properties: {
         price_per_sqm_low: {
           type: "number",
-          description: `Conservative low estimate in ${currency.code} per ${unit}`,
+          description: `Conservative low estimate in ${currency} per ${unit}`,
         },
         price_per_sqm_high: {
           type: "number",
-          description: `Conservative high estimate in ${currency.code} per ${unit}`,
+          description: `Conservative high estimate in ${currency} per ${unit}`,
         },
         avg_price_sqm: {
           type: "number",
-          description: `Average price per ${unit} in ${currency.code}`,
+          description: `Average price per ${unit} in ${currency}`,
         },
         comparable_sales: {
           type: "array",
@@ -1444,7 +1444,7 @@ async function performAIMarketResearch(
     return null;
   }
 
-  const edgeLocale = getEdgeLocaleConfig(locale);
+  const edgeLocale = getRegionConfig(locale);
   const postcodeCfg = getEdgePostcodeConfig(countryCode);
   const rawPostcode = (answers.postcode || answers.eircode || "").trim();
   const fallbackTown = answers.town || answers.area || "";
@@ -1453,7 +1453,7 @@ async function performAIMarketResearch(
     detached: "detached house",
     semi: countryCode === "GB" ? "semi-detached house" : "semi-detached house",
     terrace: countryCode === "GB" ? "terraced house" : "terraced house",
-    apartment: edgeLocale.terminology.apartment,
+    apartment: edgeLocale.legal.terminology.apartment,
     bungalow: "bungalow",
   }[propertyType] || "residential property";
 
@@ -1481,7 +1481,7 @@ async function performAIMarketResearch(
     : `TASK 1 — Echo the user's town/county:
   • The user did not provide a ${postcodeCfg.label}. Return \`resolved_town: "${fallbackTown}"\`, \`resolved_county: "${fallbackCounty}"\`, \`resolution_confidence: "low"\`, \`resolution_failed: false\`.`;
 
-  const userPrompt = `Research current market data for a ${propertyTypeLabel} in ${edgeLocale.country}.
+  const userPrompt = `Research current market data for a ${propertyTypeLabel} in ${edgeLocale.regionName}.
 
 Location:
 ${locationBlock}
@@ -1495,7 +1495,7 @@ ${resolutionTask}
 
 TASK 2 — Research current market comparables for the resolved area:
   • Recent sales (last 6–12 months) in this area and nearby comparable areas
-  • Price per ${edgeLocale.measurements.areaSymbol} for similar properties (report figures in ${edgeLocale.currency.code})
+  • Price per ${edgeLocale.property.measurements.areaSymbol} for similar properties (report figures in ${edgeLocale.financial.currency})
   • Impact of age and land size, distance from town centre, and current market trends
   • 3–5 comparable sales with description, sale_price, approx_sqm, price_per_sqm, distance_km
 
@@ -1509,7 +1509,7 @@ Call the \`report_market_research\` tool exactly once with your complete finding
       model: "claude-opus-4-6",
       max_tokens: 4096,
       system:
-        `You are a property valuation expert in ${edgeLocale.country}. Use the report_market_research tool to return structured research findings. All monetary figures must be in ${edgeLocale.currency.code}; all areas in ${edgeLocale.measurements.areaSymbol}.`,
+        `You are a property valuation expert in ${edgeLocale.regionName}. Use the report_market_research tool to return structured research findings. All monetary figures must be in ${edgeLocale.financial.currency}; all areas in ${edgeLocale.property.measurements.areaSymbol}.`,
       tools: [tool as any],
       tool_choice: { type: "tool", name: "report_market_research" },
       messages: [{ role: "user", content: userPrompt }],
@@ -1570,10 +1570,10 @@ function getGatedResult(type: string, result: any, locale: string = DEFAULT_LOCA
     const range = result.estimate_high - result.estimate_low;
     const widerLow = result.estimate_low - range * 0.2;
     const widerHigh = result.estimate_high + range * 0.2;
-    const edgeLocale = getEdgeLocaleConfig(locale);
+    const edgeLocale = getRegionConfig(locale);
 
     return {
-      estimate_range: `${formatEdgePrice(widerLow, edgeLocale)} - ${formatEdgePrice(widerHigh, edgeLocale)}`,
+      estimate_range: `${formatPrice(widerLow, edgeLocale)} - ${formatPrice(widerHigh, edgeLocale)}`,
       confidence: "Preliminary",
       message: "Get your full valuation report for a refined estimate and market insights.",
       resolved_town: result.resolved_town || null,
@@ -1593,11 +1593,11 @@ function getFullResult(type: string, submission: any, locale: string = DEFAULT_L
       next_steps: getNextSteps(submission.band),
     };
   } else {
-    const edgeLocale = getEdgeLocaleConfig(locale);
+    const edgeLocale = getRegionConfig(locale);
     return {
       estimate_low: submission.estimate_low,
       estimate_high: submission.estimate_high,
-      estimate_display: `${formatEdgePrice(submission.estimate_low, edgeLocale)} - ${formatEdgePrice(submission.estimate_high, edgeLocale)}`,
+      estimate_display: `${formatPrice(submission.estimate_low, edgeLocale)} - ${formatPrice(submission.estimate_high, edgeLocale)}`,
       confidence: submission.confidence,
       drivers: submission.drivers_json,
       market_trend: submission.market_trend,
