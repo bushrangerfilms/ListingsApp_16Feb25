@@ -149,6 +149,27 @@ eq(LOCALE_CONFIGS['en-US'].address.countyPrefix, '', 'US countyPrefix');
 eq(LOCALE_CONFIGS['en-US'].dateTime.firstDayOfWeek, 0, 'US firstDayOfWeek');
 eq(LOCALE_CONFIGS['en-IE'].dateTime.firstDayOfWeek, 1, 'IE firstDayOfWeek');
 
+// 9. Energy-system short codes — every locale has a non-empty system,
+// so brochure badges and other compact UI render the right acronym
+// (BER / EPC / HERS / EnerGuide / NatHERS / HER) without branching on locale.
+const expectedEnergySystem: Record<MarketLocale, string> = {
+  'en-IE': 'BER', 'en-GB': 'EPC', 'en-US': 'HERS',
+  'en-CA': 'EnerGuide', 'en-AU': 'NatHERS', 'en-NZ': 'HER',
+};
+for (const [locale, expected] of Object.entries(expectedEnergySystem) as Array<[MarketLocale, string]>) {
+  eq(LOCALE_CONFIGS[locale].property.energyRatings.system, expected, `${locale} energy system`);
+}
+
+// 10. Paper format — IE/GB/AU/NZ → A4, US/CA → Letter.  Used by brochure
+// templates for page-size selection without branching on locale ids.
+const expectedPaperFormat: Record<MarketLocale, 'A4' | 'Letter'> = {
+  'en-IE': 'A4', 'en-GB': 'A4', 'en-US': 'Letter',
+  'en-CA': 'Letter', 'en-AU': 'A4', 'en-NZ': 'A4',
+};
+for (const [locale, expected] of Object.entries(expectedPaperFormat) as Array<[MarketLocale, 'A4' | 'Letter']>) {
+  eq(LOCALE_CONFIGS[locale].paperFormat, expected, `${locale} paperFormat`);
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Result
 // ────────────────────────────────────────────────────────────────────────────

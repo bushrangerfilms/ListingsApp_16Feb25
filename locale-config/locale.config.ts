@@ -40,6 +40,11 @@ export interface EnergyRatingsConfig {
   enabled: boolean;
   /** Human label for the field (e.g. "BER Rating", "EPC Rating", "HERS Index"). */
   label: string;
+  /**
+   * Short code for the energy-rating system, suitable for compact UI like
+   * brochure badges. e.g. "BER", "EPC", "HERS", "EnerGuide", "NatHERS", "HER".
+   */
+  system: string;
   /** Whether the field is required at validation time. */
   required: boolean;
   /** The full set of ratings users can pick from. */
@@ -212,6 +217,13 @@ export interface RegionConfig {
   regionName: string;
   /** Spelling convention used in user-facing copy. */
   spelling: 'british' | 'american';
+  /**
+   * Default paper format used for printable artefacts (brochures, valuation
+   * letters).  IE / GB / AU / NZ default to A4; US / CA default to Letter.
+   * Templates that need exact dimensions key off this value rather than
+   * branching on locale ids.
+   */
+  paperFormat: 'A4' | 'Letter';
   property: PropertyConfig;
   address: AddressConfig;
   financial: FinancialConfig;
@@ -279,9 +291,10 @@ export const LOCALE_CONFIGS: Record<MarketLocale, RegionConfig> = {
     countryCode: 'IE',
     regionName: 'Ireland',
     spelling: 'british',
+    paperFormat: 'A4',
     property: {
       energyRatings: {
-        enabled: true, label: 'BER Rating', required: true,
+        enabled: true, label: 'BER Rating', system: 'BER', required: true,
         ratings: [
           { code: 'A1', label: 'A1', description: 'Most energy efficient' },
           { code: 'A2', label: 'A2' }, { code: 'A3', label: 'A3' },
@@ -349,9 +362,10 @@ export const LOCALE_CONFIGS: Record<MarketLocale, RegionConfig> = {
     countryCode: 'GB',
     regionName: 'United Kingdom',
     spelling: 'british',
+    paperFormat: 'A4',
     property: {
       energyRatings: {
-        enabled: true, label: 'EPC Rating', required: true,
+        enabled: true, label: 'EPC Rating', system: 'EPC', required: true,
         ratings: [
           { code: 'A', label: 'A', description: 'Most energy efficient (92-100)' },
           { code: 'B', label: 'B', description: '81-91' }, { code: 'C', label: 'C', description: '69-80' },
@@ -420,9 +434,10 @@ export const LOCALE_CONFIGS: Record<MarketLocale, RegionConfig> = {
     countryCode: 'US',
     regionName: 'United States',
     spelling: 'american',
+    paperFormat: 'Letter',
     property: {
       energyRatings: {
-        enabled: false, label: 'HERS Index', required: false,
+        enabled: false, label: 'HERS Index', system: 'HERS', required: false,
         ratings: [
           { code: 'HERS_0_50', label: 'HERS 0-50', description: 'Very efficient' },
           { code: 'HERS_51_100', label: 'HERS 51-100', description: 'Standard new home' },
@@ -487,9 +502,10 @@ export const LOCALE_CONFIGS: Record<MarketLocale, RegionConfig> = {
     countryCode: 'CA',
     regionName: 'Canada',
     spelling: 'british',
+    paperFormat: 'Letter',
     property: {
       energyRatings: {
-        enabled: true, label: 'EnerGuide Rating', required: false,
+        enabled: true, label: 'EnerGuide Rating', system: 'EnerGuide', required: false,
         ratings: [
           { code: 'ENER_0_50', label: '0-50 GJ/year', description: 'Very efficient' },
           { code: 'ENER_51_100', label: '51-100 GJ/year', description: 'Efficient' },
@@ -554,9 +570,10 @@ export const LOCALE_CONFIGS: Record<MarketLocale, RegionConfig> = {
     countryCode: 'AU',
     regionName: 'Australia',
     spelling: 'british',
+    paperFormat: 'A4',
     property: {
       energyRatings: {
-        enabled: true, label: 'NatHERS Rating', required: false,
+        enabled: true, label: 'NatHERS Rating', system: 'NatHERS', required: false,
         ratings: [
           { code: 'STAR_10', label: '10 Stars', description: 'Most energy efficient' },
           { code: 'STAR_9', label: '9 Stars' }, { code: 'STAR_8', label: '8 Stars' },
@@ -626,9 +643,10 @@ export const LOCALE_CONFIGS: Record<MarketLocale, RegionConfig> = {
     countryCode: 'NZ',
     regionName: 'New Zealand',
     spelling: 'british',
+    paperFormat: 'A4',
     property: {
       energyRatings: {
-        enabled: true, label: 'Home Energy Rating', required: false,
+        enabled: true, label: 'Home Energy Rating', system: 'HER', required: false,
         ratings: [
           { code: 'STAR_10', label: '10 Stars', description: 'Most energy efficient' },
           { code: 'STAR_9', label: '9 Stars' }, { code: 'STAR_8', label: '8 Stars' },
