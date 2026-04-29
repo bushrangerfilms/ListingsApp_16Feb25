@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { reportToSentry } from '../_shared/sentry-report.ts';
+import {
+  COUNTRY_TO_LOCALE,
+  DEFAULT_LOCALE,
+  LOCALE_CONFIGS,
+  type MarketCountry,
+  type MarketLocale,
+} from '../_shared/locale.config.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,33 +15,31 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Locale defaults at signup time. The DB columns default to IE/EUR/Europe/Dublin
-// (set during the IE-only era), so any insert that omits these fields silently
-// tags the org as Irish. Resolve here from the client-detected locale (which
-// went through IP geo + timezone detection in the browser), with a CF-IPCountry
-// header fallback. Org address is the ultimate truth — they can edit later.
-type MarketLocale = 'en-IE' | 'en-GB' | 'en-US' | 'en-CA' | 'en-AU' | 'en-NZ';
-type MarketCountry = 'IE' | 'GB' | 'US' | 'CA' | 'AU' | 'NZ';
-
-const COUNTRY_TO_LOCALE: Record<MarketCountry, MarketLocale> = {
-  IE: 'en-IE', GB: 'en-GB', US: 'en-US', CA: 'en-CA', AU: 'en-AU', NZ: 'en-NZ',
-};
-
-const LOCALE_DEFAULTS: Record<MarketLocale, { countryCode: MarketCountry; currency: string; timezone: string }> = {
-  'en-IE': { countryCode: 'IE', currency: 'EUR', timezone: 'Europe/Dublin' },
-  'en-GB': { countryCode: 'GB', currency: 'GBP', timezone: 'Europe/London' },
-  'en-US': { countryCode: 'US', currency: 'USD', timezone: 'America/New_York' },
-  'en-CA': { countryCode: 'CA', currency: 'CAD', timezone: 'America/Toronto' },
-  'en-AU': { countryCode: 'AU', currency: 'AUD', timezone: 'Australia/Sydney' },
-  'en-NZ': { countryCode: 'NZ', currency: 'NZD', timezone: 'Pacific/Auckland' },
-};
-
+// Locale defaults at signup time.  The DB columns default to IE/EUR/Europe/
+// Dublin (set during the IE-only era), so any insert that omits these fields
+// silently tags the org as Irish.  Resolve here from the client-detected
+// locale (which went through IP geo + timezone detection in the browser),
+// with a CF-IPCountry header fallback.  Org address is the ultimate truth —
+// users can edit later.
 function isMarketLocale(v: unknown): v is MarketLocale {
-  return typeof v === 'string' && v in LOCALE_DEFAULTS;
+  return typeof v === 'string' && v in LOCALE_CONFIGS;
 }
 
 function isMarketCountry(v: unknown): v is MarketCountry {
   return typeof v === 'string' && v in COUNTRY_TO_LOCALE;
+}
+
+function defaultsForLocale(locale: MarketLocale): {
+  countryCode: MarketCountry;
+  currency: string;
+  timezone: string;
+} {
+  const cfg = LOCALE_CONFIGS[locale];
+  return {
+    countryCode: cfg.countryCode,
+    currency: cfg.financial.currency,
+    timezone: cfg.dateTime.defaultTimezone,
+  };
 }
 
 function resolveLocaleFromSignup(
@@ -42,24 +47,24 @@ function resolveLocaleFromSignup(
   bodyCountry: unknown,
   cfCountryHeader: string | null,
 ): { locale: MarketLocale; countryCode: MarketCountry; currency: string; timezone: string } {
-  // 1. Trust client-supplied locale if it's a known market
+  // 1. Trust client-supplied locale if it's a known market.
   if (isMarketLocale(bodyLocale)) {
-    const d = LOCALE_DEFAULTS[bodyLocale];
-    return { locale: bodyLocale, ...d };
+    return { locale: bodyLocale, ...defaultsForLocale(bodyLocale) };
   }
-  // 2. Otherwise client-supplied country
+  // 2. Otherwise client-supplied country.
   if (isMarketCountry(bodyCountry)) {
     const locale = COUNTRY_TO_LOCALE[bodyCountry];
-    return { locale, ...LOCALE_DEFAULTS[locale] };
+    return { locale, ...defaultsForLocale(locale) };
   }
-  // 3. Otherwise CF-IPCountry header (set by Cloudflare in front of Supabase)
+  // 3. Otherwise CF-IPCountry header (set by Cloudflare in front of Supabase).
   if (cfCountryHeader && isMarketCountry(cfCountryHeader.toUpperCase())) {
     const cc = cfCountryHeader.toUpperCase() as MarketCountry;
     const locale = COUNTRY_TO_LOCALE[cc];
-    return { locale, ...LOCALE_DEFAULTS[locale] };
+    return { locale, ...defaultsForLocale(locale) };
   }
-  // 4. Fall back to IE (matches DB column defaults — preserves prior behaviour)
-  return { locale: 'en-IE', ...LOCALE_DEFAULTS['en-IE'] };
+  // 4. Fall back to canonical default (matches DB column defaults — preserves
+  //    prior IE-default behaviour while being expressed via canonical).
+  return { locale: DEFAULT_LOCALE, ...defaultsForLocale(DEFAULT_LOCALE) };
 }
 
 // Generate a URL-safe slug from business name

@@ -133,7 +133,9 @@ const LEGACY_LOCALE_ALLOWLIST = [
   "src/contexts/OrganizationContext.tsx",
   // Edge functions  —  these are the next-priority cleanups (they hit posting/email/AI flows).
   "supabase/functions/al-chat/index.ts",
-  "supabase/functions/create-organization/index.ts",
+  // (create-organization migrated — now imports MarketLocale/MarketCountry/
+  // COUNTRY_TO_LOCALE/LOCALE_CONFIGS from the canonical mirror at
+  // _shared/locale.config.ts.)
   "supabase/functions/enhance-listing-copy/index.ts",
   "supabase/functions/extract-property-details/index.ts",
   "supabase/functions/generate-brochure-content/index.ts",
