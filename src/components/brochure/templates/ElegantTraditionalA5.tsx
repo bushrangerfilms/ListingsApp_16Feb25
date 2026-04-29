@@ -7,7 +7,9 @@ import {
   COLORS,
   TYPE,
 } from '@/lib/brochure/designTokens';
+import { getRegionConfig } from '@/lib/locale/config';
 import { BrochureHeader } from './shared/BrochureHeader';
+import { getBookletPageSize, getLandscapeSpreadSize } from './shared/pageSizes';
 import { buildPageRenderContext } from './ClassicBrochureTemplate';
 import {
   ElegantCoverPageContent,
@@ -47,27 +49,13 @@ const styles = StyleSheet.create({
   },
 });
 
-function getA5PageSize(locale: string): 'A5' | [number, number] {
-  if (['en-US', 'en-CA'].includes(locale)) {
-    return [396, 612]; // Half-Letter
-  }
-  return 'A5';
-}
-
-function getLandscapePageSize(locale: string): [number, number] {
-  if (['en-US', 'en-CA'].includes(locale)) {
-    return [792, 612]; // Letter landscape
-  }
-  return [841.89, 595.28]; // A4 landscape
-}
-
 // ── A5 Reader ─────────────────────────────────────────────────────────
 
 export function ElegantTraditionalA5Reader({ content, branding }: A5Props) {
   const dims = getLayoutDimensions('a5');
   const typeOverrides = getTypeOverrides('a5');
   const ctx = buildPageRenderContext(content, branding, dims, typeOverrides);
-  const pageSize = getA5PageSize(branding.locale);
+  const pageSize = getBookletPageSize(getRegionConfig(branding.locale));
 
   const p1m = getPageMargins(1, dims);
   const p2m = getPageMargins(2, dims);
@@ -103,7 +91,7 @@ export function ElegantTraditionalA5PrintReady({ content, branding }: A5Props) {
   const dims = getLayoutDimensions('a5');
   const typeOverrides = getTypeOverrides('a5');
   const ctx = buildPageRenderContext(content, branding, dims, typeOverrides);
-  const landscapeSize = getLandscapePageSize(branding.locale);
+  const landscapeSize = getLandscapeSpreadSize(getRegionConfig(branding.locale));
 
   const p1m = getPageMargins(1, dims);
   const p2m = getPageMargins(2, dims);

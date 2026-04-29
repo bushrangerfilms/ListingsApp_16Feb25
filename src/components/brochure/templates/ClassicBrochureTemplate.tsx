@@ -21,9 +21,11 @@ import {
   type LayoutDimensions,
   type BrochurePageFormat,
 } from '@/lib/brochure/designTokens';
+import { getRegionConfig } from '@/lib/locale/config';
 import { BrochureHeader } from './shared/BrochureHeader';
 import { BrochureFooter } from './shared/BrochureFooter';
 import { BrochureRoomBlock } from './shared/BrochureRoomBlock';
+import { getSinglePageSize } from './shared/pageSizes';
 
 // ── Page Render Context ──────────────────────────────────────────────────
 
@@ -122,15 +124,8 @@ export function buildPageRenderContext(
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
-function getBerLabel(locale: string): string {
-  switch (locale) {
-    case 'en-GB': return 'EPC';
-    case 'en-US': return 'HERS';
-    case 'en-AU': return 'NatHERS';
-    case 'en-CA': return 'EnerGuide';
-    default: return 'BER';
-  }
-}
+// Energy-system label (BER / EPC / HERS / EnerGuide / NatHERS / HER) is owned
+// by the canonical locale config — see EnergyRatingsConfig.system.
 
 /** Split rooms into ground-floor and upper-floor groups */
 function splitRoomsByFloor(rooms: BrochureContent['rooms']) {
@@ -395,7 +390,7 @@ export function CoverPageContent({ ctx, margins }: PageContentProps) {
               { borderColor: accentColor, color: accentColor },
             ]}
           >
-            {getBerLabel(ctx.branding.locale)} {content.cover.energyRating}
+            {getRegionConfig(ctx.branding.locale).property.energyRatings.system} {content.cover.energyRating}
           </Text>
         )}
       </View>
@@ -833,9 +828,7 @@ export function ClassicBrochureTemplate({ content, branding }: ClassicBrochureTe
   const typeOverrides = getTypeOverrides('a4');
   const ctx = buildPageRenderContext(content, branding, dims, typeOverrides);
 
-  const pageSize = ['en-US', 'en-CA'].includes(branding.locale)
-    ? ('LETTER' as const)
-    : ('A4' as const);
+  const pageSize = getSinglePageSize(getRegionConfig(branding.locale));
 
   const p1m = getPageMargins(1, dims);
   const p2m = getPageMargins(2, dims);
