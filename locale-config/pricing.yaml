@@ -1,0 +1,76 @@
+# pricing.yaml — multi-currency Stripe pricing source of truth.
+#
+# Each plan has six currencies (EUR/GBP/USD/CAD/AUD/NZD). EUR is canonical
+# (matches `plan_definitions.monthly_price_cents`); other currencies are
+# rounded to nearest 5 in whole-currency units to give clean local pricing.
+#
+# Workflow:
+#   1. Edit this file: set `price_cents` for any new currencies that need
+#      activating, leave `stripe_id` as null.
+#   2. Run `npx tsx scripts/seed-stripe-prices.ts` (Tier 3 task 11).  The
+#      script reads any `price_cents` row whose `stripe_id` is null, creates
+#      the corresponding Stripe Price object, and writes the resulting
+#      `price_xxxxx` ID back into this file.
+#   3. Commit the updated yaml.  A second script syncs `plan_definitions.
+#      stripe_monthly_price_id_<currency>` and `price_cents_<currency>`
+#      columns from this yaml.
+#   4. `stripe-checkout` reads the per-currency column matching the org's
+#      currency.
+#
+# Do NOT hand-edit `stripe_id` values once written — they're produced by
+# the Stripe API and editing causes silent mismatches.  If you need to
+# rotate a price, set `stripe_id: null` and re-run seed.
+#
+# All amounts are in the smallest currency unit (cents / pence / etc.).
+# All `billing_interval: week` matches the existing weekly pricing model.
+
+billing_interval: week
+
+plans:
+  essentials:
+    EUR: { price_cents: 4000,  stripe_id: price_1TEa0UIncirHB4pn1iiDLnbY }
+    GBP: { price_cents: 3500,  stripe_id: null }
+    USD: { price_cents: 4500,  stripe_id: null }
+    CAD: { price_cents: 6000,  stripe_id: null }
+    AUD: { price_cents: 6500,  stripe_id: null }
+    NZD: { price_cents: 7000,  stripe_id: null }
+
+  growth:
+    EUR: { price_cents: 7000,  stripe_id: price_1TEa0VIncirHB4pn4ZUuvgKt }
+    GBP: { price_cents: 6000,  stripe_id: null }
+    USD: { price_cents: 7500,  stripe_id: null }
+    CAD: { price_cents: 10000, stripe_id: null }
+    AUD: { price_cents: 11500, stripe_id: null }
+    NZD: { price_cents: 12500, stripe_id: null }
+
+  professional:
+    EUR: { price_cents: 13000, stripe_id: price_1TEa0WIncirHB4pnaIL8jfee }
+    GBP: { price_cents: 11500, stripe_id: null }
+    USD: { price_cents: 14000, stripe_id: null }
+    CAD: { price_cents: 18500, stripe_id: null }
+    AUD: { price_cents: 21500, stripe_id: null }
+    NZD: { price_cents: 23000, stripe_id: null }
+
+  multi_branch_s:
+    EUR: { price_cents: 17000, stripe_id: price_1TEa0XIncirHB4pnXlKGo16x }
+    GBP: { price_cents: 14500, stripe_id: null }
+    USD: { price_cents: 18500, stripe_id: null }
+    CAD: { price_cents: 24500, stripe_id: null }
+    AUD: { price_cents: 28000, stripe_id: null }
+    NZD: { price_cents: 30500, stripe_id: null }
+
+  multi_branch_m:
+    EUR: { price_cents: 25000, stripe_id: price_1TEa0YIncirHB4pnfm8qImDR }
+    GBP: { price_cents: 21500, stripe_id: null }
+    USD: { price_cents: 27000, stripe_id: null }
+    CAD: { price_cents: 36000, stripe_id: null }
+    AUD: { price_cents: 41500, stripe_id: null }
+    NZD: { price_cents: 44500, stripe_id: null }
+
+  multi_branch_l:
+    EUR: { price_cents: 35000, stripe_id: price_1TEa0ZIncirHB4png7Ljq9Rv }
+    GBP: { price_cents: 30000, stripe_id: null }
+    USD: { price_cents: 37500, stripe_id: null }
+    CAD: { price_cents: 51500, stripe_id: null }
+    AUD: { price_cents: 58000, stripe_id: null }
+    NZD: { price_cents: 62500, stripe_id: null }
