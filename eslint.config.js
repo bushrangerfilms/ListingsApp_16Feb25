@@ -35,6 +35,9 @@ const LOCALE_CANONICAL_FILES = [
   "src/hooks/useUKRollout.ts",
   // Pricing / billing — currency strings ARE the data here.
   "src/lib/billing/pricing.ts",
+  // Brochure built-in cert logo registry — `locales` field IS the data
+  // (each logo is mapped to the markets it's relevant for).
+  "src/lib/brochure/certificationLogos.ts",
   // The lint rules themselves & their tests
   "eslint-rules/**/*.js",
   // Scripts: i18n tooling and product-seed scripts work with locale strings as data.
@@ -64,16 +67,11 @@ const LEGACY_LOCALE_ALLOWLIST = [
   // (Listing creation/review/edit + ValuationRequest + PropertyDetails were
   // migrated in the listing-forms cleanup PR — they no longer carry hardcoded
   // locale literals.  listingSchema.ts entry below also removed.)
-  // Brochure editors — hardcoded "Eircode" placeholder, default € examples.
-  // (The 8 brochure TEMPLATES under templates/ were migrated to canonical
-  // lookups in the brochure-cleanup PR — they're no longer on this list.)
-  "src/pages/BrochureEditor.tsx",
-  "src/components/brochure/BrochureCoverEditor.tsx",
-  "src/components/brochure/BrochureLegalEditor.tsx",
-  "src/components/brochure/BrochureHeaderEditor.tsx",
-  "src/components/brochure/BrochureCertificationEditor.tsx",
-  "src/lib/brochure/designTokens.ts",
-  "src/lib/brochure/certificationLogos.ts",
+  // (Brochure editors cluster cleaned up in cleanup PR — DEFAULT_LOCALE
+  // fallbacks, addressConfig.postalCodeLabel for Eircode placeholder,
+  // certificationLogos moved to canonical-files exemption since `locales`
+  // is the data, designTokens spaceCurrency regex carries a same-line
+  // waiver.  BrochureHeaderEditor was not on this list.)
   // Marketing footer / legal / public pages — IE company info + €fallbacks.
   "src/components/marketing/MarketingFooter.tsx",
   "src/pages/marketing/SupportPage.tsx",

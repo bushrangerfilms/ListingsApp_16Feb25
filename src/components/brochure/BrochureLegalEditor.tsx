@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import type { BrochureLegal } from '@/lib/brochure/types';
 import { useOrganization } from '@/contexts/OrganizationContext';
 import { getRegionConfig } from '@/lib/regionConfig';
+import { DEFAULT_LOCALE } from '@/lib/locale/config';
 import type { SupportedLocale } from '@/lib/i18n';
 
 interface BrochureLegalEditorProps {
@@ -13,7 +14,7 @@ interface BrochureLegalEditorProps {
 
 export function BrochureLegalEditor({ legal, onChange }: BrochureLegalEditorProps) {
   const { organization } = useOrganization();
-  const regulatory = getRegionConfig((organization?.locale || 'en-IE') as SupportedLocale).legal.regulatory;
+  const regulatory = getRegionConfig((organization?.locale || DEFAULT_LOCALE) as SupportedLocale).legal.regulatory;
 
   return (
     <div className="space-y-3 p-3">

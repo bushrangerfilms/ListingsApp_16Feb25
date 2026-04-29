@@ -30,6 +30,7 @@ import {
 
 import type { BrochureContent, BrochureBranding } from '@/lib/brochure/types';
 import { DEFAULT_BROCHURE_CONTENT } from '@/lib/brochure/types';
+import { DEFAULT_LOCALE } from '@/lib/locale/config';
 import {
   useBrochureQuery,
   useGenerateBrochure,
@@ -175,7 +176,7 @@ export default function BrochureEditor() {
       const result = await generateMutation.mutateAsync({
         listingId,
         organizationId: organization.id,
-        locale: (organization as any).locale || 'en-IE',
+        locale: (organization as any).locale || DEFAULT_LOCALE,
       });
 
       setContent(result.content);
@@ -213,7 +214,7 @@ export default function BrochureEditor() {
       const result = await generateMutation.mutateAsync({
         listingId,
         organizationId: organization.id,
-        locale: (organization as any).locale || 'en-IE',
+        locale: (organization as any).locale || DEFAULT_LOCALE,
         regenerateSection: section,
         existingContent: content,
       });

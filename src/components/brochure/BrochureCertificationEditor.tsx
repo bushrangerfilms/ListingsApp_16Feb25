@@ -6,6 +6,7 @@ import { Save, Loader2 } from 'lucide-react';
 import type { BrochureBranding, CertificationLogo, BrochureStyleOptions } from '@/lib/brochure/types';
 import { DEFAULT_STYLE_OPTIONS } from '@/lib/brochure/types';
 import { getLogosForLocale } from '@/lib/brochure/certificationLogos';
+import { DEFAULT_LOCALE } from '@/lib/locale/config';
 
 interface BrochureCertificationEditorProps {
   branding: BrochureBranding;
@@ -17,7 +18,7 @@ interface BrochureCertificationEditorProps {
 export function BrochureCertificationEditor({ branding, onChange, onSaveAsDefaults, isSavingDefaults }: BrochureCertificationEditorProps) {
   const opts = branding.styleOptions || DEFAULT_STYLE_OPTIONS;
   const selectedLogos = opts.certificationLogos || [];
-  const builtInLogos = getLogosForLocale(branding.locale || 'en-IE');
+  const builtInLogos = getLogosForLocale(branding.locale || DEFAULT_LOCALE);
 
   const toggleLogo = useCallback((builtIn: typeof builtInLogos[number]) => {
     const existing = selectedLogos.find(l => l.id === builtIn.id);
