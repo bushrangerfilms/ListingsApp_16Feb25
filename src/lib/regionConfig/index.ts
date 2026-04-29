@@ -1,152 +1,139 @@
-import { SupportedLocale } from '@/lib/i18n';
-import { ieConfig } from './ie';
-import { gbConfig } from './gb';
-import { usConfig } from './us';
-import { caConfig } from './ca';
-import { auConfig } from './au';
-import { nzConfig } from './nz';
+/**
+ * regionConfig — back-compat shim over the canonical locale config.
+ *
+ * Historically this file (and per-locale siblings ie.ts / gb.ts / etc.) held
+ * the source of truth for every locale-keyed value used by the Listings frontend.
+ * As of Checkpoint A + C of the locale-architecture rollout, that role has moved
+ * to /locale-config/locale.config.ts (mirrored to src/lib/locale/config.ts).
+ *
+ * This file remains as a thin adaptor so existing call-sites
+ * (`import { getRegionConfig } from '@/lib/regionConfig'`) keep working.
+ * It does two things only:
+ *   1. Re-exports the canonical types and helpers under their existing names.
+ *   2. Wraps `getRegionConfig` to add the four legacy shape adaptors:
+ *      - `address.postalCodePattern: RegExp`        (canonical: source + flags strings)
+ *      - `property.measurements.convertFromSqm/convertToSqm: function`
+ *           (canonical: `sqmDisplayMultiplier: number`)
+ *      - `property.measurements.convertFromAcres/convertToAcres: function`
+ *           (canonical: `acresDisplayMultiplier: number`)
+ *
+ * Forward direction: new consumers should `import from '@/lib/locale/config'` and
+ * use the canonical shape directly.  Once no consumer of this shim remains, the
+ * shim can be deleted.  Until then, edit canonical, then run
+ * `npx tsx locale-config/sync.ts` — never edit any file in this directory.
+ *
+ * The per-locale data files (ie.ts, gb.ts, us.ts, ca.ts, au.ts, nz.ts) that
+ * previously sat next to this index.ts were deleted in the same PR — their
+ * data now lives in canonical.  postcodes.ts (and its `getPostcodeConfig`
+ * helper) is intentionally retained: it carries fields the canonical doesn't,
+ * notably the lead-magnet quiz's `helperText` / `routingKey` / `resolutionHint`.
+ */
 
-export interface EnergyRating {
-  code: string;
-  label: string;
-  description?: string;
-}
+import {
+  LOCALE_CONFIGS as CANON_LOCALE_CONFIGS,
+  type RegionConfig as CanonicalRegionConfig,
+  type AddressConfig as CanonicalAddressConfig,
+  type MeasurementsConfig as CanonicalMeasurementsConfig,
+  type PropertyConfig as CanonicalPropertyConfig,
+  type MarketLocale,
+  DEFAULT_LOCALE,
+  postalCodeRegex,
+} from '@/lib/locale/config';
 
-export interface EnergyRatingsConfig {
-  enabled: boolean;
-  label: string;
-  ratings: EnergyRating[];
-  required: boolean;
-}
+// ────────────────────────────────────────────────────────────────────────────
+// Re-export canonical types under their legacy names where the shapes match.
+// ────────────────────────────────────────────────────────────────────────────
 
-export interface AddressConfig {
-  postalCodeLabel: string;
-  postalCodePlaceholder: string;
-  postalCodePattern: RegExp;
-  postalCodeFormat: string;
-  countyLabel: string;
-  countyRequired: boolean;
-  stateLabel?: string;
-  stateRequired?: boolean;
-  states?: Array<{ code: string; name: string }>;
-}
+export type {
+  EnergyRating,
+  EnergyRatingsConfig,
+  BuildingType,
+  TaxConfig,
+  LegalTerminology,
+  ComplianceConfig,
+  RegulatoryConfig,
+  LegalConfig,
+  FinancialConfig,
+  DateTimeConfig,
+} from '@/lib/locale/config';
 
-export interface MeasurementsConfig {
-  areaUnit: 'sqm' | 'sqft';
-  areaLabel: string;
-  areaSymbol: string;
+// ────────────────────────────────────────────────────────────────────────────
+// Legacy-shape interfaces  —  declared here because they extend canonical
+// shapes with the four back-compat fields callers still rely on.
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface MeasurementsConfig extends CanonicalMeasurementsConfig {
+  /** Convert a stored sqm value to the locale's display unit. */
   convertFromSqm: (sqm: number) => number;
+  /** Convert a value in the locale's display unit back to sqm. */
   convertToSqm: (value: number) => number;
-  landUnit: 'acres' | 'hectares';
-  landLabel: string;
-  landSymbol: string;
+  /** Convert a stored acres value to the locale's display unit. */
   convertFromAcres: (acres: number) => number;
+  /** Convert a value in the locale's display unit back to acres. */
   convertToAcres: (value: number) => number;
 }
 
-export interface BuildingType {
-  code: string;
-  label: string;
+export interface AddressConfig extends CanonicalAddressConfig {
+  /** Compiled regex from canonical's source+flags. */
+  postalCodePattern: RegExp;
 }
 
-export interface TaxConfig {
-  vatRate: number;
-  vatLabel: string;
-  vatEnabled: boolean;
-  stampDutyLabel?: string;
-}
-
-export interface LegalTerminology {
-  solicitor: string;
-  conveyancing: string;
-  stampDuty: string;
-  freehold: string;
-  leasehold: string;
-  listingAgent: string;
-  buyersAgent: string;
-}
-
-export interface ComplianceConfig {
-  gdprEnabled: boolean;
-  ccpaEnabled: boolean;
-  amlRequired: boolean;
-  fairHousingRequired: boolean;
-  dataRetentionDays: number;
-}
-
-export interface PropertyConfig {
-  energyRatings: EnergyRatingsConfig;
+export interface PropertyConfig extends Omit<CanonicalPropertyConfig, 'measurements'> {
   measurements: MeasurementsConfig;
-  buildingTypes: BuildingType[];
-  floorNumberingOffset: number;
 }
 
-export interface FinancialConfig {
-  currency: string;
-  currencySymbol: string;
-  currencyPosition: 'before' | 'after';
-  thousandsSeparator: string;
-  decimalSeparator: string;
-  tax: TaxConfig;
-}
-
-export interface DateTimeConfig {
-  dateFormat: string;
-  timeFormat: '12h' | '24h';
-  firstDayOfWeek: 0 | 1;
-}
-
-export interface RegulatoryConfig {
-  /** Whether agents are required to display a licence/registration number */
-  licenceRequired: boolean;
-  /** Regulatory body name (e.g. "PSRA", "RICS", "State Real Estate Commission") */
-  regulatoryBody: string;
-  /** Full name of regulatory body */
-  regulatoryBodyFull: string;
-  /** Label for the licence field in forms (e.g. "PSR Licence Number", "Real Estate License Number") */
-  licenceFieldLabel: string;
-  /** Short label for display (e.g. "PSRA Licence", "License No.") */
-  licenceDisplayLabel: string;
-  /** Placeholder example for the form field */
-  licencePlaceholder: string;
-  /** Optional regex for format validation */
-  licencePattern?: RegExp;
-  /** Note text shown below the field (e.g. "Required by PSRA for all property service providers") */
-  licenceNote?: string;
-  /** Phone number format placeholder */
-  phonePlaceholder: string;
-}
-
-export interface LegalConfig {
-  terminology: LegalTerminology;
-  compliance: ComplianceConfig;
-  regulatory: RegulatoryConfig;
-}
-
-export interface RegionConfig {
-  locale: SupportedLocale;
-  regionName: string;
-  countryCode: string;
-  property: PropertyConfig;
+export interface RegionConfig extends Omit<CanonicalRegionConfig, 'address' | 'property'> {
   address: AddressConfig;
-  financial: FinancialConfig;
-  dateTime: DateTimeConfig;
-  legal: LegalConfig;
+  property: PropertyConfig;
 }
 
-const REGION_CONFIGS: Partial<Record<SupportedLocale, RegionConfig>> = {
-  'en-IE': ieConfig,
-  'en-GB': gbConfig,
-  'en-US': usConfig,
-  'en-CA': caConfig,
-  'en-AU': auConfig,
-  'en-NZ': nzConfig,
+// ────────────────────────────────────────────────────────────────────────────
+// Adaptor — converts canonical RegionConfig into the legacy shape (with
+// derived RegExp + convert functions).  Cached per-locale so consumers
+// receive a stable reference and the RegExp isn't recompiled on every call.
+// ────────────────────────────────────────────────────────────────────────────
+
+function adapt(canonical: CanonicalRegionConfig): RegionConfig {
+  const m = canonical.property.measurements;
+  return {
+    ...canonical,
+    address: {
+      ...canonical.address,
+      postalCodePattern: postalCodeRegex(canonical),
+    },
+    property: {
+      ...canonical.property,
+      measurements: {
+        ...m,
+        convertFromSqm: (sqm: number) => sqm * m.sqmDisplayMultiplier,
+        convertToSqm: (value: number) => value / m.sqmDisplayMultiplier,
+        convertFromAcres: (acres: number) => acres * m.acresDisplayMultiplier,
+        convertToAcres: (value: number) => value / m.acresDisplayMultiplier,
+      },
+    },
+  };
+}
+
+const ADAPTED_CONFIGS: Record<MarketLocale, RegionConfig> = {
+  'en-IE': adapt(CANON_LOCALE_CONFIGS['en-IE']),
+  'en-GB': adapt(CANON_LOCALE_CONFIGS['en-GB']),
+  'en-US': adapt(CANON_LOCALE_CONFIGS['en-US']),
+  'en-CA': adapt(CANON_LOCALE_CONFIGS['en-CA']),
+  'en-AU': adapt(CANON_LOCALE_CONFIGS['en-AU']),
+  'en-NZ': adapt(CANON_LOCALE_CONFIGS['en-NZ']),
 };
 
-export function getRegionConfig(locale: SupportedLocale): RegionConfig {
-  return REGION_CONFIGS[locale] || REGION_CONFIGS['en-IE'];
+// ────────────────────────────────────────────────────────────────────────────
+// Public API  —  identical signatures to the pre-shim implementation.
+// ────────────────────────────────────────────────────────────────────────────
+
+export function getRegionConfig(locale: string | null | undefined): RegionConfig {
+  if (locale && (locale as MarketLocale) in ADAPTED_CONFIGS) {
+    return ADAPTED_CONFIGS[locale as MarketLocale];
+  }
+  return ADAPTED_CONFIGS[DEFAULT_LOCALE];
 }
 
 export function getAllRegionConfigs(): RegionConfig[] {
-  return Object.values(REGION_CONFIGS);
+  return Object.values(ADAPTED_CONFIGS);
 }

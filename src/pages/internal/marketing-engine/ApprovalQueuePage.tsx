@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -67,6 +67,7 @@ const STATUS_TONE: Record<string, string> = {
 export default function ApprovalQueuePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [pendingScrollId, setPendingScrollId] = useState<string | null>(null);
 
   const { data: posts, refetch } = useQuery<MarketingPost[]>({
     queryKey: ["marketing-engine-queue"],
@@ -80,6 +81,26 @@ export default function ApprovalQueuePage() {
       return (data ?? []) as MarketingPost[];
     },
   });
+
+  const pendingCount = (posts ?? []).filter(
+    (p) => p.status === "review_queue" || p.status === "pending_approval",
+  ).length;
+
+  // After generate, scroll the freshly created card into view once the
+  // refetch lands. The parent layout uses an inner scroll container
+  // (<main overflow-y-auto>), so window-level scroll won't reach the
+  // new card — scrollIntoView on the card itself does.
+  useEffect(() => {
+    if (!pendingScrollId) return;
+    if (!posts?.some((p) => p.id === pendingScrollId)) return;
+    const el = document.getElementById(`me-post-${pendingScrollId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("ring-2", "ring-primary");
+      setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 2000);
+    }
+    setPendingScrollId(null);
+  }, [pendingScrollId, posts]);
 
   const generate = useMutation({
     mutationFn: async () => {
@@ -103,6 +124,7 @@ export default function ApprovalQueuePage() {
         description: `Topic: ${data.topic}. Cost: $${Number(data.cost_usd).toFixed(4)}.`,
       });
       queryClient.invalidateQueries({ queryKey: ["marketing-engine-queue"] });
+      if (data.post_id) setPendingScrollId(data.post_id);
     },
     onError: (err: Error) =>
       toast.error("Generation failed", { description: err.message }),
@@ -119,7 +141,15 @@ export default function ApprovalQueuePage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold tracking-tight">Approval Queue</h1>
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+              Approval Queue
+              {posts && posts.length > 0 && (
+                <Badge variant="secondary" className="text-sm font-normal">
+                  {pendingCount} pending
+                  {posts.length > pendingCount ? ` · ${posts.length} total` : ""}
+                </Badge>
+              )}
+            </h1>
             <p className="text-muted-foreground mt-1">
               Review drafted posts. Approve to schedule for the assigned time.
             </p>
@@ -145,7 +175,13 @@ export default function ApprovalQueuePage() {
           </Card>
         ) : (
           posts.map((post) => (
-            <PostCard key={post.id} post={post} onChange={() => refetch()} />
+            <div
+              key={post.id}
+              id={`me-post-${post.id}`}
+              className="scroll-mt-4 rounded-lg transition-shadow"
+            >
+              <PostCard post={post} onChange={() => refetch()} />
+            </div>
           ))
         )}
       </div>
