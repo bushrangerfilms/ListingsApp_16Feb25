@@ -1,0 +1,90 @@
+name: Marketing Engine — changelog post
+
+# When a PR labeled 'user-facing' is merged into main, fire the marketing
+# engine's changelog-receive endpoint. The engine drafts a single-image
+# announcement post and queues it for super-admin approval.
+#
+# Required repo secrets:
+#   ME_CHANGELOG_URL          — full URL of the changelog-receive edge function
+#                                (e.g. https://sjcfcxjpukgeaxxkffpq.supabase.co/functions/v1/marketing-engine-changelog-receive)
+#   ME_AUTOMATION_SECRET      — shared with the edge function via x-automation-secret
+#
+# The 'user-facing' label is decoded by the workflow (PRs without it are
+# silently skipped). To force a post, add the label and re-trigger via
+# workflow_dispatch with the PR number.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to draft a changelog post for"
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  draft-post:
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'user-facing'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve PR data
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            PR_NUMBER="${{ inputs.pr_number }}"
+          else
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+          fi
+          DATA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json number,title,body,url,mergedAt,author)
+          {
+            echo "number=$(echo "$DATA" | jq -r .number)"
+            echo "title=$(echo "$DATA" | jq -r .title)"
+            echo "url=$(echo "$DATA" | jq -r .url)"
+            echo "merged_at=$(echo "$DATA" | jq -r .mergedAt)"
+            echo "author=$(echo "$DATA" | jq -r .author.login)"
+          } >> "$GITHUB_OUTPUT"
+          # Body may have newlines — write it to a file and reference via env.
+          echo "$DATA" | jq -r .body > /tmp/pr_body.txt
+
+      - name: Send to marketing-engine-changelog-receive
+        env:
+          ENDPOINT: ${{ secrets.ME_CHANGELOG_URL }}
+          SECRET: ${{ secrets.ME_AUTOMATION_SECRET }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          PR_TITLE: ${{ steps.pr.outputs.title }}
+          PR_URL: ${{ steps.pr.outputs.url }}
+          PR_MERGED_AT: ${{ steps.pr.outputs.merged_at }}
+          PR_AUTHOR: ${{ steps.pr.outputs.author }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${ENDPOINT:-}" || -z "${SECRET:-}" ]]; then
+            echo "Missing ME_CHANGELOG_URL or ME_AUTOMATION_SECRET; skipping."
+            exit 0
+          fi
+          PR_BODY=$(cat /tmp/pr_body.txt | head -c 4000)
+          PAYLOAD=$(jq -n \
+            --arg repo       "$REPO" \
+            --argjson pr_num "$PR_NUMBER" \
+            --arg title      "$PR_TITLE" \
+            --arg body       "$PR_BODY" \
+            --arg url        "$PR_URL" \
+            --arg merged_at  "$PR_MERGED_AT" \
+            --arg author     "$PR_AUTHOR" \
+            '{repo:$repo, pr_number:$pr_num, pr_title:$title, pr_body:$body, pr_url:$url, merged_at:$merged_at, author:$author}')
+          echo "Sending payload to $ENDPOINT (PR #$PR_NUMBER, $PR_TITLE)"
+          curl -fsS -X POST "$ENDPOINT" \
+            -H "Content-Type: application/json" \
+            -H "x-automation-secret: $SECRET" \
+            -d "$PAYLOAD"
