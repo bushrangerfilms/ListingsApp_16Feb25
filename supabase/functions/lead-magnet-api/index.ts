@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.75.0";
 import { publicCorsHeaders } from '../_shared/cors.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
+import { LOCALE_TO_COUNTRY, DEFAULT_LOCALE, type MarketLocale } from '../_shared/locale.config.ts';
 import { getEdgeLocaleConfig, formatEdgePrice } from '../_shared/locale-config.ts';
 import { getPostcodeConfig as getEdgePostcodeConfig, normalizePostcode as normalizeEdgePostcode, routingKeyFor as edgeRoutingKeyFor } from '../_shared/postcodes.ts';
 import { getDefaultMarketResearch as getEdgeDefaultMarketResearch } from '../_shared/market-defaults.ts';
@@ -259,25 +260,15 @@ async function handleGetOrg(supabase: any, slug: string): Promise<Response> {
   );
 }
 
-// Get lead magnet config
-// The lead magnet quiz supports all 6 markets directly — no per-locale launch
-// flag gating. Unknown locales fall back to en-IE.
-const LOCALE_TO_COUNTRY_EDGE: Record<string, string> = {
-  "en-IE": "IE",
-  "en-GB": "GB",
-  "en-US": "US",
-  "en-CA": "CA",
-  "en-AU": "AU",
-  "en-NZ": "NZ",
-};
-
-async function resolveOrgLocale(_supabase: any, rawLocale: string | null | undefined): Promise<{ locale: string; countryCode: string }> {
-  const candidate = (rawLocale as string) || "en-IE";
-  const countryCode = LOCALE_TO_COUNTRY_EDGE[candidate];
+// Lead magnet quiz supports all 6 markets directly — no per-locale launch
+// flag gating.  Unknown locales fall back to canonical DEFAULT_LOCALE.
+async function resolveOrgLocale(_supabase: unknown, rawLocale: string | null | undefined): Promise<{ locale: string; countryCode: string }> {
+  const candidate = (rawLocale as MarketLocale) || DEFAULT_LOCALE;
+  const countryCode = LOCALE_TO_COUNTRY[candidate as MarketLocale];
   if (countryCode) {
     return { locale: candidate, countryCode };
   }
-  return { locale: "en-IE", countryCode: "IE" };
+  return { locale: DEFAULT_LOCALE, countryCode: LOCALE_TO_COUNTRY[DEFAULT_LOCALE] };
 }
 
 async function handleGetConfig(supabase: any, orgSlug: string, type: string): Promise<Response> {
@@ -837,7 +828,7 @@ function buildAreaKeyFromAnswers(answers: any, countryCode: string = "IE"): stri
   return `${countryCode}:${town}_${county}`;
 }
 
-async function calculateWorthEstimate(supabase: any, answers: any, countryCode: string = "IE", locale: string = "en-IE"): Promise<any> {
+async function calculateWorthEstimate(supabase: any, answers: any, countryCode: string = LOCALE_TO_COUNTRY[DEFAULT_LOCALE], locale: string = DEFAULT_LOCALE): Promise<any> {
   const postcodeConfig = getEdgePostcodeConfig(countryCode);
   const rawPostcode = (answers.postcode || answers.eircode || "").trim();
   const hasPostcode = rawPostcode.length > 0;
@@ -1092,10 +1083,12 @@ async function calculateWorthEstimate(supabase: any, answers: any, countryCode: 
     }
   }
 
-  // Eircode - note if provided (for future precise lookup)
+  // Postcode (any market) - note if provided (for future precise lookup).
+  // Stored as `eircode` in the answers payload for legacy reasons; the
+  // canonical name in display contexts comes from postcodeConfig.label.
   if (answers.eircode && answers.eircode.trim()) {
     drivers.push({
-      factor: "Eircode provided",
+      factor: "Postal code provided", // locale-allowed: generic phrase shown as a confidence driver
       impact: "Improves accuracy",
       direction: "positive",
     });
@@ -1273,11 +1266,16 @@ const MARKET_RESEARCH_TOOL = {
         type: "string",
         description: "Notes about location premiums or discounts",
       },
+      // TODO(locale): the schema descriptions below are IE-specific (Eircode/
+      // Irish-county vocabulary).  When this AI tool is migrated to be market-
+      // aware, swap "Eircode" for `${postcodeConfig.label}` and "Irish county"
+      // for `${countryCode}-appropriate region`.  Until then these fixed
+      // descriptions are intentional — most lead magnet quizzes today are IE.
       resolved_town: {
         type: "string",
         description:
-          "The town or nearest settlement you determined the Eircode resolves to. " +
-          "If the user provided a town fallback instead of an Eircode, echo that back.",
+          "The town or nearest settlement you determined the Eircode resolves to. " + // locale-allowed: IE-specific AI prompt schema (TODO: market-aware)
+          "If the user provided a town fallback instead of an Eircode, echo that back.", // locale-allowed: IE-specific AI prompt schema (TODO: market-aware)
       },
       resolved_county: {
         type: "string",
@@ -1287,14 +1285,14 @@ const MARKET_RESEARCH_TOOL = {
         type: "string",
         enum: ["high", "medium", "low"],
         description:
-          "high = you recognize the exact Eircode routing key and identify a specific area; " +
+          "high = you recognize the exact Eircode routing key and identify a specific area; " + // locale-allowed: IE-specific AI prompt schema (TODO: market-aware)
           "medium = you can infer the general area; " +
-          "low = best guess, or user provided a town fallback instead of an Eircode.",
+          "low = best guess, or user provided a town fallback instead of an Eircode.", // locale-allowed: IE-specific AI prompt schema (TODO: market-aware)
       },
       resolution_failed: {
         type: "boolean",
         description:
-          "Set true only if you cannot resolve the Eircode to an area at all. " +
+          "Set true only if you cannot resolve the Eircode to an area at all. " + // locale-allowed: IE-specific AI prompt schema (TODO: market-aware)
           "When true, still populate resolved_town/resolved_county with your best guess " +
           "and set resolution_confidence to 'low'.",
       },
@@ -1437,7 +1435,7 @@ async function performAIMarketResearch(
   propertyType: string,
   answers: any,
   countryCode: string = "IE",
-  locale: string = "en-IE",
+  locale: string = DEFAULT_LOCALE,
 ): Promise<any> {
   const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY_AUTOLISTING");
 
@@ -1559,7 +1557,7 @@ Call the \`report_market_research\` tool exactly once with your complete finding
 // ============================================
 // Gating Logic
 // ============================================
-function getGatedResult(type: string, result: any, locale: string = "en-IE"): any {
+function getGatedResult(type: string, result: any, locale: string = DEFAULT_LOCALE): any {
   if (type === "READY_TO_SELL") {
     return {
       band: result.band,
@@ -1585,7 +1583,7 @@ function getGatedResult(type: string, result: any, locale: string = "en-IE"): an
   }
 }
 
-function getFullResult(type: string, submission: any, locale: string = "en-IE"): any {
+function getFullResult(type: string, submission: any, locale: string = DEFAULT_LOCALE): any {
   if (type === "READY_TO_SELL") {
     return {
       score: submission.score,
@@ -1665,7 +1663,7 @@ function getValuationNextSteps(confidence: string): string[] {
   return steps[confidence] || steps["Medium"];
 }
 
-function formatNumber(num: number, locale = 'en-IE'): string {
+function formatNumber(num: number, locale = DEFAULT_LOCALE): string {
   return Math.round(num).toLocaleString(locale);
 }
 
@@ -1707,7 +1705,7 @@ function buildLeadNotificationEmail(data: LeadNotificationData): string {
   const mapQueryRaw = eircode || [town, county].filter(Boolean).join(", ");
   const mapUrl = mapQueryRaw ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQueryRaw)}` : "";
   
-  const formattedDate = new Date(submittedAt).toLocaleDateString("en-IE", {
+  const formattedDate = new Date(submittedAt).toLocaleDateString(DEFAULT_LOCALE, {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -2755,7 +2753,7 @@ function buildCtaLeadEmail(params: {
   answersJson?: any;
 }): string {
   const { leadName, leadEmail, leadPhone, orgName, typeLabel, area, answersJson } = params;
-  const formattedDate = new Date().toLocaleDateString("en-IE", {
+  const formattedDate = new Date().toLocaleDateString(DEFAULT_LOCALE, {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
