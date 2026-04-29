@@ -1,0 +1,58 @@
+name: Lint
+
+# Gates the locale-architecture invariants on every PR and on push to main:
+#
+#   1. lint:locale  — zero `locale/*` ESLint rule violations.  Pre-existing
+#      `any` / `prefer-const` / `no-require-imports` errors are out of scope
+#      (tracked separately).  See scripts/lint-locale.ts.
+#
+#   2. locale:check — the canonical /locale-config/locale.config.ts is
+#      exhaustive across all 6 markets AND all generated mirrors are byte-
+#      identical to the canonical (sha256 match in mirror banner).
+#
+# Adding a new file to LEGACY_LOCALE_ALLOWLIST in eslint.config.js silences
+# step 1 for that file (intended use: per-file cleanup PRs ratchet the list
+# toward empty).  Step 2 cannot be silenced — the canonical is non-negotiable.
+#
+# To enable as a required check: GitHub repo → Settings → Branches →
+# Branch protection rule for `main` → Require status checks → "Lint / lint".
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Locale rules (lint:locale)
+        run: npm run lint:locale
+
+      - name: Canonical config + mirror drift (locale:check)
+        run: npm run locale:check
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Locale-architecture gates" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ \`npm run lint:locale\` — zero \`locale/*\` rule violations outside the allowlist" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ \`npm run locale:check\` — canonical exhaustive, mirrors in sync" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Adding a new market: edit \`locale-config/locale.config.ts\`, run \`npm run locale:sync\`." >> $GITHUB_STEP_SUMMARY
+          echo "Cleaning up a legacy file: route literals through canonical helpers, remove from \`LEGACY_LOCALE_ALLOWLIST\` in \`eslint.config.js\`." >> $GITHUB_STEP_SUMMARY
