@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { BrochureCover } from '@/lib/brochure/types';
 import { useLocale } from '@/hooks/useLocale';
+import { useAddressConfig } from '@/hooks/useRegionConfig';
 
 interface BrochureCoverEditorProps {
   cover: BrochureCover;
@@ -20,6 +21,7 @@ const SALE_METHODS = [
 
 export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEditorProps) {
   const { formatCurrency } = useLocale();
+  const addressConfig = useAddressConfig();
   const update = (field: keyof BrochureCover, value: string) => {
     onChange({ ...cover, [field]: value });
   };
@@ -40,7 +42,7 @@ export function BrochureCoverEditor({ cover, onChange, photos }: BrochureCoverEd
         <Input
           value={cover.address}
           onChange={(e) => update('address', e.target.value)}
-          placeholder="Full address with Eircode"
+          placeholder={`Full address with ${addressConfig.postalCodeLabel}`}
           className="h-8 text-sm"
         />
       </div>
