@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { DEFAULT_LOCALE, formatPrice, getRegionConfig } from '../_shared/locale.config.ts';
 
 const BATCH_SIZE = 50;
 const MAX_RETRIES = 3;
@@ -156,6 +157,14 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Resolve org locale so the budget renders in the org's currency.
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('locale')
+          .eq('id', organizationId)
+          .maybeSingle();
+        const regionConfig = getRegionConfig(org?.locale || DEFAULT_LOCALE);
+
         // Fetch sequence step + template
         const { data: step, error: stepsError } = await supabase
           .from('email_sequence_steps')
@@ -193,10 +202,9 @@ Deno.serve(async (req) => {
                   ? profile.bedrooms_required.join(', ')
                   : profile.bedrooms_required
                 : '',
-              // GB-flavoured email template — TODO migrate to per-org currency via formatPrice.
               budget:
                 profile.budget_min && profile.budget_max
-                  ? `£${profile.budget_min.toLocaleString()} - £${profile.budget_max.toLocaleString()}` // locale-allowed: GB email template
+                  ? `${formatPrice(profile.budget_min, regionConfig)} - ${formatPrice(profile.budget_max, regionConfig)}`
                   : '',
               queueId: queueItem.id,
               preferencesToken: profile.email_preferences_token || null,

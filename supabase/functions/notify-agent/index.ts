@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { DEFAULT_LOCALE, formatPrice, getRegionConfig } from "../_shared/locale.config.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,6 +8,7 @@ const corsHeaders = {
 };
 
 interface NotifyAgentRequest {
+  organizationId?: string;
   leadInfo: {
     name: string;
     email?: string;
@@ -36,7 +38,7 @@ serve(async (req) => {
   }
 
   try {
-    const { leadInfo, qualifiedData, agentRequest, conversationHistory, crmProfileId }: NotifyAgentRequest = await req.json();
+    const { organizationId, leadInfo, qualifiedData, agentRequest, conversationHistory, crmProfileId }: NotifyAgentRequest = await req.json();
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     const agentEmail = Deno.env.get('ADMIN_EMAIL') || Deno.env.get('FROM_EMAIL');
@@ -48,6 +50,22 @@ serve(async (req) => {
 
     if (!agentEmail) {
       throw new Error('Agent email not configured');
+    }
+
+    // Resolve org locale so the budget line renders in the agent's currency.
+    let regionConfig = getRegionConfig(DEFAULT_LOCALE);
+    if (organizationId) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+      if (supabaseUrl && supabaseServiceKey) {
+        const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+        const { data: org } = await adminClient
+          .from('organizations')
+          .select('locale')
+          .eq('id', organizationId)
+          .maybeSingle();
+        if (org?.locale) regionConfig = getRegionConfig(org.locale);
+      }
     }
 
     // Format urgency badge
@@ -62,15 +80,18 @@ serve(async (req) => {
       .map((msg, idx) => `<p style="margin: 8px 0;"><strong>${msg.role === 'user' ? 'Customer' : 'AI Assistant'}:</strong> ${msg.content}</p>`)
       .join('');
 
-    // Format property preferences
+    // Format property preferences — budget rendered in the org's currency
+    // (regionConfig resolved above from organizations.locale).
     let preferencesHtml = '';
     if (leadInfo.lead_type === 'buyer' && qualifiedData) {
-      // Budget line is currently EUR-only; agent notification emails should
-      // eventually carry the org's currency through and use formatPrice.
-      const budgetMin = qualifiedData.budget_min?.toLocaleString() || '?';
-      const budgetMax = qualifiedData.budget_max?.toLocaleString() || '?';
+      const budgetMinDisplay = qualifiedData.budget_min != null
+        ? formatPrice(qualifiedData.budget_min, regionConfig)
+        : '?';
+      const budgetMaxDisplay = qualifiedData.budget_max != null
+        ? formatPrice(qualifiedData.budget_max, regionConfig)
+        : '?';
       const budgetLine = (qualifiedData.budget_min || qualifiedData.budget_max)
-        ? `<li><strong>Budget:</strong> €${budgetMin} - €${budgetMax}</li>` // locale-allowed: agent notification email (EUR-only — TODO per-org currency)
+        ? `<li><strong>Budget:</strong> ${budgetMinDisplay} - ${budgetMaxDisplay}</li>`
         : '';
       preferencesHtml = `
         <h3 style="color: #1f2937; margin-top: 24px;">Property Preferences:</h3>
