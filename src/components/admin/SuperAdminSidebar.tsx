@@ -38,6 +38,7 @@ import {
   Rocket,
   AlertTriangle,
   Sparkles,
+  Workflow,
 } from "lucide-react";
 import { useAdminPermissions } from "@/hooks/admin/useAdminPermissions";
 
@@ -91,6 +92,7 @@ const navSections: NavSection[] = [
     label: 'Communications',
     items: [
       { path: '/internal/broadcasts', label: 'Broadcasts', icon: Megaphone, superAdminOnly: true },
+      { path: '/internal/marketing-engine', label: 'Marketing Engine', icon: Workflow, superAdminOnly: true },
       { path: '/internal/email-queue', label: 'Email Queue', icon: Mail },
     ]
   },

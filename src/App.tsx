@@ -108,6 +108,15 @@ const UsageRatesPage = lazyWithRetry(() => import("./pages/internal/UsageRatesPa
 const AITrainingPage = lazyWithRetry(() => import("./pages/internal/AITrainingPage"));
 const AlAdminPage = lazyWithRetry(() => import("./pages/internal/AlAdminPage"));
 const VideoMusicPage = lazyWithRetry(() => import("./pages/internal/VideoMusicPage"));
+const MarketingEngineDashboard = lazyWithRetry(() => import("./pages/internal/marketing-engine/MarketingEngineDashboard"));
+const MarketingEngineApprovalQueue = lazyWithRetry(() => import("./pages/internal/marketing-engine/ApprovalQueuePage"));
+const MarketingEngineCalendar = lazyWithRetry(() => import("./pages/internal/marketing-engine/CalendarViewPage"));
+const MarketingEngineProviders = lazyWithRetry(() => import("./pages/internal/marketing-engine/ProviderRegistryPage"));
+const MarketingEngineRouting = lazyWithRetry(() => import("./pages/internal/marketing-engine/RoutingPage"));
+const MarketingEngineBrandAssets = lazyWithRetry(() => import("./pages/internal/marketing-engine/BrandAssetsPage"));
+const MarketingEngineTelemetry = lazyWithRetry(() => import("./pages/internal/marketing-engine/CostTelemetryPage"));
+const MarketingEngineAnalytics = lazyWithRetry(() => import("./pages/internal/marketing-engine/AnalyticsDashboardPage"));
+const MarketingEngineSettings = lazyWithRetry(() => import("./pages/internal/marketing-engine/SettingsPage"));
 const PilotSettingsPage = lazyWithRetry(() => import("./pages/internal/PilotSettingsPage"));
 const BroadcastsPage = lazyWithRetry(() => import("./pages/internal/BroadcastsPage"));
 
@@ -276,6 +285,15 @@ function AdminRoutes() {
         <Route path="/internal/ai-training" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><AITrainingPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/al-admin" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><AlAdminPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/video-music" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><VideoMusicPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/marketing-engine" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineDashboard /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/marketing-engine/queue" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineApprovalQueue /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/marketing-engine/calendar" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineCalendar /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/marketing-engine/providers" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineProviders /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/marketing-engine/routing" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineRouting /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/marketing-engine/brand-assets" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineBrandAssets /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/marketing-engine/telemetry" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineTelemetry /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/marketing-engine/analytics" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineAnalytics /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/marketing-engine/settings" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineSettings /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/pilot" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><PilotSettingsPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
 
         <Route path="/alert-preferences/:token" element={<UpdateAlertPreferences />} />
