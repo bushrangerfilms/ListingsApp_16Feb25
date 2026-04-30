@@ -13,6 +13,7 @@ import {
   XCircle,
   Calendar,
   Settings,
+  Search,
 } from "lucide-react";
 import {
   Card,
@@ -102,6 +103,13 @@ const ENGINE_TILES = [
     title: "Settings & Taste",
     description: "Reviewer flags + taste rubric editor",
     color: "text-slate-500",
+  },
+  {
+    href: "/internal/marketing-engine/research-inbox",
+    icon: Search,
+    title: "Research Inbox",
+    description: "Phase 7D-2 — repos + patterns to steal from",
+    color: "text-fuchsia-500",
   },
 ] as const;
 
