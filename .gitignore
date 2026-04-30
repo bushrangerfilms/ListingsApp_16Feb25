@@ -50,3 +50,6 @@ build
 out
 .cache
 supabase/.temp/
+
+# SEO agent local artifacts
+tools/seo-agent/reports/

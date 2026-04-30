@@ -1,0 +1,37 @@
+{
+  "_comment": "What the agent checks each run. Edit freely.",
+  "site": {
+    "domain": "autolisting.io",
+    "gsc_property": "sc-domain:autolisting.io",
+    "marketing_routes": [
+      "/",
+      "/pricing",
+      "/features",
+      "/support",
+      "/privacy-policy",
+      "/terms-conditions",
+      "/cookie-policy"
+    ]
+  },
+  "lookback_days": 28,
+  "auto_fix_allowlist": [
+    "Listings/public/sitemap.xml",
+    "Listings/public/robots.txt",
+    "Socials/public/robots.txt"
+  ],
+  "report_email_to": "streamlinedtechai@gmail.com",
+  "github_repos": {
+    "listings": "bushrangerfilms/ListingsApp_16Feb25",
+    "socials": "bushrangerfilms/socialsapp_16Feb25"
+  },
+  "github_issue_repo": "bushrangerfilms/ListingsApp_16Feb25",
+  "thresholds": {
+    "striking_distance_min_position": 4,
+    "striking_distance_max_position": 20,
+    "striking_distance_min_impressions": 10,
+    "cwv_lcp_warning_ms": 2500,
+    "cwv_inp_warning_ms": 200,
+    "cwv_cls_warning": 0.1,
+    "rank_movement_alert": 3
+  }
+}
