@@ -55,32 +55,48 @@ A previous report directory MAY exist at `tools/seo-agent/reports/`. If it does,
 
 If this is the first run (no previous report), say so in the issue.
 
-### 3. Triage findings into three PR scopes + issue + digest
+### 3. Triage findings into PR scopes + issue + digest
 
-PR scopes are defined in `config/checks.json` → `pr_scopes`. Each scope is a separate PR with a different prefix in the title — never bundle scopes into one PR.
+PR scopes are defined in `config/checks.json` → `pr_scopes`. Each scope is a separate PR with a different prefix and branch — **never bundle scopes into one PR**. They have different review profiles and risk levels.
 
 **Mechanical PR** (`chore(seo): autofix sitemap/robots YYYY-MM-DD`):
-- Edits restricted to `pr_scopes.mechanical_pr_allowlist` files (sitemap.xml, robots.txt)
+- Edits restricted to `pr_scopes.mechanical_pr_allowlist` (sitemap.xml, robots.txt)
 - Use for: sitemap drift, missing `Sitemap:` line in robots.txt
 - These changes are deterministic and low-risk; minimal review burden
 
 **Metadata PR** (`chore(seo): metadata fixes YYYY-MM-DD`):
 - Edits restricted to `pr_scopes.metadata_pr_allowlist` (`src/pages/marketing/**/*.tsx`, `src/components/SEO.tsx`)
-- Allowed changes are enumerated in `pr_scopes.metadata_pr_allowed_changes`. Forbidden in `pr_scopes.metadata_pr_forbidden`.
+- Allowed changes enumerated in `pr_scopes.metadata_pr_allowed_changes`. Forbidden in `pr_scopes.metadata_pr_forbidden`.
 - Use for: missing canonical, missing JSON-LD, missing og:url on a marketing page; meta description trim
 - Read `src/components/SEO.tsx` first to understand its API. Almost all marketing pages already use it — your fix is usually adding a missing prop, not introducing a new mechanism.
 - For the homepage specifically: as of 2026-04-30, `src/pages/marketing/MarketingHome.tsx` is missing canonical and JSON-LD even though `/pricing` (in `PricingPage.tsx`) has them. Pattern-match the fix.
 
+**Perf PR** (`chore(seo): perf hints YYYY-MM-DD`):
+- Edits restricted to `pr_scopes.perf_pr_allowlist` (marketing pages, marketing components, index.html)
+- Allowed changes enumerated in `pr_scopes.perf_pr_allowed_changes`. Forbidden in `pr_scopes.perf_pr_forbidden`.
+- Use for: adding `loading="lazy"` to below-fold images, `fetchpriority="high"` to LCP candidate, `<link rel="preload">` for hero asset, `min-height` reservations to prevent CLS, explicit width/height on images
+- **Identifying the LCP candidate:** read the cwv check output for the page; check `audits['largest-contentful-paint-element']` if available, or inspect the page HTML for the largest above-fold `<img>` / hero element. If unsure, file in issue rather than guessing.
+- **Identifying below-fold images:** any `<img>` not in the hero section. Logos in the nav are NOT below-fold.
+- **CLS reservations:** only when you can identify the specific dynamic component causing the layout shift (e.g. `/pricing` table). If unclear, file in issue.
+
+**Content PR** (`chore(seo): content rewrite for "<keyword>" YYYY-MM-DD`):
+- Edits restricted to `pr_scopes.content_pr_allowlist` (marketing pages only)
+- Allowed changes enumerated in `pr_scopes.content_pr_allowed_changes`. Forbidden in `pr_scopes.content_pr_forbidden`.
+- Use for: rewriting title and meta description on a marketing page targeting a striking-distance keyword (GSC position 4-20, ≥10 impressions)
+- **Required evidence in PR body:** the specific GSC query, current position, current impressions over the lookback window, and the keyword being targeted. No speculative rewrites — you must be able to point to the data.
+- Open at most ONE content_pr per run (per page), even if multiple striking-distance keywords exist for the same page. Pick the highest-impression one; mention the others in the PR body for future runs.
+- If GSC has no striking-distance keywords for a page, do NOT open a content_pr for it.
+
 **Open issue (judgment required, no PR):**
 - Placeholder content (e.g. `<title>Seo</title>` on /features and /support — these need real titles, not auto-generated)
-- Title or H1 rewrites for striking-distance keywords (content_pr scope, not yet enabled — file in issue)
-- Content gap suggestions (new landing pages — content_pr scope, not yet enabled)
+- Content gap suggestions (new landing pages — agent does NOT auto-create routes)
 - CWV regressions where the fix needs deeper investigation (not just adding `min-height` or `preload`)
 - hreflang gap across 6 markets (architectural change)
 - Big rank movements (positive or negative — analysis, not action)
 - Broken internal links (always)
 - Broken external links with status >=400 and not 403/429 (403/429 often means bot-blocking)
 - Indexing problems (page in sitemap but not indexed, canonical mismatch, mobile usability issues)
+- Image-audit findings: oversized images, missing alt text (the conversion + alt-writing happens in a follow-up scope, not this run)
 
 **Digest only (mention in issue, no action):**
 - Clean checks (everything green)
@@ -94,11 +110,23 @@ For each PR scope (in the Listings repo, which is your CWD):
 2. Branch name follows scope:
    - Mechanical: `seo/autofix-mechanical-YYYY-MM-DD`
    - Metadata: `seo/autofix-metadata-YYYY-MM-DD`
+   - Perf: `seo/autofix-perf-YYYY-MM-DD`
+   - Content: `seo/content-rewrite-<short-keyword-slug>-YYYY-MM-DD`
 3. Make ONLY the changes within that scope's allowlist + allowed_changes
 4. Verify the diff is small and targeted — if a change requires touching files outside the allowlist or making changes outside the allowed_changes list, STOP and put the finding in the issue instead
-5. Commit with message: `chore(seo): <one-line summary>` followed by a `Co-Authored-By: Claude` line
-6. `gh pr create` with PR title `chore(seo): <scope> fixes YYYY-MM-DD` (e.g. `chore(seo): metadata fixes 2026-05-01`) and a body listing every change with line-level references
-7. Do NOT merge. Reviewer is the user.
+5. **Run pre-PR smoke checks**. First install deps if you haven't already this run:
+   ```bash
+   npm install --no-audit --no-fund --silent
+   ```
+   Then run the gates from `pre_pr_smoke_checks` in `config/checks.json`:
+   ```bash
+   npm run ci:check
+   npx tsc --noEmit
+   ```
+   These match the actual CI gates on this repo. Do NOT run `npm run lint` — the repo has hundreds of pre-existing ESLint errors on main, tracked separately and not gated in CI. If your changes introduce a NEW failure in either smoke check, do NOT open the PR: fix it or revert the change and file in the issue. If a smoke check was already failing on main before your changes (capture baseline by running them BEFORE making any edits), that's not your responsibility — but verify your changes don't make it worse.
+6. Commit with message: `chore(seo): <one-line summary>` followed by a `Co-Authored-By: Claude` line
+7. `gh pr create` with PR title following the scope's prefix and a body listing every change with line-level references
+8. Do NOT merge. Reviewer is the user.
 
 After opening any PR that adds new URLs to the sitemap, also submit those URLs to IndexNow (Bing/Yandex/Naver):
 ```bash
@@ -119,14 +147,15 @@ For the issue:
 1. **Single issue per run**, in `bushrangerfilms/ListingsApp_16Feb25`
 2. Title: `seo: fortnightly report YYYY-MM-DD`
 3. Body sections (omit any with no findings):
-   - **Summary** — 2-3 sentences, total findings count by bucket (mechanical PR / metadata PR / issue / digest)
+   - **Summary** — 2-3 sentences, total findings count by bucket (mechanical PR / metadata PR / perf PR / content PR / issue / digest)
    - **Indexing Status** — for each marketing route: GSC verdict (PASS/NEUTRAL/FAIL), coverage state, last crawl. Flag any unindexed pages, canonical mismatches, mobile usability issues.
-   - **Striking Distance** — keywords on positions 4–20 with ≥10 impressions, sorted by impressions desc. For each, suggest a specific page improvement (concrete title rewrite + meta description rewrite, not generic advice).
-   - **Content Gaps** — target keywords with 0 impressions. Group by cluster. Suggest new landing pages where appropriate.
+   - **Striking Distance** — keywords on positions 4–20 with ≥10 impressions, sorted by impressions desc. For each, note whether a content_pr was opened or why not.
+   - **Content Gaps** — target keywords with 0 impressions. Group by cluster. Suggest new landing pages where appropriate (NOT auto-created).
    - **Page-Meta Issues** — list affected pages with specific problems. **If `/features` and `/support` still ship `<title>Seo</title>`, flag urgently.**
-   - **CWV** — pages where mobile/desktop performance is below 80 or LCP/CLS/INP exceeds thresholds in `config/checks.json`
+   - **CWV** — pages where mobile/desktop performance is below 80 or LCP/CLS/INP exceeds thresholds in `config/checks.json`. Note which findings became perf_pr's vs filed-only.
+   - **Image Audit** — oversized images (>=warning_kb), missing alt text, missing dimensions. Flag any over critical_kb size as urgent.
    - **Broken Links** — internal first, external second
-   - **PRs Opened** — link to each PR by scope (mechanical, metadata)
+   - **PRs Opened** — link to each PR by scope (mechanical / metadata / perf / content)
    - **IndexNow Submissions** — URLs submitted this run + outcome
    - **Trend** — what changed vs last run (rank movements, traffic shifts, regressions)
    - **Notes** — anything else worth flagging
