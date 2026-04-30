@@ -105,7 +105,7 @@ export function AlFloatingButton() {
             className={`fixed bottom-5 right-5 z-30 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 transition-transform ${
               pulse ? "animate-pulse" : ""
             }`}
-            data-testid="button-open-al"
+            data-testid="al-launcher"
           >
             <Sparkles className="h-5 w-5" />
             {pulse && (

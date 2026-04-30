@@ -664,7 +664,7 @@ const ListingsDashboard = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div data-testid="listing-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedListings.map((listing) => (
             <ListingCard
               key={listing.id}
