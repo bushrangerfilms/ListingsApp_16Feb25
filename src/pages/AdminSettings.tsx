@@ -61,6 +61,16 @@ export default function AdminSettings() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Settings</h1>
         <p className="text-muted-foreground">Configure your platform settings and tools</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Looking for social media settings? You'll find them in{" "}
+          <a
+            href={`${import.meta.env.VITE_SOCIALS_HUB_URL || 'https://socials.autolisting.io'}/organization/settings/branding`}
+            className="underline hover:text-foreground"
+          >
+            Socials Hub &gt; Socials Settings
+          </a>
+          .
+        </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
