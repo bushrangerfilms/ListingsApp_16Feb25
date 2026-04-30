@@ -29,10 +29,13 @@
       "Add or modify JSON-LD structured data (Organization / SoftwareApplication / WebPage / FAQPage / BreadcrumbList) on a marketing page",
       "Add or modify og:url meta tag",
       "Trim a meta description that is over 165 characters to <=160 characters preserving meaning",
-      "Add or modify meta robots tag (only to add or remove noindex, never to change index/noindex on the live marketing routes)"
+      "Add or modify meta robots tag (only to add or remove noindex, never to change index/noindex on the live marketing routes)",
+      "Replace a clearly-placeholder title (matches /^(seo|hero|untitled|page|default|placeholder)$/i case-insensitive) with a real title derived from the page's actual H1, hero text, or content theme. Title format should match the established pattern in PricingPage.tsx ('<Page Theme> — AutoListing.io', max 65 chars). Justify the chosen title in the PR body.",
+      "Replace a clearly-placeholder meta description (boilerplate clearly unrelated to autolisting.io, e.g. text about 'Property Services', 'perfect property', 'expert valuations') with a description derived from the page's actual content. Length 50-165 chars."
     ],
     "metadata_pr_forbidden": [
-      "Modify route titles or H1 text (those are content_pr scope)",
+      "Modify a real (non-placeholder) route title or meta description (those are content_pr scope, requires GSC evidence)",
+      "Modify H1 text",
       "Modify hero copy, body copy, CTAs",
       "Touch any file under src/pages/admin/, src/pages/internal/, or src/contexts/",
       "Touch any non-marketing route file"
