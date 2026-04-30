@@ -14,7 +14,7 @@
     ]
   },
   "lookback_days": 28,
-  "_pr_scopes_comment": "Three concentric PR scopes. Mechanical = blind autofix (sitemap, robots). Metadata = small, scoped React component edits (canonical, JSON-LD, og:url, meta description trimming). Content = title/description rewrites for striking-distance keywords. Anything outside these three scopes must be raised in the GitHub issue, never PR'd.",
+  "_pr_scopes_comment": "Concentric PR scopes. Each scope = its own branch and PR; never bundled. Mechanical = blind autofix (sitemap, robots). Metadata = small React component edits (canonical, JSON-LD, og:url, description trim). Perf = resource hints + CLS reservations + image audit reporting. Content = striking-distance title/description rewrites informed by GSC. Anything outside these scopes must be raised in the GitHub issue, never PR'd.",
   "pr_scopes": {
     "mechanical_pr_allowlist": [
       "public/sitemap.xml",
@@ -36,6 +36,45 @@
       "Modify hero copy, body copy, CTAs",
       "Touch any file under src/pages/admin/, src/pages/internal/, or src/contexts/",
       "Touch any non-marketing route file"
+    ],
+    "perf_pr_allowlist": [
+      "src/pages/marketing/**/*.tsx",
+      "src/components/SEO.tsx",
+      "src/components/marketing/**/*.tsx",
+      "index.html"
+    ],
+    "perf_pr_allowed_changes": [
+      "Add `loading=\"lazy\"` to a <img> element that is below the fold (i.e. NOT the hero / LCP candidate)",
+      "Add `fetchpriority=\"high\"` to the LCP candidate <img> on a marketing route",
+      "Add `<link rel=\"preload\" as=\"image\" href=\"...\" imagesrcset=\"...\" imagesizes=\"...\">` to <head> for the LCP candidate",
+      "Add `decoding=\"async\"` to non-LCP <img> elements",
+      "Add explicit width/height attributes to <img> elements that lack them (prevents CLS)",
+      "Add `min-height` (CSS or inline style) to a div that contains dynamically loaded content above the fold (prevents CLS)",
+      "Add `font-display: swap;` to @font-face declarations or `<link rel=\"preload\" as=\"font\">` to font assets",
+      "Add `crossorigin=\"anonymous\"` where needed for preloaded resources"
+    ],
+    "perf_pr_forbidden": [
+      "Modify image src= to point at non-existent files (image conversion is a separate workflow — only modify src after the new image is committed)",
+      "Add lazy loading to the hero / LCP candidate (will hurt LCP, not help)",
+      "Remove existing fetchpriority/preload hints (only add)",
+      "Make CSS layout changes beyond min-height reservations",
+      "Touch any file under src/pages/admin/, src/pages/internal/, src/contexts/, or src/integrations/",
+      "Touch any non-marketing route file"
+    ],
+    "content_pr_allowlist": [
+      "src/pages/marketing/**/*.tsx"
+    ],
+    "content_pr_allowed_changes": [
+      "Rewrite a route's title attribute (max 65 chars) to better target a striking-distance keyword from GSC data (positions 4-20, >=10 impressions in last 28 days)",
+      "Rewrite a route's meta description (50-165 chars) to better target a striking-distance keyword",
+      "Update H1 on a marketing page to align with the rewritten title (only if H1 was placeholder like 'Hero' OR a meaningful improvement is justified by data)"
+    ],
+    "content_pr_required_evidence": "Each content_pr must reference the specific GSC query, current position, current impressions, and the keyword being targeted in the PR body. No speculative rewrites.",
+    "content_pr_forbidden": [
+      "Open a content_pr for any keyword that does not appear in tools/seo-agent/config/keywords.json AND have GSC data showing position 4-20",
+      "Rewrite body copy, CTAs, navigation, or footer",
+      "Add new sections, components, or routes",
+      "Touch any non-marketing file"
     ]
   },
   "auto_fix_allowlist_DEPRECATED_USE_pr_scopes": [
@@ -58,8 +97,16 @@
     "cwv_cls_warning": 0.1,
     "rank_movement_alert": 3,
     "meta_description_max_chars": 165,
-    "meta_description_target_chars": 160
+    "meta_description_target_chars": 160,
+    "image_size_warning_kb": 100,
+    "image_size_critical_kb": 500,
+    "title_max_chars": 65
   },
+  "_pre_pr_smoke_checks_comment": "These match the actual CI gates on this repo. `npm run lint` (full ESLint) is intentionally NOT in this list — it has hundreds of pre-existing errors on main that are tracked separately and not gated in CI. Adding it would block every agent PR.",
+  "pre_pr_smoke_checks": [
+    "npm run ci:check",
+    "npx tsc --noEmit"
+  ],
   "indexnow": {
     "_comment": "Public verification key. Submitted with every URL push to api.indexnow.org. Verified by Bing/Yandex/Naver fetching https://<host>/<key>.txt. Public by design — not a secret.",
     "key": "55dba18f8fd1d6c539ae9ed21b1f385bb70d51f2c90a42ce74cf7c45a0e6b7b5",
