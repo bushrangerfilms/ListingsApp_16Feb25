@@ -102,9 +102,14 @@ export default function AdminCRM() {
 
   useEffect(() => {
     const targetOrg = isOrganizationView && selectedOrganization ? selectedOrganization : organization;
-    if (targetOrg) {
-      fetchProfiles();
-    }
+    // Bail until org context is loaded — the channel filters below
+    // dereference `targetOrg.id` directly, so running this effect with
+    // a null targetOrg crashes the page (caught by the route's error
+    // boundary as "Something went wrong"). Affected any user landing
+    // on /admin/crm before the OrganizationContext finished loading.
+    if (!targetOrg) return;
+
+    fetchProfiles();
 
     // Scope real-time subscriptions to this organization to avoid refetches from other orgs' changes
     const channel = supabase
