@@ -1,0 +1,63 @@
+{
+  "_comment": "Target keyword cluster for autolisting.io. Edit freely — agent reads this on every run. Markets reflect the 6-market product surface (IE, GB, US, CA, AU, NZ).",
+  "core_product": [
+    "AI real estate",
+    "AI for real estate",
+    "AI tool for real estate agents",
+    "AI real estate marketing",
+    "AI listing marketing",
+    "AI for realtors",
+    "AI for auctioneers",
+    "real estate AI tools",
+    "AI real estate software",
+    "real estate automation software"
+  ],
+  "social_media_automation": [
+    "real estate social media automation",
+    "realtor social media automation",
+    "auctioneer social media automation",
+    "social media automation for realtors",
+    "social media automation for real estate agents",
+    "AI social media for real estate",
+    "automated social media posts real estate",
+    "real estate Instagram automation",
+    "realtor Instagram automation",
+    "social media tool for real estate agents"
+  ],
+  "content_workflow": [
+    "automated property posts",
+    "AI property listing posts",
+    "real estate content automation",
+    "listing post generator",
+    "AI generated real estate content",
+    "real estate video automation",
+    "AI video for real estate",
+    "property video automation",
+    "real estate listing videos AI"
+  ],
+  "audience_specific": [
+    "marketing tools for auctioneers",
+    "estate agent marketing automation",
+    "property agent social media tools",
+    "realtor marketing automation",
+    "real estate marketing platform",
+    "real estate marketing software"
+  ],
+  "geographic_long_tail": [
+    "AI real estate Ireland",
+    "real estate marketing Ireland",
+    "auctioneer software Ireland",
+    "estate agent software UK",
+    "realtor social media US",
+    "real estate marketing Australia",
+    "realtor marketing Canada",
+    "real estate marketing New Zealand"
+  ],
+  "top_of_funnel": [
+    "how to automate real estate social media",
+    "best AI tools for realtors",
+    "AI for estate agents",
+    "social media for real estate agents",
+    "content for real estate agents"
+  ]
+}
