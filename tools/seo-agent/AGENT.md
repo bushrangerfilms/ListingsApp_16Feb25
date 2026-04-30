@@ -67,9 +67,20 @@ PR scopes are defined in `config/checks.json` → `pr_scopes`. Each scope is a s
 **Metadata PR** (`chore(seo): metadata fixes YYYY-MM-DD`):
 - Edits restricted to `pr_scopes.metadata_pr_allowlist` (`src/pages/marketing/**/*.tsx`, `src/components/SEO.tsx`)
 - Allowed changes enumerated in `pr_scopes.metadata_pr_allowed_changes`. Forbidden in `pr_scopes.metadata_pr_forbidden`.
-- Use for: missing canonical, missing JSON-LD, missing og:url on a marketing page; meta description trim
+- Use for: missing canonical, missing JSON-LD, missing og:url on a marketing page; meta description trim; **replacing clearly-placeholder titles or descriptions**.
 - Read `src/components/SEO.tsx` first to understand its API. Almost all marketing pages already use it — your fix is usually adding a missing prop, not introducing a new mechanism.
+- **Placeholder detection criteria (replace freely):**
+  - Title is a single generic word like "Seo", "Hero", "Untitled", "Page", "Default" (case-insensitive)
+  - Meta description is clearly boilerplate from a different domain — e.g. "Find your perfect property with Property Services. Expert property sales, valuations..." appearing on autolisting.io
+  - Title is < 5 chars (almost certainly a placeholder)
+- **Real title/description detection (do NOT modify in metadata_pr; needs content_pr with GSC evidence):**
+  - Title is descriptive and meaningful (e.g. "Pricing — AutoListing.io")
+  - Description is at least loosely related to the actual page content
 - For the homepage specifically: as of 2026-04-30, `src/pages/marketing/MarketingHome.tsx` is missing canonical and JSON-LD even though `/pricing` (in `PricingPage.tsx`) has them. Pattern-match the fix.
+- For `/features` and `/support` placeholder titles: replace with real titles matching `/pricing`'s pattern. Suggested patterns:
+  - `/features`: "Features — AutoListing.io" or "Real Estate Marketing Automation Features — AutoListing.io"
+  - `/support`: "Support — AutoListing.io" or "Help & Support — AutoListing.io"
+  - Always justify the chosen title in the PR body (1-2 sentences pointing at the heuristic match + the page's actual content theme).
 
 **Perf PR** (`chore(seo): perf hints YYYY-MM-DD`):
 - Edits restricted to `pr_scopes.perf_pr_allowlist` (marketing pages, marketing components, index.html)
