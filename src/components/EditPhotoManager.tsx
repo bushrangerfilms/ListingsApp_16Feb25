@@ -535,6 +535,9 @@ export function EditPhotoManager({
             <p className="text-xs text-muted-foreground">
               Hero photo + {socialMediaIds.length} social media {socialMediaIds.length === 1 ? 'photo' : 'photos'}
             </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Branded carousels need 3+ photos; video posts need 2+. We recommend at least 5 so every post type has variety.
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-lg font-bold text-primary">
