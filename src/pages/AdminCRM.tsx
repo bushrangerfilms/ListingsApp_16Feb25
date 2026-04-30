@@ -225,11 +225,11 @@ export default function AdminCRM() {
           </div>
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "kanban")}>
             <TabsList>
-              <TabsTrigger value="list" className="gap-2">
+              <TabsTrigger value="list" data-testid="tab-list" className="gap-2">
                 <LayoutList className="h-4 w-4" />
                 {t('crm.views.list')}
               </TabsTrigger>
-              <TabsTrigger value="kanban" className="gap-2">
+              <TabsTrigger value="kanban" data-testid="tab-kanban" className="gap-2">
                 <LayoutGrid className="h-4 w-4" />
                 {t('crm.views.kanban')}
               </TabsTrigger>
