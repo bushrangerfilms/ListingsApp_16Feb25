@@ -14,7 +14,31 @@
     ]
   },
   "lookback_days": 28,
-  "auto_fix_allowlist": [
+  "_pr_scopes_comment": "Three concentric PR scopes. Mechanical = blind autofix (sitemap, robots). Metadata = small, scoped React component edits (canonical, JSON-LD, og:url, meta description trimming). Content = title/description rewrites for striking-distance keywords. Anything outside these three scopes must be raised in the GitHub issue, never PR'd.",
+  "pr_scopes": {
+    "mechanical_pr_allowlist": [
+      "public/sitemap.xml",
+      "public/robots.txt"
+    ],
+    "metadata_pr_allowlist": [
+      "src/pages/marketing/**/*.tsx",
+      "src/components/SEO.tsx"
+    ],
+    "metadata_pr_allowed_changes": [
+      "Add or modify <link rel=\"canonical\"> on a marketing page",
+      "Add or modify JSON-LD structured data (Organization / SoftwareApplication / WebPage / FAQPage / BreadcrumbList) on a marketing page",
+      "Add or modify og:url meta tag",
+      "Trim a meta description that is over 165 characters to <=160 characters preserving meaning",
+      "Add or modify meta robots tag (only to add or remove noindex, never to change index/noindex on the live marketing routes)"
+    ],
+    "metadata_pr_forbidden": [
+      "Modify route titles or H1 text (those are content_pr scope)",
+      "Modify hero copy, body copy, CTAs",
+      "Touch any file under src/pages/admin/, src/pages/internal/, or src/contexts/",
+      "Touch any non-marketing route file"
+    ]
+  },
+  "auto_fix_allowlist_DEPRECATED_USE_pr_scopes": [
     "Listings/public/sitemap.xml",
     "Listings/public/robots.txt",
     "Socials/public/robots.txt"
@@ -32,6 +56,13 @@
     "cwv_lcp_warning_ms": 2500,
     "cwv_inp_warning_ms": 200,
     "cwv_cls_warning": 0.1,
-    "rank_movement_alert": 3
+    "rank_movement_alert": 3,
+    "meta_description_max_chars": 165,
+    "meta_description_target_chars": 160
+  },
+  "indexnow": {
+    "_comment": "Public verification key. Submitted with every URL push to api.indexnow.org. Verified by Bing/Yandex/Naver fetching https://<host>/<key>.txt. Public by design — not a secret.",
+    "key": "55dba18f8fd1d6c539ae9ed21b1f385bb70d51f2c90a42ce74cf7c45a0e6b7b5",
+    "key_file_path": "public/55dba18f8fd1d6c539ae9ed21b1f385bb70d51f2c90a42ce74cf7c45a0e6b7b5.txt"
   }
 }

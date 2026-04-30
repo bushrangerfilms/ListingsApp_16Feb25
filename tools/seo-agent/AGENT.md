@@ -55,44 +55,63 @@ A previous report directory MAY exist at `tools/seo-agent/reports/`. If it does,
 
 If this is the first run (no previous report), say so in the issue.
 
-### 3. Triage findings into three buckets
+### 3. Triage findings into three PR scopes + issue + digest
 
-**Auto-fix** (open a PR, never merge yourself):
+PR scopes are defined in `config/checks.json` → `pr_scopes`. Each scope is a separate PR with a different prefix in the title — never bundle scopes into one PR.
 
-Allowlist (only these files may be edited in an autofix PR):
-- `Listings/public/sitemap.xml`
-- `Listings/public/robots.txt`
-- `Socials/public/robots.txt` (requires cloning the Socials repo first)
+**Mechanical PR** (`chore(seo): autofix sitemap/robots YYYY-MM-DD`):
+- Edits restricted to `pr_scopes.mechanical_pr_allowlist` files (sitemap.xml, robots.txt)
+- Use for: sitemap drift, missing `Sitemap:` line in robots.txt
+- These changes are deterministic and low-risk; minimal review burden
 
-Anything outside the allowlist → open an issue, not a PR.
+**Metadata PR** (`chore(seo): metadata fixes YYYY-MM-DD`):
+- Edits restricted to `pr_scopes.metadata_pr_allowlist` (`src/pages/marketing/**/*.tsx`, `src/components/SEO.tsx`)
+- Allowed changes are enumerated in `pr_scopes.metadata_pr_allowed_changes`. Forbidden in `pr_scopes.metadata_pr_forbidden`.
+- Use for: missing canonical, missing JSON-LD, missing og:url on a marketing page; meta description trim
+- Read `src/components/SEO.tsx` first to understand its API. Almost all marketing pages already use it — your fix is usually adding a missing prop, not introducing a new mechanism.
+- For the homepage specifically: as of 2026-04-30, `src/pages/marketing/MarketingHome.tsx` is missing canonical and JSON-LD even though `/pricing` (in `PricingPage.tsx`) has them. Pattern-match the fix.
 
-**Open issue (judgment required, don't auto-fix):**
-
-- Page-meta issues (placeholder titles, missing canonical, missing JSON-LD, wrong description copy)
-- CWV regressions
-- Striking-distance keyword opportunities (specific page improvements)
-- Content gaps (suggested new landing pages with target keyword, headings, competitor study)
+**Open issue (judgment required, no PR):**
+- Placeholder content (e.g. `<title>Seo</title>` on /features and /support — these need real titles, not auto-generated)
+- Title or H1 rewrites for striking-distance keywords (content_pr scope, not yet enabled — file in issue)
+- Content gap suggestions (new landing pages — content_pr scope, not yet enabled)
+- CWV regressions where the fix needs deeper investigation (not just adding `min-height` or `preload`)
+- hreflang gap across 6 markets (architectural change)
+- Big rank movements (positive or negative — analysis, not action)
 - Broken internal links (always)
-- Broken external links with status >=400 and not 403/429 (403 often means bot-blocking, not actually broken)
-- hreflang gap (still missing across 6 markets)
-- Big rank movements (positive or negative)
+- Broken external links with status >=400 and not 403/429 (403/429 often means bot-blocking)
+- Indexing problems (page in sitemap but not indexed, canonical mismatch, mobile usability issues)
 
-**Digest only (mention in email, no action):**
-
+**Digest only (mention in issue, no action):**
 - Clean checks (everything green)
 - Info-severity findings (e.g. permissive admin robots.txt — intentional)
+- IndexNow submission outcomes (success/skip/fail)
 
 ### 4. Take actions
 
-For each auto-fix candidate (in the Listings repo, which is your CWD):
+For each PR scope (in the Listings repo, which is your CWD):
 1. Make sure you're on `main`, pulled latest
-2. Branch: `seo/fortnightly-autofix-YYYY-MM-DD`
-3. Make the minimal change (e.g. add a `<url>` block to `public/sitemap.xml`)
-4. Commit with message: `chore(seo): <one-line summary>` followed by a `Co-Authored-By: Claude` line
-5. `gh pr create` with PR title `chore(seo): fortnightly autofix YYYY-MM-DD` and a body listing every change
-6. Do NOT merge. Reviewer is the user.
+2. Branch name follows scope:
+   - Mechanical: `seo/autofix-mechanical-YYYY-MM-DD`
+   - Metadata: `seo/autofix-metadata-YYYY-MM-DD`
+3. Make ONLY the changes within that scope's allowlist + allowed_changes
+4. Verify the diff is small and targeted — if a change requires touching files outside the allowlist or making changes outside the allowed_changes list, STOP and put the finding in the issue instead
+5. Commit with message: `chore(seo): <one-line summary>` followed by a `Co-Authored-By: Claude` line
+6. `gh pr create` with PR title `chore(seo): <scope> fixes YYYY-MM-DD` (e.g. `chore(seo): metadata fixes 2026-05-01`) and a body listing every change with line-level references
+7. Do NOT merge. Reviewer is the user.
 
-For Socials-side autofixes:
+After opening any PR that adds new URLs to the sitemap, also submit those URLs to IndexNow (Bing/Yandex/Naver):
+```bash
+node -e "
+import('./tools/seo-agent/lib/indexnow.mjs').then(async ({ submitToIndexNow }) => {
+  const r = await submitToIndexNow(['https://autolisting.io/new-route']);
+  console.log(JSON.stringify(r));
+});
+"
+```
+Note the result in the run log.
+
+For Socials-side mechanical PRs:
 1. `gh repo clone bushrangerfilms/socialsapp_16Feb25 ../socialsapp_16Feb25`
 2. `cd ../socialsapp_16Feb25` and follow the same flow against `bushrangerfilms/socialsapp_16Feb25`
 
@@ -100,13 +119,15 @@ For the issue:
 1. **Single issue per run**, in `bushrangerfilms/ListingsApp_16Feb25`
 2. Title: `seo: fortnightly report YYYY-MM-DD`
 3. Body sections (omit any with no findings):
-   - **Summary** — 2-3 sentences, total findings count by bucket
+   - **Summary** — 2-3 sentences, total findings count by bucket (mechanical PR / metadata PR / issue / digest)
+   - **Indexing Status** — for each marketing route: GSC verdict (PASS/NEUTRAL/FAIL), coverage state, last crawl. Flag any unindexed pages, canonical mismatches, mobile usability issues.
    - **Striking Distance** — keywords on positions 4–20 with ≥10 impressions, sorted by impressions desc. For each, suggest a specific page improvement (concrete title rewrite + meta description rewrite, not generic advice).
    - **Content Gaps** — target keywords with 0 impressions. Group by cluster. Suggest new landing pages where appropriate.
    - **Page-Meta Issues** — list affected pages with specific problems. **If `/features` and `/support` still ship `<title>Seo</title>`, flag urgently.**
    - **CWV** — pages where mobile/desktop performance is below 80 or LCP/CLS/INP exceeds thresholds in `config/checks.json`
    - **Broken Links** — internal first, external second
-   - **Auto-fix PRs Opened** — link to each PR
+   - **PRs Opened** — link to each PR by scope (mechanical, metadata)
+   - **IndexNow Submissions** — URLs submitted this run + outcome
    - **Trend** — what changed vs last run (rank movements, traffic shifts, regressions)
    - **Notes** — anything else worth flagging
 4. Apply labels: `seo`, `automated`
@@ -123,23 +144,25 @@ Append to `tools/seo-agent/RUN_LOG.md`:
 
 ```
 ## YYYY-MM-DD HH:MM
-- Findings: N (auto-fix: A, issue: I, info: X)
-- PRs opened: <list>
+- Findings: N (mechanical PR: M, metadata PR: T, issue: I, digest: D)
+- PRs opened: <list with scope and link>
 - Issue: <link>
-- Email: sent / skipped (no Gmail MCP attached)
+- IndexNow: submitted N urls (status: ...)
 - Notes: ...
 ```
 
-Include `RUN_LOG.md` in the autofix PR if there is one. Otherwise commit it directly to `main` with message `chore(seo): run log YYYY-MM-DD`.
+Include `RUN_LOG.md` in the metadata PR if there is one (preferred — keeps the audit trail attached to the change). Otherwise include it in the mechanical PR. As a last resort if no PRs were opened, commit it directly to `main` with message `chore(seo): run log YYYY-MM-DD`.
 
 ## Hard rules
 
 - **Never merge a PR yourself.** Only the user merges.
 - **Never modify customer-domain (`bridgeauctioneers.ie` etc.) configuration.** Out of scope.
-- **Never edit files outside the auto-fix allowlist** in an autofix PR. If a page-meta fix needs a React component change, raise it in the issue, don't open a PR.
+- **Never edit files outside the active PR scope's allowlist.** If a fix needs a file outside the allowlist, raise it in the issue.
+- **Never bundle scopes into one PR.** Mechanical and metadata changes go in separate PRs even if both are needed in the same run — different review profiles.
 - **Never inject canonical/JSON-LD/og:url into pages on `app.autolisting.io` or `socials.autolisting.io`** — they're noindexed; tags would be misleading.
 - **Never create more than one issue per run.** Consolidate.
-- **Always close the loop:** if the previous run's auto-fix PR is still open and CI is green, comment a friendly nudge on that PR.
+- **Always close the loop:** if the previous run's PR is still open and CI is green, comment a friendly nudge on that PR.
+- **IndexNow only after a PR is opened that adds URLs.** Don't re-submit the same URLs on every run — Bing rate-limits and ignores duplicates.
 
 ## Soft preferences
 
