@@ -555,6 +555,9 @@ export const PhotoUploader = ({
           <div>
             <p className="text-sm font-semibold text-foreground">Social Media Images</p>
             <p className="text-xs text-muted-foreground">Hero photo + {socialMediaPhotoIndices.length} social media {socialMediaPhotoIndices.length === 1 ? 'photo' : 'photos'} (in pick order)</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Branded carousels need 3+ photos; video posts need 2+. We recommend at least 5 so every post type has variety.
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-lg font-bold text-primary">
