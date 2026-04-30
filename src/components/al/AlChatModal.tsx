@@ -209,7 +209,7 @@ export function AlChatModal({ open, onOpenChange }: Props) {
       className={`fixed top-0 right-0 bottom-0 w-full sm:w-[420px] z-40 bg-background border-l shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
         open ? "translate-x-0" : "translate-x-full pointer-events-none"
       }`}
-      data-testid="al-chat-panel"
+      data-testid="al-chat-window"
     >
       <header className="px-4 py-3 border-b flex items-center justify-between gap-2">
         {showHistory ? (
@@ -375,6 +375,7 @@ export function AlChatModal({ open, onOpenChange }: Props) {
               <ImageIcon className="h-4 w-4" />
             </Button>
             <Textarea
+              data-testid="al-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onPaste={handlePaste}

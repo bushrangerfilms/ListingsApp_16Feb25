@@ -326,7 +326,7 @@ function DroppableColumn({ stageValue, stageLabel, stageColor, profileCount, pro
   const profileKey = profileType === "seller" ? "crm.sellers" : "crm.buyers";
 
   return (
-    <div className="flex-shrink-0 w-80">
+    <div data-testid="kanban-column" className="flex-shrink-0 w-80">
       <div
         ref={setNodeRef}
         className={`rounded-lg border-2 ${stageColor} p-4 min-h-[600px] transition-colors ${

@@ -114,7 +114,7 @@ export function ListingCard({ listing, onStatusChange, onEdit, onArchive, onDele
   };
 
   const cardContent = (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow h-full">
+    <Card data-testid="listing-card" className="overflow-hidden hover:shadow-lg transition-shadow h-full">
         <div className="relative">
           {getCornerBanner()}
           <div className="aspect-[4/3] relative overflow-hidden bg-muted">
