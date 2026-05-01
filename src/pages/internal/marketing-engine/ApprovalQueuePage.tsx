@@ -39,10 +39,17 @@ interface MarketingPost {
       body?: string;
       image_url?: string;
     }>;
+    shots?: Array<{
+      duration_s: number;
+      voice_segment?: string;
+      asset_id?: string;
+    }>;
+    voice_script?: string;
     copy?: Record<string, { caption?: string }>;
   } | null;
   output_assets: Record<string, string[]> | null;
   copy_variants: Record<string, { caption: string }> | null;
+  render_thumbnails: string[] | null;
   channels: string[] | null;
   scheduled_for: string | null;
   variation_axes: Record<string, string> | null;
@@ -52,6 +59,36 @@ interface MarketingPost {
   reviewer_score: number | null;
   reviewer_feedback: string | null;
   created_at: string;
+}
+
+// Detect a video post by output_assets URL extension OR by storyboard.shots
+// presence. Either signal is sufficient — output_assets is empty during
+// 'planning' but shots[] is set as soon as the producer LLM returns,
+// while in some failure modes shots[] may be empty but output_assets has
+// MP4s from a partial render.
+function isVideoPost(post: MarketingPost): boolean {
+  if ((post.storyboard?.shots?.length ?? 0) > 0) return true;
+  const assets = post.output_assets ?? {};
+  for (const urls of Object.values(assets)) {
+    if (Array.isArray(urls) && urls.some((u) => typeof u === "string" && /\.(mp4|webm|mov)(\?|$)/i.test(u))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Pick the first MP4/webm URL from any channel. Producer renders
+// per-aspect (1:1, 9:16) and assigns per channel — for an "is this good
+// to ship?" preview, the first one is enough.
+function getFirstVideoUrl(post: MarketingPost): string | null {
+  const assets = post.output_assets ?? {};
+  for (const urls of Object.values(assets)) {
+    if (!Array.isArray(urls)) continue;
+    for (const u of urls) {
+      if (typeof u === "string" && /\.(mp4|webm|mov)(\?|$)/i.test(u)) return u;
+    }
+  }
+  return null;
 }
 
 const STATUS_TONE: Record<string, string> = {
@@ -338,8 +375,10 @@ function PostCard({ post, onChange }: { post: MarketingPost; onChange: () => voi
           </div>
         )}
 
-        {/* Slide thumbnails */}
-        {slides.length > 0 && (
+        {/* Render preview — video player for video posts, slide grid for static, fallback otherwise */}
+        {isVideoPost(post) ? (
+          <VideoPreview post={post} />
+        ) : slides.length > 0 ? (
           <div className="grid grid-cols-5 gap-2">
             {slides.map((slide, idx) => {
               const url = post.output_assets?.[channels[0] ?? "linkedin"]?.[idx];
@@ -370,7 +409,11 @@ function PostCard({ post, onChange }: { post: MarketingPost; onChange: () => voi
               );
             })}
           </div>
-        )}
+        ) : post.status === "planning" || post.status === "review_queue" ? (
+          <div className="text-xs text-muted-foreground py-6 text-center border rounded-md border-dashed">
+            No render yet — producer may still be processing.
+          </div>
+        ) : null}
 
         {/* Per-channel captions */}
         {channels.map((channel) => {
@@ -448,5 +491,80 @@ function PostCard({ post, onChange }: { post: MarketingPost; onChange: () => voi
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function VideoPreview({ post }: { post: MarketingPost }) {
+  const videoUrl = getFirstVideoUrl(post);
+  const thumbnails = post.render_thumbnails ?? [];
+  const shots = post.storyboard?.shots ?? [];
+  const voiceScript = post.storyboard?.voice_script;
+  const totalDuration = shots.reduce((s, sh) => s + (sh.duration_s ?? 0), 0);
+
+  // Detect aspect ratio from URL hint when possible — Remotion writes the
+  // composition + aspect into the path. Falls back to landscape player
+  // otherwise. Width capped so vertical 9:16 video doesn't blow out the
+  // card layout.
+  const isVertical = !!videoUrl && /9x16|9-16|vertical/i.test(videoUrl);
+
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 lg:grid-cols-[auto_1fr]">
+        {videoUrl ? (
+          <video
+            controls
+            preload="metadata"
+            poster={thumbnails[0] ?? undefined}
+            src={videoUrl}
+            className={`rounded-md border bg-black ${isVertical ? "max-h-[480px]" : "max-h-[320px]"}`}
+            style={{ aspectRatio: isVertical ? "9 / 16" : "16 / 9" }}
+          />
+        ) : (
+          <div className="rounded-md border bg-muted aspect-video w-full max-w-md flex items-center justify-center text-xs text-muted-foreground">
+            No rendered video URL yet
+          </div>
+        )}
+
+        <div className="space-y-2 min-w-0">
+          {totalDuration > 0 && (
+            <div className="text-xs text-muted-foreground">
+              {shots.length} shot{shots.length === 1 ? "" : "s"} · {totalDuration.toFixed(0)}s total
+            </div>
+          )}
+          {voiceScript && (
+            <div className="text-xs">
+              <Label className="uppercase tracking-wide text-[10px]">Voice script</Label>
+              <p className="mt-1 whitespace-pre-wrap text-muted-foreground line-clamp-6">
+                {voiceScript}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {thumbnails.length > 0 && (
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Thumbnails ({thumbnails.length})
+          </Label>
+          <div className="flex gap-1.5 overflow-x-auto pb-1">
+            {thumbnails.map((thumb, i) => (
+              <img
+                key={i}
+                src={thumb}
+                alt={`thumb ${i + 1}`}
+                loading="lazy"
+                className={`shrink-0 rounded border object-cover ${
+                  isVertical ? "h-20 w-auto" : "h-16 w-auto"
+                }`}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.opacity = "0.3";
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
