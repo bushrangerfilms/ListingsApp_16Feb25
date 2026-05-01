@@ -1200,6 +1200,17 @@ export const adminApi = {
             body: JSON.stringify(patch),
           }
         ),
+      // Email-keyed override upsert. Works for any recipient — platform users
+      // included — so the Super Admin can fix "Hi there," for signed-up users
+      // whose stored display name doesn't read as a first name.
+      setOverride: (email: string, name_override: string | null) =>
+        adminFetch<{ contact: { id: string; email: string; name: string | null; name_override: string | null; source: string } }>(
+          `/broadcasts/external-contacts/override`,
+          {
+            method: "PUT",
+            body: JSON.stringify({ email, name_override }),
+          }
+        ),
       remove: (contactId: string) =>
         adminFetch<{ success: boolean }>(`/broadcasts/external-contacts/${contactId}`, {
           method: "DELETE",
