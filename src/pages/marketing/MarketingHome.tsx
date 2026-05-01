@@ -341,9 +341,9 @@ export default function MarketingHome() {
               <div className="inline-flex h-12 w-12 rounded-lg bg-primary/10 items-center justify-center">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-2xl font-bold">Turn Followers Into Leads</h3>
+              <h3 className="text-2xl font-bold">Turn scrollers into qualified leads!</h3>
               <p className="text-muted-foreground text-lg">
-                Quizzes, valuations and reports that turn scrollers into qualified leads.
+                Posted automatically to all your accounts several times a week.
               </p>
             </div>
 
