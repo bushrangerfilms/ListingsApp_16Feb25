@@ -160,12 +160,12 @@ export function FeedbackDialog() {
           data-testid="button-send-feedback"
         >
           <MessageCircle className="h-4 w-4" />
-          <span>Send Feedback</span>
+          <span>Support/ Feedback</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Send Feedback</DialogTitle>
+          <DialogTitle>Send</DialogTitle>
           <DialogDescription>
             Share your ideas, report bugs, or let us know how we can improve.
           </DialogDescription>
@@ -278,7 +278,7 @@ export function FeedbackDialog() {
                 Sending...
               </>
             ) : (
-              "Send Feedback"
+              "Send"
             )}
           </Button>
         </div>
