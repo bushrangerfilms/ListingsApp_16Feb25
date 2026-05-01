@@ -4342,8 +4342,24 @@ async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, c
           ? `<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:transparent;mso-hide:all;">${escapeHtml(previewText)}</div>`
           : "";
 
+        // CTA button — appears at the bottom of every broadcast, just above
+        // the unsubscribe footer. Goes through the regex link-wrapper below
+        // so clicks are tracked alongside any in-body links. Bulletproof
+        // table layout for Outlook compatibility.
+        const ctaSection = `
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 32px auto 0; border-collapse: separate;">
+            <tr>
+              <td style="background-color: #0f172a; border-radius: 8px; padding: 14px 28px;">
+                <a href="https://autolisting.io/?utm_source=broadcast&amp;utm_medium=email&amp;utm_campaign=cta_footer" style="color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block;">
+                  Start using AutoListing for free — auto-posting in 10 mins
+                </a>
+              </td>
+            </tr>
+          </table>
+        `;
+
         // Build email HTML with tracking and unsubscribe
-        let emailHtml = preheader + personalizedBody;
+        let emailHtml = preheader + personalizedBody + ctaSection;
 
         // Wrap links with click tracking
         emailHtml = emailHtml.replace(
