@@ -68,6 +68,17 @@ const ENGAGEMENT_OPTIONS = [
   { value: "onboarding_incomplete", label: "Onboarding incomplete" },
 ];
 
+// Default scaffold for a new broadcast body. Pre-fills greeting, CTA token,
+// and sign-off so every new draft starts ready-to-edit. Opt-out is appended
+// automatically by the send pipeline.
+const DEFAULT_BODY_HTML = [
+  "<p>Hi {firstName},</p>",
+  "<p></p>",
+  "<p></p>",
+  "<p>{cta}</p>",
+  "<p>Best,<br>The AutoListing Team</p>",
+].join("");
+
 type View = "list" | "compose" | "detail";
 
 type ParsedExternalRow = { email: string; name?: string };
@@ -185,7 +196,7 @@ export default function BroadcastsPage() {
 
   // Compose form state
   const [subject, setSubject] = useState("");
-  const [bodyHtml, setBodyHtml] = useState("");
+  const [bodyHtml, setBodyHtml] = useState(DEFAULT_BODY_HTML);
   const [previewText, setPreviewText] = useState("");
   const [filterPlans, setFilterPlans] = useState<string[]>([]);
   const [filterCountries, setFilterCountries] = useState<string[]>([]);
@@ -409,7 +420,7 @@ export default function BroadcastsPage() {
 
   function resetForm() {
     setSubject("");
-    setBodyHtml("");
+    setBodyHtml(DEFAULT_BODY_HTML);
     setPreviewText("");
     setFilterPlans([]);
     setFilterCountries([]);
