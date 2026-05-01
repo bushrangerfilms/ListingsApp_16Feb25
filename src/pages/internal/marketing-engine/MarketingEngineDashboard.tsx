@@ -486,8 +486,16 @@ export default function MarketingEngineDashboard() {
             posts: shipped count + measured count + state. */}
         {posted && posted.length > 0 && (() => {
           const PLATFORMS = ["youtube", "tiktok", "linkedin", "facebook", "instagram"] as const;
-          const COLLECTOR_STATE: Record<string, { live: boolean; note: string }> = {
-            youtube:   { live: true,  note: "YouTube Data API v3 (no OAuth required, just enable on Cloud project)" },
+          const COLLECTOR_STATE: Record<
+            string,
+            { live: boolean; note: string; stalled_hint?: string }
+          > = {
+            youtube: {
+              live: true,
+              note: "YouTube Data API v3 (no OAuth required, just enable on Cloud project)",
+              stalled_hint:
+                "Enable YouTube Data API v3 on Cloud project 1040360008866 (one click), then re-fire marketing-engine-analyst-cron — the next analyst run populates view/like/comment counts here.",
+            },
             tiktok:    { live: false, note: "Pending TikTok for Developers OAuth" },
             linkedin:  { live: false, note: "Pending LinkedIn Marketing Developer Platform OAuth" },
             facebook:  { live: false, note: "Pending Meta Graph API page-access token" },
@@ -540,7 +548,7 @@ export default function MarketingEngineDashboard() {
                           {partial && <span className="text-amber-600">partial — {Math.round(ratio * 100)}%</span>}
                           {stalled && (
                             <span className="text-amber-600">
-                              shipped but not measured — collector misconfigured?
+                              shipped but not measured — {s.stalled_hint ?? "collector misconfigured?"}
                             </span>
                           )}
                           {!s.live && <span className="text-muted-foreground">{s.note}</span>}
