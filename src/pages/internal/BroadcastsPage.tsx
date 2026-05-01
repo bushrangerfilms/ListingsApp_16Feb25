@@ -983,7 +983,10 @@ export default function BroadcastsPage() {
                   <p className="text-xs text-muted-foreground">
                     Use the toolbar to format. Type{" "}
                     <code className="px-1 bg-muted rounded">{"{firstName}"}</code> anywhere to
-                    personalize per recipient.
+                    personalize per recipient. Type{" "}
+                    <code className="px-1 bg-muted rounded">{"{cta}"}</code> where you want
+                    the "Start using AutoListing" button to appear (e.g. just before your
+                    sign-off). Without it, the button auto-appends after the body.
                   </p>
                   <Tabs value={previewTab} onValueChange={setPreviewTab}>
                     <TabsList>
