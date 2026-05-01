@@ -297,6 +297,14 @@ export default function MarketingEngineDashboard() {
   const isReadyToShip =
     !!goLive?.publish_enabled && !!goLive?.upload_post_profile;
 
+  // Engagement-collector status. Each platform has two states the operator
+  // cares about: did the post URL land in engagement_log (= analyst polled
+  // upload-post status) and did real engagement counts land
+  // (= per-platform analytics ran). The two diverge when a platform's
+  // collector is missing (e.g. YouTube Data API not enabled, or TikTok /
+  // LinkedIn / Meta OAuth not wired yet). Computed from the same `posted`
+  // query below — no extra round-trip.
+
   // Recent posts that landed publicly. Surfaces the actual platform
   // URLs so the operator can click straight to the live post on
   // TikTok / YouTube / etc. Pulled from engagement_log.metrics
@@ -471,6 +479,80 @@ export default function MarketingEngineDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Engagement-collector status. Renders only when at least one post
+            has shipped, so a fresh project doesn't see a confusing empty
+            panel. Each row is one platform across the last 10 posted
+            posts: shipped count + measured count + state. */}
+        {posted && posted.length > 0 && (() => {
+          const PLATFORMS = ["youtube", "tiktok", "linkedin", "facebook", "instagram"] as const;
+          const COLLECTOR_STATE: Record<string, { live: boolean; note: string }> = {
+            youtube:   { live: true,  note: "YouTube Data API v3 (no OAuth required, just enable on Cloud project)" },
+            tiktok:    { live: false, note: "Pending TikTok for Developers OAuth" },
+            linkedin:  { live: false, note: "Pending LinkedIn Marketing Developer Platform OAuth" },
+            facebook:  { live: false, note: "Pending Meta Graph API page-access token" },
+            instagram: { live: false, note: "Pending Meta Graph API page-access token" },
+          };
+          const stats = PLATFORMS.map((ch) => {
+            let shipped = 0;
+            let measured = 0;
+            for (const p of posted) {
+              const m = p.engagement_log?.metrics?.[ch];
+              const url = m?.raw?.results?.[0]?.post_url ?? m?.post_url;
+              if (url) shipped += 1;
+              const e = (m as { engagement?: { source?: string } } | undefined)?.engagement;
+              if (e?.source) measured += 1;
+            }
+            return { ch, shipped, measured, ...COLLECTOR_STATE[ch] };
+          }).filter((s) => s.shipped > 0); // hide platforms not in use
+          if (stats.length === 0) return null;
+          return (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-cyan-500" />
+                  Engagement collectors
+                </CardTitle>
+                <CardDescription>
+                  Per-platform analytics state across the last {posted.length} posted post{posted.length === 1 ? "" : "s"}.
+                  &quot;Measured&quot; means real view/like/comment counts have been polled (currently YouTube only).
+                  Other platforms ship through Upload Post but their analytics need separate per-platform OAuth.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {stats.map((s) => {
+                    const ratio = s.shipped > 0 ? s.measured / s.shipped : 0;
+                    const ok = s.live && s.measured > 0 && s.measured === s.shipped;
+                    const partial = s.live && s.measured > 0 && s.measured < s.shipped;
+                    const stalled = s.live && s.shipped > 0 && s.measured === 0;
+                    return (
+                      <div
+                        key={s.ch}
+                        className="flex items-center gap-3 py-1.5 text-sm border-b last:border-b-0"
+                      >
+                        <code className="text-xs w-20 shrink-0">{s.ch}</code>
+                        <span className="text-xs text-muted-foreground w-32 shrink-0">
+                          {s.measured} / {s.shipped} measured
+                        </span>
+                        <div className="flex-1 text-xs">
+                          {ok && <span className="text-emerald-600 dark:text-emerald-400">live ✓</span>}
+                          {partial && <span className="text-amber-600">partial — {Math.round(ratio * 100)}%</span>}
+                          {stalled && (
+                            <span className="text-amber-600">
+                              shipped but not measured — collector misconfigured?
+                            </span>
+                          )}
+                          {!s.live && <span className="text-muted-foreground">{s.note}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {posted && posted.length > 0 && (
           <Card className="border-emerald-500/30">
