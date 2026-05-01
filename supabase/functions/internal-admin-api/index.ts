@@ -4348,7 +4348,7 @@ async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, c
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 32px auto; border-collapse: separate;">
             <tr>
               <td style="background-color: #0f172a; border-radius: 8px; padding: 14px 28px;">
-                <a href="https://autolisting.io/?utm_source=broadcast&amp;utm_medium=email&amp;utm_campaign=cta_footer" style="color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block;">
+                <a href="https://app.autolisting.io/signup?utm_source=broadcast&amp;utm_medium=email&amp;utm_campaign=cta_footer" style="color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 16px; font-weight: 600; text-decoration: none; display: inline-block;">
                   Start using AutoListing for free — auto-posting in 10 mins
                 </a>
               </td>
