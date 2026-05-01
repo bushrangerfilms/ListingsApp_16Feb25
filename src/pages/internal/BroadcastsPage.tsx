@@ -293,14 +293,18 @@ export default function BroadcastsPage() {
 
   // Load recipient preview when review dialog opens.
   // In compose mode, use the in-flight audienceFilters; when reviewing an existing
-  // campaign, use that campaign's saved filters.
+  // campaign, use that campaign's saved filters. For a brand-new compose with
+  // pending uploaded rows (parsed but not yet persisted), merge them into the
+  // server preview client-side so the user can review/exclude them before saving.
   const { data: previewData, isLoading: previewLoading } = useQuery({
     queryKey: [
       "admin",
       "broadcasts",
       "audience-preview",
       reviewCampaignId || "compose",
+      editingId,
       audienceFilters,
+      pendingExternalRows.length,
     ],
     queryFn: async () => {
       if (reviewCampaignId) {
@@ -309,7 +313,20 @@ export default function BroadcastsPage() {
           return adminApi.broadcasts.audiencePreview(campaign.audience_filters || {}, reviewCampaignId);
         }
       }
-      return adminApi.broadcasts.audiencePreview(audienceFilters, editingId || undefined);
+      const serverPreview = await adminApi.broadcasts.audiencePreview(audienceFilters, editingId || undefined);
+      if (editingId || pendingExternalRows.length === 0) return serverPreview;
+
+      // New compose with pending uploaded rows — merge client-side. Final
+      // platform-user dedup runs server-side at send; this preview is best-effort.
+      const seen = new Set(serverPreview.recipients.map((r) => r.email.toLowerCase()));
+      const extras: typeof serverPreview.recipients = [];
+      for (const row of pendingExternalRows) {
+        const lc = row.email.toLowerCase();
+        if (seen.has(lc)) continue;
+        seen.add(lc);
+        extras.push({ user_id: null, email: row.email, name: row.name || null, source: "external" });
+      }
+      return { recipients: [...serverPreview.recipients, ...extras] };
     },
     enabled: reviewDialogOpen,
   });
