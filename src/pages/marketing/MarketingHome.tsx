@@ -189,31 +189,31 @@ export default function MarketingHome() {
   return (
     <MarketingLayout>
       <SEO
-        title="AutoListing.io — Automate Your Property Social Media"
-        description="Post listings to Instagram, TikTok, Facebook and more — automatically. AI-generated videos, smart scheduling, CRM and lead capture. Try free, no card required."
+        title="AutoListing.io — Property Marketing on Autopilot"
+        description="Automated social posting + AI lead generation. Plus an auto-updated website, CRM and brochure generator built for estate agents. Set up in minutes, runs itself forever."
       />
 
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 relative">
-          <div className="max-w-3xl mx-auto text-center space-y-8">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 relative">
+          <div className="max-w-3xl mx-auto text-center space-y-5">
             <Badge variant="secondary" className="gap-1.5 px-3 py-1">
               <Sparkles className="h-3.5 w-3.5" />
-              Now with AI-generated property videos
+              Set up in minutes — runs itself forever
             </Badge>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
-              Automate Your Property{' '}
-              <span className="text-primary">Social Media</span>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.1]">
+              Property Marketing{' '}
+              <span className="text-primary">on Autopilot</span>
             </h1>
 
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Post listings to Instagram, TikTok, Facebook and more — automatically.
-              AI-generated videos, smart scheduling, and lead capture built for estate agents.
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
+              Automated social posting and AI lead generation — plus a self-updating
+              property website, CRM and brochure generator. Built for estate agents.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
               <a href={getSignupUrl()}>
                 <Button size="lg" className="gap-2 text-base px-8">
                   Try Free — No Card Required
