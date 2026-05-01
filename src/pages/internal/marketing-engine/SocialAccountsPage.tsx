@@ -149,12 +149,22 @@ export default function MarketingEngineSocialAccountsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [proposedUsername, setProposedUsername] = useState("autolisting-marketing");
-  const [pollInterval, setPollInterval] = useState<number | false>(false);
+  // Two-tier poll cadence so connections done outside this page (e.g.
+  // direct in Upload Post's UI) still surface within 30s without the
+  // user having to remember the Refresh button:
+  //   - 5s  during an active Connect popup (set when Connect button is
+  //     clicked, cleared after 3 min)
+  //   - 30s background — cheap (1 round-trip + a small API call) and
+  //     covers the cross-tab + close-popup-from-other-window cases
+  // Also refetch on window focus so the very-common pattern of
+  // "complete OAuth in a different tab → switch back" is instant.
+  const [activePollInterval, setActivePollInterval] = useState<number | false>(false);
 
   const { data: status, isLoading: statusLoading } = useQuery<StatusResponse>({
     queryKey: ["me-social-accounts-status"],
     queryFn: () => callApi<StatusResponse>("status"),
-    refetchInterval: pollInterval,
+    refetchInterval: activePollInterval || 30_000,
+    refetchOnWindowFocus: true,
   });
 
   const accountsByPlatform = useMemo(() => {
@@ -198,10 +208,11 @@ export default function MarketingEngineSocialAccountsPage() {
       toast.success(`Opening ${platform} connect flow…`, {
         description: "Complete the connect in the popup. This page will refresh automatically.",
       });
-      setPollInterval(5000);
-      // Stop polling after 3 minutes so we don't keep hammering forever
-      // if the user closes the popup without completing.
-      window.setTimeout(() => setPollInterval(false), 180_000);
+      setActivePollInterval(5000);
+      // Stop fast polling after 3 minutes so we don't keep hammering
+      // forever if the user closes the popup without completing.
+      // Background 30s polling continues regardless.
+      window.setTimeout(() => setActivePollInterval(false), 180_000);
     },
     onError: (err: Error) => toast.error("Connect URL failed", { description: err.message }),
   });
