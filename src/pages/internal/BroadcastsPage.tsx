@@ -33,6 +33,7 @@ import { Loader2, Megaphone, Plus, Send, Eye, Pencil, Trash2, X, ArrowLeft, User
 import { useState, useCallback, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
 import { adminApi, BroadcastCampaign, BroadcastCampaignInput, BroadcastCampaignDetail } from "@/lib/admin/adminApi";
+import { firstNameOf } from "@/lib/broadcasts/firstName";
 import { useSuperAdminPermissions } from '@/hooks/useSuperAdminPermissions';
 import { useToast } from "@/hooks/use-toast";
 
@@ -608,6 +609,7 @@ export default function BroadcastsPage() {
               <div className="space-y-1">
                 {previewData.recipients.map((r) => {
                   const isExcluded = excludedEmails.has(r.email);
+                  const greeting = firstNameOf(r.name, r.email);
                   return (
                     <label
                       key={r.email}
@@ -624,6 +626,9 @@ export default function BroadcastsPage() {
                         {r.name && (
                           <p className="text-xs text-muted-foreground truncate">{r.email}</p>
                         )}
+                        <p className="text-xs text-muted-foreground italic truncate">
+                          → "Hi {greeting},"
+                        </p>
                       </div>
                       {r.source === "external" && (
                         <Badge variant="secondary" className="text-[10px] uppercase">
