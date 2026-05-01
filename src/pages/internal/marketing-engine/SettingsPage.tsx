@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Save, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Loader2, Send, Eye, GitFork, Search, Cpu, Beaker } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -27,30 +27,82 @@ interface SettingRow {
 }
 
 const KEYS = [
+  // Publishing — load-bearing for go-live
+  "publish_enabled",
+  // Taste reviewer (copy)
   "reviewer_enabled",
   "reviewer_threshold",
   "reviewer_max_retries",
+  // Visual reviewer
+  "visual_reviewer_enabled",
+  "visual_reviewer_threshold",
+  // Generation strategy
+  "multi_variant_count",
+  "auto_iterate_on_kickback",
+  "iteration_variant_count",
+  // Background agents
   "analyst_enabled",
+  "research_enabled",
+  "research_max_briefs_per_post",
+  "repo_discovery_enabled",
+  "repo_discovery_min_relevance_score",
+  "repo_discovery_max_candidates_per_run",
+  "model_watch_enabled",
+  "model_watch_min_relevance",
+  "model_watch_max_candidates_per_run",
+  "model_watch_pushed_within_days",
+  // Future
   "ab_testing_enabled",
+  // Free-form
   "taste_rubric",
 ] as const;
 
 type SettingKey = (typeof KEYS)[number];
 
 interface DraftState {
+  publish_enabled: boolean;
   reviewer_enabled: boolean;
   reviewer_threshold: number;
   reviewer_max_retries: number;
+  visual_reviewer_enabled: boolean;
+  visual_reviewer_threshold: number;
+  multi_variant_count: number;
+  auto_iterate_on_kickback: boolean;
+  iteration_variant_count: number;
   analyst_enabled: boolean;
+  research_enabled: boolean;
+  research_max_briefs_per_post: number;
+  repo_discovery_enabled: boolean;
+  repo_discovery_min_relevance_score: number;
+  repo_discovery_max_candidates_per_run: number;
+  model_watch_enabled: boolean;
+  model_watch_min_relevance: number;
+  model_watch_max_candidates_per_run: number;
+  model_watch_pushed_within_days: number;
   ab_testing_enabled: boolean;
   taste_rubric: string;
 }
 
 const DEFAULT_DRAFT: DraftState = {
+  publish_enabled: false,
   reviewer_enabled: false,
   reviewer_threshold: 7,
   reviewer_max_retries: 2,
+  visual_reviewer_enabled: true,
+  visual_reviewer_threshold: 7,
+  multi_variant_count: 1,
+  auto_iterate_on_kickback: false,
+  iteration_variant_count: 3,
   analyst_enabled: true,
+  research_enabled: true,
+  research_max_briefs_per_post: 2,
+  repo_discovery_enabled: true,
+  repo_discovery_min_relevance_score: 6,
+  repo_discovery_max_candidates_per_run: 12,
+  model_watch_enabled: true,
+  model_watch_min_relevance: 6,
+  model_watch_max_candidates_per_run: 12,
+  model_watch_pushed_within_days: 7,
   ab_testing_enabled: false,
   taste_rubric: "",
 };
@@ -77,24 +129,39 @@ export default function SettingsPage() {
     if (!settings) return;
     const next: DraftState = { ...DEFAULT_DRAFT };
     for (const s of settings) {
-      switch (s.key as SettingKey) {
+      const k = s.key as SettingKey;
+      // Booleans + numbers + the one freeform string. Switch by key
+      // because the JSON value type is unknown — defensive Boolean(s)
+      // / Number(s) coercions guard against null / "false" / etc.
+      switch (k) {
+        case "publish_enabled":
         case "reviewer_enabled":
-          next.reviewer_enabled = !!s.value;
-          break;
+        case "visual_reviewer_enabled":
+        case "auto_iterate_on_kickback":
         case "analyst_enabled":
-          next.analyst_enabled = !!s.value;
-          break;
+        case "research_enabled":
+        case "repo_discovery_enabled":
+        case "model_watch_enabled":
         case "ab_testing_enabled":
-          next.ab_testing_enabled = !!s.value;
+          next[k] = s.value === true;
           break;
         case "reviewer_threshold":
-          next.reviewer_threshold = Number(s.value);
-          break;
         case "reviewer_max_retries":
-          next.reviewer_max_retries = Number(s.value);
+        case "visual_reviewer_threshold":
+        case "multi_variant_count":
+        case "iteration_variant_count":
+        case "research_max_briefs_per_post":
+        case "repo_discovery_min_relevance_score":
+        case "repo_discovery_max_candidates_per_run":
+        case "model_watch_min_relevance":
+        case "model_watch_max_candidates_per_run":
+        case "model_watch_pushed_within_days": {
+          const n = Number(s.value);
+          if (Number.isFinite(n)) next[k] = n;
           break;
+        }
         case "taste_rubric":
-          next.taste_rubric = String(s.value);
+          next.taste_rubric = String(s.value ?? "");
           break;
       }
     }
@@ -148,8 +215,9 @@ export default function SettingsPage() {
           <div className="flex-1">
             <h1 className="text-3xl font-bold tracking-tight">Engine Settings</h1>
             <p className="text-muted-foreground mt-1">
-              Reviewer flags, analyst flags, and the taste rubric the Reviewer
-              critic rereads every run.
+              Publishing gate, reviewers, generation strategy, background
+              agents (analyst / research / repo discovery / model watch),
+              and the taste rubric.
             </p>
           </div>
           <Button
@@ -166,29 +234,55 @@ export default function SettingsPage() {
           </Button>
         </div>
 
-        <Card>
+        <Card className={!draft.publish_enabled ? "border-amber-500/40" : ""}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-              Reviewer
+              <Send className="h-5 w-5 text-amber-500" />
+              Publishing
             </CardTitle>
             <CardDescription>
-              The vision LLM critic that scores rendered posts against the taste
-              rubric. Default off during soak — flip on once auto-rejection rate
-              stabilises &lt;30%.
+              Master gate for the publish-due cron. While this is OFF, the
+              cron fires every 15 min and no-ops cleanly without writing post
+              state. Flip ON only once <code>brand_assets.upload_post_profile</code>
+              + per-channel page IDs are configured (see the Go-live readiness
+              card on the engine dashboard).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <ToggleRow
-              label="Reviewer enabled"
-              description="When ON, the Producer fires the Reviewer at the end of every render. Approved posts auto-promote past 'review_queue'."
+              label="Publish enabled"
+              description="When ON, marketing-engine-publish-due actually publishes approved posts that are past their scheduled_for time. The single-post manual publish path bypasses this gate."
+              checked={draft.publish_enabled}
+              onChange={(v) => setKey("publish_enabled", v)}
+              dirty={dirty.has("publish_enabled")}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-blue-500" />
+              Taste Reviewer
+            </CardTitle>
+            <CardDescription>
+              The copy-only LLM critic that scores draft storyboards against
+              the taste rubric. Pure logger — never mutates the post directly;
+              the Producer reads its decision and applies combined precedence
+              with the Visual Reviewer.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <ToggleRow
+              label="Taste Reviewer enabled"
+              description="When ON, the Producer fires the Taste Reviewer at the end of every render. Approved posts auto-promote past 'review_queue'."
               checked={draft.reviewer_enabled}
               onChange={(v) => setKey("reviewer_enabled", v)}
               dirty={dirty.has("reviewer_enabled")}
             />
             <NumberRow
               label="Threshold score"
-              description="Score (0-10) at or above which a post auto-approves. Below this it kicks back to the Producer for re-draft."
+              description="Score (0-10) at or above which a post auto-approves. Below this it kicks back to the Producer for re-draft (when auto-iterate is on)."
               value={draft.reviewer_threshold}
               min={0}
               max={10}
@@ -211,6 +305,82 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-violet-500" />
+              Visual Reviewer
+            </CardTitle>
+            <CardDescription>
+              Vision-capable LLM critic. Scores rendered post images against
+              the visual rubric (composition, hierarchy, white space, brand
+              consistency, contrast, type). Pure logger; combined with Taste
+              Reviewer via precedence in the Producer.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <ToggleRow
+              label="Visual Reviewer enabled"
+              description="Default ON — composition redesign hits ≥7 on first pass for static templates."
+              checked={draft.visual_reviewer_enabled}
+              onChange={(v) => setKey("visual_reviewer_enabled", v)}
+              dirty={dirty.has("visual_reviewer_enabled")}
+            />
+            <NumberRow
+              label="Threshold score"
+              description="Score (0-10) at or above which the Visual Reviewer approves. Below this kicks back."
+              value={draft.visual_reviewer_threshold}
+              min={0}
+              max={10}
+              step={1}
+              onChange={(v) => setKey("visual_reviewer_threshold", v)}
+              dirty={dirty.has("visual_reviewer_threshold")}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <GitFork className="h-5 w-5 text-emerald-500" />
+              Generation strategy
+            </CardTitle>
+            <CardDescription>
+              How the Producer drafts each post — single shot vs multi-variant
+              parallel, and whether to re-draft on reviewer kick-back.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <NumberRow
+              label="Multi-variant count"
+              description="N variants drafted in parallel, scored, best shipped. 1 = single shot. 3 adds roughly USD 0.30 per post on stat-card."
+              value={draft.multi_variant_count}
+              min={1}
+              max={5}
+              step={1}
+              onChange={(v) => setKey("multi_variant_count", v)}
+              dirty={dirty.has("multi_variant_count")}
+            />
+            <ToggleRow
+              label="Auto-iterate on kick-back"
+              description="When ON and either reviewer kicks a post back, Producer redrafts with the feedback threaded into the prompt. Static-path only — video iteration is too expensive."
+              checked={draft.auto_iterate_on_kickback}
+              onChange={(v) => setKey("auto_iterate_on_kickback", v)}
+              dirty={dirty.has("auto_iterate_on_kickback")}
+            />
+            <NumberRow
+              label="Iteration variant count"
+              description="When auto-iterate is on, how many redrafts to score on each retry."
+              value={draft.iteration_variant_count}
+              min={1}
+              max={5}
+              step={1}
+              onChange={(v) => setKey("iteration_variant_count", v)}
+              dirty={dirty.has("iteration_variant_count")}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Analyst</CardTitle>
             <CardDescription>
               Daily cron that polls Upload Post for status and writes back to{" "}
@@ -224,6 +394,135 @@ export default function SettingsPage() {
               checked={draft.analyst_enabled}
               onChange={(v) => setKey("analyst_enabled", v)}
               dirty={dirty.has("analyst_enabled")}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Beaker className="h-5 w-5 text-cyan-500" />
+              Research agent
+            </CardTitle>
+            <CardDescription>
+              Per-decision web_search brief threaded into the Producer's
+              system prompt. 30-day cache; roughly USD 0.18 per cache miss.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <ToggleRow
+              label="Research enabled"
+              description="When ON, the Producer calls the research agent before drafting. Cached briefs are free."
+              checked={draft.research_enabled}
+              onChange={(v) => setKey("research_enabled", v)}
+              dirty={dirty.has("research_enabled")}
+            />
+            <NumberRow
+              label="Max briefs per post"
+              description="Hard cap on research calls per post (cost rail)."
+              value={draft.research_max_briefs_per_post}
+              min={0}
+              max={5}
+              step={1}
+              onChange={(v) => setKey("research_max_briefs_per_post", v)}
+              dirty={dirty.has("research_max_briefs_per_post")}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5 text-fuchsia-500" />
+              Repo discovery
+            </CardTitle>
+            <CardDescription>
+              Phase 7D-2 weekly cron. Scans curated GitHub topics for repos
+              worth stealing patterns from. Surfaces to{" "}
+              <code className="px-1 py-0.5 rounded bg-muted">/internal/marketing-engine/research-inbox</code>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <ToggleRow
+              label="Repo discovery enabled"
+              description="When ON, Sun 04:00 UTC cron walks the watch list. Roughly USD 0.30-1.50 per run."
+              checked={draft.repo_discovery_enabled}
+              onChange={(v) => setKey("repo_discovery_enabled", v)}
+              dirty={dirty.has("repo_discovery_enabled")}
+            />
+            <NumberRow
+              label="Min relevance score"
+              description="Candidates below this 0-10 score are skipped (not inserted to inbox)."
+              value={draft.repo_discovery_min_relevance_score}
+              min={0}
+              max={10}
+              step={1}
+              onChange={(v) => setKey("repo_discovery_min_relevance_score", v)}
+              dirty={dirty.has("repo_discovery_min_relevance_score")}
+            />
+            <NumberRow
+              label="Max candidates per run"
+              description="Hard cap on inserted rows per cron run."
+              value={draft.repo_discovery_max_candidates_per_run}
+              min={1}
+              max={50}
+              step={1}
+              onChange={(v) => setKey("repo_discovery_max_candidates_per_run", v)}
+              dirty={dirty.has("repo_discovery_max_candidates_per_run")}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Cpu className="h-5 w-5 text-orange-500" />
+              Model watch
+            </CardTitle>
+            <CardDescription>
+              Phase 5 weekly cron. Scans Anthropic / OpenAI / Google / Kie /
+              fal / Replicate / xAI / ElevenLabs / Cartesia for new
+              generation models. Surfaces to{" "}
+              <code className="px-1 py-0.5 rounded bg-muted">/internal/marketing-engine/model-watch</code>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <ToggleRow
+              label="Model watch enabled"
+              description="When ON, Sun 04:30 UTC cron walks the vendor list. Roughly USD 0.45-1.80 per run."
+              checked={draft.model_watch_enabled}
+              onChange={(v) => setKey("model_watch_enabled", v)}
+              dirty={dirty.has("model_watch_enabled")}
+            />
+            <NumberRow
+              label="Min relevance score"
+              description="Candidates below this 0-10 score are skipped."
+              value={draft.model_watch_min_relevance}
+              min={0}
+              max={10}
+              step={1}
+              onChange={(v) => setKey("model_watch_min_relevance", v)}
+              dirty={dirty.has("model_watch_min_relevance")}
+            />
+            <NumberRow
+              label="Max candidates per run"
+              description="Hard cap on inserted rows per cron run."
+              value={draft.model_watch_max_candidates_per_run}
+              min={1}
+              max={50}
+              step={1}
+              onChange={(v) => setKey("model_watch_max_candidates_per_run", v)}
+              dirty={dirty.has("model_watch_max_candidates_per_run")}
+            />
+            <NumberRow
+              label="Recency window (days)"
+              description="Pass to web_search: surface models released within last N days."
+              value={draft.model_watch_pushed_within_days}
+              min={1}
+              max={30}
+              step={1}
+              onChange={(v) => setKey("model_watch_pushed_within_days", v)}
+              dirty={dirty.has("model_watch_pushed_within_days")}
             />
           </CardContent>
         </Card>
