@@ -48,6 +48,16 @@ interface GoLiveStatus {
   approved_unsent_count: number;
 }
 
+interface FailedPost {
+  id: string;
+  topic: string;
+  rejected_reason: string | null;
+  retry_count: number;
+  cost_usd_total: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface LogRow {
   id: string;
   capability: string;
@@ -218,6 +228,26 @@ export default function MarketingEngineDashboard() {
   const isReadyToShip =
     !!goLive?.publish_enabled && !!goLive?.upload_post_profile;
 
+  // Failed posts in last 7d. Surfaces the actual reject_reason so the
+  // operator sees the failure mode at a glance — most informative when
+  // multiple posts are failing for the same reason (provider down, bad
+  // brand_assets value, etc).
+  const { data: failures } = useQuery<FailedPost[]>({
+    queryKey: ["marketing-engine-recent-failures"],
+    queryFn: async () => {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase
+        .from("marketing_engine_posts")
+        .select("id, topic, rejected_reason, retry_count, cost_usd_total, created_at, updated_at")
+        .eq("status", "failed")
+        .gte("updated_at", sevenDaysAgo)
+        .order("updated_at", { ascending: false })
+        .limit(10);
+      return (data ?? []) as FailedPost[];
+    },
+    refetchInterval: 60_000,
+  });
+
   const { data: recentLogs } = useQuery<LogRow[]>({
     queryKey: ["marketing-engine-recent-logs"],
     queryFn: async () => {
@@ -354,6 +384,46 @@ export default function MarketingEngineDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {failures && failures.length > 0 && (
+          <Card className="border-red-500/40">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2 text-red-700 dark:text-red-400">
+                <XCircle className="h-5 w-5" />
+                Recent failures (7d)
+              </CardTitle>
+              <CardDescription>
+                Posts that hit terminal failure. Most informative when
+                multiple share the same reject reason — that's usually a
+                provider issue or a misconfigured brand_assets value.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                {failures.map((f) => (
+                  <div
+                    key={f.id}
+                    className="flex items-start gap-3 py-1.5 text-sm border-b last:border-b-0"
+                  >
+                    <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                    <code className="text-xs text-muted-foreground w-32 shrink-0 truncate">
+                      {f.topic}
+                    </code>
+                    <span className="text-xs flex-1 break-words">
+                      {f.rejected_reason ?? "(no reason recorded)"}
+                    </span>
+                    <span className="text-xs text-muted-foreground w-12 shrink-0 text-right" title="retry count">
+                      ↻{f.retry_count}
+                    </span>
+                    <span className="text-xs text-muted-foreground w-32 shrink-0 text-right">
+                      {new Date(f.updated_at).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="pb-3">
