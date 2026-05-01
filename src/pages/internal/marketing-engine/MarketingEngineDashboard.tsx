@@ -17,6 +17,7 @@ import {
   Cpu,
   AlertTriangle,
   Send,
+  Users,
 } from "lucide-react";
 import {
   Card,
@@ -91,6 +92,13 @@ const ENGINE_TILES = [
     title: "Capability Routing",
     description: "Defaults + fallbacks per capability",
     color: "text-purple-500",
+  },
+  {
+    href: "/internal/marketing-engine/social-accounts",
+    icon: Users,
+    title: "Social Accounts",
+    description: "Connect AutoListing's own LinkedIn / IG / FB / TikTok / YouTube",
+    color: "text-pink-500",
   },
   {
     href: "/internal/marketing-engine/brand-assets",
