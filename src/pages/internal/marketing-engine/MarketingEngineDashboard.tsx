@@ -704,26 +704,38 @@ export default function MarketingEngineDashboard() {
                 {recentLogs.map((log) => (
                   <div
                     key={log.id}
-                    className="flex items-center gap-3 py-1.5 text-sm border-b last:border-b-0"
+                    className="py-1.5 text-sm border-b last:border-b-0"
                   >
-                    {log.success ? (
-                      <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                    <div className="flex items-center gap-3">
+                      {log.success ? (
+                        <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                      )}
+                      <code className="text-xs text-muted-foreground w-20 shrink-0">
+                        {log.capability}
+                      </code>
+                      <code className="text-xs flex-1 truncate">{log.provider_slug}</code>
+                      <span className="text-xs text-muted-foreground w-20 shrink-0 text-right">
+                        {log.latency_ms ? `${log.latency_ms}ms` : "—"}
+                      </span>
+                      <span className="text-xs text-muted-foreground w-20 shrink-0 text-right">
+                        ${Number(log.cost_usd ?? 0).toFixed(6)}
+                      </span>
+                      <span className="text-xs text-muted-foreground w-32 shrink-0 text-right">
+                        {new Date(log.created_at).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    {!log.success && log.error_message && (
+                      <p
+                        className="text-xs text-red-600 dark:text-red-400 mt-1 ml-7 font-mono break-all"
+                        title={log.error_message}
+                      >
+                        {log.error_message.length > 200
+                          ? `${log.error_message.slice(0, 200)}…`
+                          : log.error_message}
+                      </p>
                     )}
-                    <code className="text-xs text-muted-foreground w-20 shrink-0">
-                      {log.capability}
-                    </code>
-                    <code className="text-xs flex-1 truncate">{log.provider_slug}</code>
-                    <span className="text-xs text-muted-foreground w-20 shrink-0 text-right">
-                      {log.latency_ms ? `${log.latency_ms}ms` : "—"}
-                    </span>
-                    <span className="text-xs text-muted-foreground w-20 shrink-0 text-right">
-                      ${Number(log.cost_usd ?? 0).toFixed(6)}
-                    </span>
-                    <span className="text-xs text-muted-foreground w-32 shrink-0 text-right">
-                      {new Date(log.created_at).toLocaleTimeString()}
-                    </span>
                   </div>
                 ))}
               </div>
