@@ -371,10 +371,11 @@ export default function MarketingHome() {
               <h3 className="text-2xl font-bold">Post Everywhere, Automatically</h3>
               <p className="text-muted-foreground text-lg">
                 Connect your social accounts once. Every post goes to Instagram, TikTok,
-                Facebook, YouTube, LinkedIn, and Pinterest — all at once.
+                Facebook, YouTube, LinkedIn, Pinterest, X, Threads, Reddit, and Bluesky —
+                all at once.
               </p>
               <ul className="space-y-2">
-                <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 6 platforms supported</li>
+                <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 10 platforms supported</li>
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Platform-{optimizedWord} captions</li>
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Lead magnets and quiz posts</li>
               </ul>
@@ -464,7 +465,7 @@ export default function MarketingHome() {
                 },
                 {
                   q: 'What social platforms do you support?',
-                  a: 'Instagram, TikTok, Facebook, YouTube, LinkedIn, and Pinterest. Connect once and every post goes everywhere automatically.',
+                  a: 'Instagram, TikTok, Facebook, YouTube, LinkedIn, Pinterest, X, Threads, Reddit, and Bluesky — 10 platforms in total. Connect once and every post goes everywhere automatically.',
                 },
                 {
                   q: 'How are the videos created?',
