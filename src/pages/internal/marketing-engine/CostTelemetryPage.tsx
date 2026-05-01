@@ -37,6 +37,20 @@ interface ProviderRoll {
   avg_latency: number;
 }
 
+interface CronHealthRow {
+  jobid: number;
+  jobname: string;
+  schedule: string;
+  active: boolean;
+  total_runs: number;
+  failed_runs: number;
+  succeeded_runs: number;
+  last_run_at: string | null;
+  last_run_status: string | null;
+  last_failure_at: string | null;
+  last_failure_message: string | null;
+}
+
 export default function CostTelemetryPage() {
   const navigate = useNavigate();
 
@@ -53,6 +67,21 @@ export default function CostTelemetryPage() {
       return (data ?? []) as RawLog[];
     },
   });
+
+  const { data: cronHealth } = useQuery<CronHealthRow[]>({
+    queryKey: ["cron-health-24h"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_cron_health_summary", {
+        hours_back: 24,
+      });
+      if (error) throw error;
+      return (data ?? []) as CronHealthRow[];
+    },
+    refetchInterval: 60_000,
+  });
+
+  const cronTotalFailed = (cronHealth ?? []).reduce((s, j) => s + j.failed_runs, 0);
+  const cronJobsWithFailures = (cronHealth ?? []).filter((j) => j.failed_runs > 0);
 
   const rolls = rollupByProvider(logs ?? []);
   const totalCost = rolls.reduce((s, r) => s + r.total_cost, 0);
@@ -79,7 +108,7 @@ export default function CostTelemetryPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase">Total cost</p>
@@ -102,7 +131,63 @@ export default function CostTelemetryPage() {
               </p>
             </CardContent>
           </Card>
+          <Card className={cronTotalFailed > 0 ? "border-destructive" : ""}>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground uppercase">Cron failures (24h)</p>
+              <p className={`text-2xl font-semibold mt-1 ${cronTotalFailed > 0 ? "text-destructive" : ""}`}>
+                {cronHealth ? cronTotalFailed : "—"}
+              </p>
+            </CardContent>
+          </Card>
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Cron health (last 24h)</CardTitle>
+            <CardDescription>
+              From <code>cron.job_run_details</code>. Tracks SQL/network outcome of the cron's HTTP call — does not capture
+              edge-function logic errors. Failing jobs sort to the top.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!cronHealth ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+            ) : cronJobsWithFailures.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                All {cronHealth.length} cron jobs healthy in the last 24h.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Job</TableHead>
+                    <TableHead className="text-right">Failed</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead>Last failure</TableHead>
+                    <TableHead>Message</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cronJobsWithFailures.map((j) => (
+                    <TableRow key={j.jobid}>
+                      <TableCell className="font-mono text-xs">{j.jobname}</TableCell>
+                      <TableCell className="text-right text-xs text-destructive font-semibold">
+                        {j.failed_runs}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">{j.total_runs}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {j.last_failure_at ? formatRelative(j.last_failure_at) : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono max-w-md truncate" title={j.last_failure_message ?? ""}>
+                        {j.last_failure_message ?? "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -217,4 +302,14 @@ function rollupDailyCost(logs: RawLog[]): { date: string; cost: number }[] {
   return Array.from(map.entries())
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([date, cost]) => ({ date, cost }));
+}
+
+function formatRelative(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  if (ms < 60_000) return "just now";
+  const min = Math.floor(ms / 60_000);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  return `${Math.floor(hr / 24)}d ago`;
 }
