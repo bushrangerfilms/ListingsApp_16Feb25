@@ -22,12 +22,6 @@ import {
   Home,
   Sparkles,
   X,
-  TrendingUp,
-  BookOpen,
-  Shuffle,
-  Mail,
-  Link2,
-  ClipboardList,
 } from 'lucide-react';
 import { GuidanceVideoLink } from '@/components/ui/GuidanceVideoLink';
 
@@ -342,104 +336,82 @@ export default function MarketingHome() {
           </div>
 
           {/* Feature 2: Lead Magnets */}
-          <div className="space-y-8">
-            <div className="text-center space-y-3 max-w-3xl mx-auto">
+          <div className="space-y-6">
+            <div className="text-center space-y-2 max-w-2xl mx-auto">
               <div className="inline-flex h-12 w-12 rounded-lg bg-primary/10 items-center justify-center">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
               <h3 className="text-2xl font-bold">Turn Followers Into Leads</h3>
               <p className="text-muted-foreground text-lg">
-                Every post drives traffic to a quiz, valuation form or market report.
-                New leads land in your CRM the moment they hit submit — and you get
-                an email alert.
+                Quizzes, valuations and reports that turn scrollers into qualified leads.
               </p>
             </div>
 
-            <div className="rounded-2xl border bg-card p-6 sm:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center">
-              <div className="md:w-1/3 w-full aspect-[4/3] md:aspect-square rounded-xl bg-gradient-to-br from-primary/15 via-primary/5 to-purple-500/10 flex items-center justify-center border border-primary/10">
-                <ClipboardList className="h-20 w-20 text-primary" />
+            <div className="rounded-2xl border bg-card overflow-hidden shadow-sm grid md:grid-cols-2 gap-0 items-stretch">
+              <div className="bg-gradient-to-br from-primary/5 to-purple-500/5 p-6 sm:p-8 flex items-center justify-center">
+                <img
+                  src="https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/quiz-images/3db5b8f0-311c-49d1-83e5-0170e58e87e5/quiz/worth-estimate/1776870305498.jpg"
+                  alt="Example 'What is your property worth?' quiz post"
+                  className="rounded-xl shadow-lg max-h-[420px] w-auto object-contain"
+                  loading="lazy"
+                />
               </div>
-              <div className="flex-1 space-y-3 text-center md:text-left">
-                <Badge variant="secondary" className="gap-1"><Sparkles className="h-3 w-3" /> 2-minute AI quiz</Badge>
+              <div className="p-6 sm:p-8 flex flex-col justify-center space-y-4">
+                <Badge variant="secondary" className="gap-1 self-start"><Sparkles className="h-3 w-3" /> 2-minute AI quiz</Badge>
                 <h4 className="text-xl font-bold">AI Property Valuation</h4>
-                <p className="text-muted-foreground">
-                  Visitors enter a few property details and get an estimated price range,
-                  confidence score, and the market drivers behind it. You get a
-                  fully-qualified seller lead — name, phone, address, and the answers
-                  they gave — straight in your CRM.
-                </p>
+                <ul className="space-y-2 text-sm">
+                  <li className="flex items-start gap-3"><span className="text-base shrink-0 leading-tight">🏡</span><span>Visitors answer a few questions about their home</span></li>
+                  <li className="flex items-start gap-3"><span className="text-base shrink-0 leading-tight">💰</span><span>They get a price range + market drivers</span></li>
+                  <li className="flex items-start gap-3"><span className="text-base shrink-0 leading-tight">📥</span><span>You get the seller lead in your CRM</span></li>
+                  <li className="flex items-start gap-3"><span className="text-base shrink-0 leading-tight">⚡</span><span>Done in under 2 minutes</span></li>
+                </ul>
               </div>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="rounded-xl border bg-card p-5 space-y-2">
-                <Home className="h-5 w-5 text-primary" />
-                <h4 className="font-semibold">Free Valuation Form</h4>
-                <p className="text-sm text-muted-foreground">
-                  Classic request-a-valuation. Lands directly in your seller pipeline with
-                  property details and contact info.
-                </p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-xl border bg-card p-4 space-y-1">
+                <div className="text-2xl leading-none">🏠</div>
+                <h4 className="font-semibold text-sm">Free Valuation Form</h4>
+                <p className="text-xs text-muted-foreground">Direct to your seller pipeline</p>
               </div>
-              <div className="rounded-xl border bg-card p-5 space-y-2">
-                <Check className="h-5 w-5 text-primary" />
-                <h4 className="font-semibold">Ready-to-Sell Quiz</h4>
-                <p className="text-sm text-muted-foreground">
-                  Scores how prepared their home is to go on market and returns a
-                  personalised prep checklist.
-                </p>
+              <div className="rounded-xl border bg-card p-4 space-y-1">
+                <div className="text-2xl leading-none">✅</div>
+                <h4 className="font-semibold text-sm">Ready-to-Sell Quiz</h4>
+                <p className="text-xs text-muted-foreground">Score + personalised prep checklist</p>
               </div>
-              <div className="rounded-xl border bg-card p-5 space-y-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                <h4 className="font-semibold">Monthly Market Update</h4>
-                <p className="text-sm text-muted-foreground">
-                  AI-generated area report — sold prices, trends, days on market.
-                  Builds your newsletter list.
-                </p>
+              <div className="rounded-xl border bg-card p-4 space-y-1">
+                <div className="text-2xl leading-none">📈</div>
+                <h4 className="font-semibold text-sm">Monthly Market Update</h4>
+                <p className="text-xs text-muted-foreground">AI area report → newsletter list</p>
               </div>
-              <div className="rounded-xl border bg-card p-5 space-y-2">
-                <BookOpen className="h-5 w-5 text-primary" />
-                <h4 className="font-semibold">Tips & Advice Articles</h4>
-                <p className="text-sm text-muted-foreground">
-                  Evergreen guides for buyers and sellers, email-gated. Captures
-                  buyers and subscribers.
-                </p>
+              <div className="rounded-xl border bg-card p-4 space-y-1">
+                <div className="text-2xl leading-none">📚</div>
+                <h4 className="font-semibold text-sm">Tips & Advice Articles</h4>
+                <p className="text-xs text-muted-foreground">Evergreen guides, email-gated</p>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4 pt-4">
-              <div className="rounded-xl border bg-background p-5 space-y-2">
+            <div className="grid md:grid-cols-3 gap-3">
+              <div className="rounded-xl border bg-background p-4 space-y-1">
                 <div className="flex items-center gap-2">
-                  <Shuffle className="h-5 w-5 text-primary" />
-                  <h4 className="font-semibold">Built-in variety</h4>
+                  <span className="text-xl leading-none">🔀</span>
+                  <h4 className="font-semibold text-sm">Built-in variety</h4>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Same message, never the same post. Captions rotate via spintax,
-                  backgrounds shuffle across your listings, stock photos and branded
-                  designs, and posts cycle through every area you cover — so the
-                  platforms keep promoting them.
-                </p>
+                <p className="text-xs text-muted-foreground">Captions, images and areas all rotate — platforms keep promoting</p>
               </div>
-              <div className="rounded-xl border bg-background p-5 space-y-2">
+              <div className="rounded-xl border bg-background p-4 space-y-1">
                 <div className="flex items-center gap-2">
-                  <Mail className="h-5 w-5 text-primary" />
-                  <h4 className="font-semibold">Straight to your CRM</h4>
+                  <span className="text-xl leading-none">📬</span>
+                  <h4 className="font-semibold text-sm">Straight to your CRM</h4>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  New leads land instantly in your Sellers, Buyers or Subscribers
-                  pipeline. Notification recipients get an email the moment a lead
-                  submits — no copy-pasting from DMs.
-                </p>
+                <p className="text-xs text-muted-foreground">Pipeline drop + instant email alert. No DM copy-paste</p>
               </div>
-              <div className="rounded-xl border bg-background p-5 space-y-2">
+              <div className="rounded-xl border bg-background p-4 space-y-1">
                 <div className="flex items-center gap-2">
-                  <Link2 className="h-5 w-5 text-primary" />
-                  <h4 className="font-semibold">One link for your bio</h4>
+                  <span className="text-xl leading-none">🔗</span>
+                  <h4 className="font-semibold text-sm">One link for your bio</h4>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  A clean Bio Hub page hosts every lead magnet behind one
-                  Instagram-friendly URL. Multi-area agencies? Visitors pick their
-                  neighbourhood first.
-                </p>
+                <p className="text-xs text-muted-foreground">Bio Hub for every magnet. Multi-area? Visitors pick first</p>
               </div>
             </div>
           </div>
