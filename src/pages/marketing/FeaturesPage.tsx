@@ -235,9 +235,9 @@ export default function FeaturesPage() {
 
   return (
     <MarketingLayout>
-      <SEO 
-        title={t('features.seo.title')}
-        description={t('features.seo.description')}
+      <SEO
+        title="Real Estate Marketing Automation Features — AutoListing.io"
+        description="Explore AutoListing.io features: AI property videos, automated posting to 10 platforms, CRM, email automation, and lead capture for estate agents."
       />
 
       <section className="py-20">

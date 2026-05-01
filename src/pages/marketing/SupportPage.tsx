@@ -13,9 +13,9 @@ export default function SupportPage() {
 
   return (
     <MarketingLayout>
-      <SEO 
-        title={t('support.seo.title')}
-        description={t('support.seo.description')}
+      <SEO
+        title="Help & Support — AutoListing.io"
+        description="Get help with AutoListing.io. Contact our support team, manage data protection requests, and access legal documentation."
       />
       <div className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto">
