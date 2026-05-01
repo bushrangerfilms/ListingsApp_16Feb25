@@ -64,7 +64,7 @@ interface PostedPost {
   topic: string;
   posted_at: string | null;
   channels: string[] | null;
-  // engagement_log shape: { metrics?: { <platform>: { raw?: { results?: [{ post_url, platform_post_id, success, error_message }] }, status?, post_url?, polled_at? } } }
+  // engagement_log shape: { metrics?: { <platform>: { raw?: { results?: [{ post_url, platform_post_id, success, error_message }] }, status?, post_url?, polled_at?, engagement?: { view_count?, like_count?, comment_count?, ... } } } }
   engagement_log: {
     metrics?: Record<string, {
       raw?: {
@@ -77,6 +77,14 @@ interface PostedPost {
       };
       post_url?: string | null;
       status?: string;
+      engagement?: {
+        view_count?: number;
+        like_count?: number;
+        comment_count?: number;
+        favorite_count?: number;
+        polled_at?: string;
+        source?: string;
+      };
     }>;
     provider_response?: Record<string, { ok: boolean; request_id?: string; error?: string; skipped?: boolean }>;
   } | null;
@@ -173,6 +181,36 @@ const ENGINE_TILES = [
     color: "text-orange-500",
   },
 ] as const;
+
+// Compact engagement display for the platform pill in "Recently posted".
+// Renders the most informative single number (views first, falls back to
+// likes) in compact form, with the full breakdown in the tooltip. Returns
+// null when no engagement data is present so the caller can skip the
+// inline counts entirely.
+function formatEngagement(engagement: {
+  view_count?: number;
+  like_count?: number;
+  comment_count?: number;
+}): { compact: string; tooltip: string } | null {
+  const { view_count, like_count, comment_count } = engagement;
+  const primary = view_count ?? like_count;
+  if (primary === undefined) return null;
+  const symbol = view_count !== undefined ? "👁" : "♥";
+  const tooltipParts: string[] = [];
+  if (view_count !== undefined) tooltipParts.push(`${view_count.toLocaleString()} views`);
+  if (like_count !== undefined) tooltipParts.push(`${like_count.toLocaleString()} likes`);
+  if (comment_count !== undefined) tooltipParts.push(`${comment_count.toLocaleString()} comments`);
+  return {
+    compact: `${symbol} ${formatCompactNumber(primary)}`,
+    tooltip: tooltipParts.join(" · "),
+  };
+}
+
+function formatCompactNumber(n: number): string {
+  if (n < 1000) return String(n);
+  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`;
+  return `${(n / 1_000_000).toFixed(1)}m`;
+}
 
 export default function MarketingEngineDashboard() {
   const navigate = useNavigate();
@@ -464,9 +502,13 @@ export default function MarketingEngineDashboard() {
                           const m = metrics[ch];
                           const url = m?.raw?.results?.[0]?.post_url ?? m?.post_url ?? null;
                           const success = m?.raw?.results?.[0]?.success;
+                          const engagement = m?.engagement;
                           // Three states: live URL (success + url), succeeded-no-url (request_id only),
                           // missing (skipped or not yet polled).
                           if (url) {
+                            const stats = engagement
+                              ? formatEngagement(engagement)
+                              : null;
                             return (
                               <a
                                 key={ch}
@@ -474,8 +516,14 @@ export default function MarketingEngineDashboard() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs px-2 py-0.5 rounded border bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 transition-colors inline-flex items-center gap-1"
+                                title={stats?.tooltip ?? undefined}
                               >
                                 {ch}
+                                {stats && (
+                                  <span className="text-[10px] opacity-80 font-mono">
+                                    {stats.compact}
+                                  </span>
+                                )}
                                 <ChevronRight className="h-3 w-3" />
                               </a>
                             );
