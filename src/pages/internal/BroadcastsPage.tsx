@@ -201,10 +201,10 @@ export default function BroadcastsPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [confirmClearContactsOpen, setConfirmClearContactsOpen] = useState(false);
 
-  // Inline name-override editor in the recipient review dialog. Tracks the
-  // contact id currently being edited and the in-flight value so blur-to-save
-  // doesn't fire on every keystroke.
-  const [editingOverrideId, setEditingOverrideId] = useState<string | null>(null);
+  // Inline name-override editor in the recipient review dialog. Keyed by
+  // lowercased email so it works for any recipient — platform users included,
+  // even before a contact-book row exists for them.
+  const [editingOverrideEmail, setEditingOverrideEmail] = useState<string | null>(null);
   const [editingOverrideValue, setEditingOverrideValue] = useState<string>("");
 
   // List query
@@ -305,9 +305,9 @@ export default function BroadcastsPage() {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
   });
 
-  const updateContactMutation = useMutation({
-    mutationFn: ({ id, name_override }: { id: string; name_override: string | null }) =>
-      adminApi.broadcasts.externalContacts.update(id, { name_override }),
+  const setOverrideMutation = useMutation({
+    mutationFn: ({ email, name_override }: { email: string; name_override: string | null }) =>
+      adminApi.broadcasts.externalContacts.setOverride(email, name_override),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "external-contacts"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-preview"] });
@@ -442,19 +442,16 @@ export default function BroadcastsPage() {
     }
   }
 
-  function commitOverride(id: string, raw: string) {
+  function commitOverride(email: string, raw: string) {
     const next = raw.trim();
-    const current = contactByEmail.get(
-      (externalContactsData?.contacts || []).find((c) => c.id === id)?.email.toLowerCase() || ""
-    );
-    const existing = current?.name_override?.trim() || "";
+    const existing = contactByEmail.get(email.toLowerCase())?.name_override?.trim() || "";
     if (next === existing) {
-      setEditingOverrideId(null);
+      setEditingOverrideEmail(null);
       return;
     }
-    updateContactMutation.mutate(
-      { id, name_override: next || null },
-      { onSettled: () => setEditingOverrideId(null) },
+    setOverrideMutation.mutate(
+      { email, name_override: next || null },
+      { onSettled: () => setEditingOverrideEmail(null) },
     );
   }
 
@@ -609,11 +606,11 @@ export default function BroadcastsPage() {
               <div className="space-y-1">
                 {previewData.recipients.map((r) => {
                   const isExcluded = excludedEmails.has(r.email);
+                  const emailLower = r.email.toLowerCase();
+                  const contact = contactByEmail.get(emailLower);
                   const greeting = firstNameOf(r.name, r.email);
-                  const contact = r.source === "external"
-                    ? contactByEmail.get(r.email.toLowerCase())
-                    : undefined;
-                  const isEditingOverride = !!contact && editingOverrideId === contact.id;
+                  const isEditingOverride = editingOverrideEmail === emailLower;
+                  const hasOverride = !!contact?.name_override?.trim();
                   return (
                     <div
                       key={r.email}
@@ -631,22 +628,22 @@ export default function BroadcastsPage() {
                         {r.name && (
                           <p className="text-xs text-muted-foreground truncate">{r.email}</p>
                         )}
-                        {isEditingOverride && contact ? (
+                        {isEditingOverride ? (
                           <div className="flex items-center gap-2 mt-1">
                             <Input
                               value={editingOverrideValue}
                               onChange={(e) => setEditingOverrideValue(e.target.value)}
-                              onBlur={() => commitOverride(contact.id, editingOverrideValue)}
+                              onBlur={() => commitOverride(r.email, editingOverrideValue)}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") {
                                   e.preventDefault();
-                                  commitOverride(contact.id, editingOverrideValue);
+                                  commitOverride(r.email, editingOverrideValue);
                                 } else if (e.key === "Escape") {
-                                  setEditingOverrideId(null);
+                                  setEditingOverrideEmail(null);
                                 }
                               }}
                               autoFocus
-                              placeholder="First name to use"
+                              placeholder={`First name (currently "${greeting}")`}
                               className="h-7 text-xs"
                             />
                           </div>
@@ -655,28 +652,26 @@ export default function BroadcastsPage() {
                             <p className="text-xs text-muted-foreground italic truncate">
                               → "Hi {greeting},"
                             </p>
-                            {contact && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingOverrideId(contact.id);
-                                  setEditingOverrideValue(contact.name_override || "");
-                                }}
-                                className="text-xs text-primary hover:underline"
-                              >
-                                {contact.name_override ? "edit" : "fix"}
-                              </button>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingOverrideEmail(emailLower);
+                                setEditingOverrideValue(contact?.name_override || "");
+                              }}
+                              className="text-xs text-primary hover:underline shrink-0"
+                            >
+                              {hasOverride ? "edit" : "fix"}
+                            </button>
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         {r.source === "external" && (
                           <Badge variant="secondary" className="text-[10px] uppercase">
                             External
                           </Badge>
                         )}
-                        {contact && (
+                        {contact && contact.source !== "platform_override" && (
                           <Button
                             type="button"
                             variant="ghost"

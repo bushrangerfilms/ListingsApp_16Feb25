@@ -3902,6 +3902,56 @@ async function handleUpdateExternalContact(
   return { contact: data };
 }
 
+// Upsert a name override keyed by email — works for any recipient, including
+// platform users (who don't otherwise have a row in broadcast_external_contacts).
+// Stores `source = 'platform_override'` for inserts so the list UI can tell them
+// apart from upload-sourced contacts.
+async function handleSetContactOverrideByEmail(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+  body: any,
+) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const email = (body?.email || "").toString().trim().toLowerCase();
+  if (!email) throw new Error("email is required");
+
+  const override = (body?.name_override || "").toString().trim();
+  const overrideValue = override ? override : null;
+
+  // Try to find an existing row first.
+  const { data: existing } = await supabase
+    .from("broadcast_external_contacts")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("broadcast_external_contacts")
+      .update({ name_override: overrideValue, updated_at: new Date().toISOString() })
+      .eq("id", existing.id)
+      .select("id, email, name, name_override, source, created_at, updated_at, last_uploaded_at")
+      .single();
+    if (error) throw new Error(`Failed to set override: ${error.message}`);
+    return { contact: data };
+  }
+
+  const { data, error } = await supabase
+    .from("broadcast_external_contacts")
+    .insert({
+      email,
+      name: null,
+      name_override: overrideValue,
+      source: "platform_override",
+    })
+    .select("id, email, name, name_override, source, created_at, updated_at, last_uploaded_at")
+    .single();
+
+  if (error) throw new Error(`Failed to set override: ${error.message}`);
+  return { contact: data };
+}
+
 async function handleDeleteExternalContact(
   supabase: SupabaseClient,
   auth: AuthResult,
@@ -4061,6 +4111,26 @@ async function buildRecipientList(
     }
   }
 
+  // Fetch the global contact-book up front. It serves two roles:
+  //   1. Source of external (uploaded) recipients merged into the audience.
+  //   2. Source of `name_override` for ANY recipient — platform users included.
+  //      A row with `source = 'platform_override'` exists only to carry an
+  //      override; the email itself comes from auth.users.
+  const { data: external, error: externalError } = await supabase
+    .from("broadcast_external_contacts")
+    .select("email, name, name_override, source");
+
+  if (externalError) {
+    console.error("Error fetching external contacts:", externalError);
+  }
+
+  const overrideByEmail = new Map<string, string>();
+  for (const ext of (external || [])) {
+    if (ext.email && ext.name_override && ext.name_override.trim()) {
+      overrideByEmail.set(ext.email.toLowerCase(), ext.name_override.trim());
+    }
+  }
+
   // Build final recipient list
   const recipients: RecipientRow[] = [];
   const seenEmails = new Set<string>();
@@ -4069,37 +4139,26 @@ async function buildRecipientList(
     if (!user.email) continue;
     const emailLower = user.email.toLowerCase();
 
-    // Skip unsubscribed
     if (unsubscribedEmails.has(emailLower)) continue;
-    // Skip duplicates
     if (seenEmails.has(emailLower)) continue;
-    // Skip if org filters active and user doesn't match
     if (orgFilter && !orgFilter.has(user.id)) continue;
 
     seenEmails.add(emailLower);
+    const override = overrideByEmail.get(emailLower);
     recipients.push({
       user_id: user.id,
       email: user.email,
-      name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+      name: override || user.user_metadata?.full_name || user.user_metadata?.name || null,
       source: "platform",
     });
   }
 
-  // Append the global external-contact pool, deduped against ALL platform users
-  // (not just the filtered audience) so a signed-up contact never gets a
-  // duplicate email — they go through the platform path or none at all.
-  // `name_override` (Super Admin's manual correction) wins over the parsed
-  // upload name so the {firstName} token uses the corrected value.
-  const { data: external, error: externalError } = await supabase
-    .from("broadcast_external_contacts")
-    .select("email, name, name_override");
-
-  if (externalError) {
-    console.error("Error fetching external contacts:", externalError);
-  }
-
+  // Append the upload-sourced pool, deduped against ALL platform users so a
+  // signed-up contact never gets a duplicate email. Skip rows that exist solely
+  // to carry an override for a platform user — those have already been applied.
   for (const ext of (external || [])) {
     if (!ext.email) continue;
+    if (ext.source === "platform_override") continue;
     const emailLower = ext.email.toLowerCase();
     if (unsubscribedEmails.has(emailLower)) continue;
     if (platformEmails.has(emailLower)) continue;
@@ -4597,6 +4656,9 @@ serve(async (req) => {
       responseData = await handleUpsertExternalContacts(supabase, authResult, body);
     } else if (path === "/broadcasts/external-contacts" && method === "DELETE") {
       responseData = await handleClearExternalContacts(supabase, authResult);
+    } else if (path === "/broadcasts/external-contacts/override" && method === "PUT") {
+      const body = await req.json().catch(() => ({}));
+      responseData = await handleSetContactOverrideByEmail(supabase, authResult, body);
     } else if (path.match(/^\/broadcasts\/external-contacts\/[^/]+$/) && method === "PATCH") {
       const contactId = path.replace("/broadcasts/external-contacts/", "");
       const body = await req.json().catch(() => ({}));
