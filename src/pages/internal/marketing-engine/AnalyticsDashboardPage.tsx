@@ -35,7 +35,19 @@ interface PostRow {
   engagement_log: {
     metrics?: Record<
       string,
-      { status?: string; post_url?: string; polled_at?: string }
+      {
+        status?: string;
+        post_url?: string;
+        polled_at?: string;
+        engagement?: {
+          view_count?: number;
+          like_count?: number;
+          comment_count?: number;
+          favorite_count?: number;
+          polled_at?: string;
+          source?: string;
+        };
+      }
     >;
   } | null;
   template_id: string;
@@ -55,6 +67,13 @@ interface AggRow {
   avg_score: number | null;
   avg_cost: number;
   rejection_rate: number;
+  // Engagement (per posted-post with at least one platform's engagement data).
+  // Posts where engagement hasn't been collected yet aren't counted in
+  // engagement_n, so the averages reflect *measured* performance only.
+  engagement_n: number;
+  total_views: number;
+  total_likes: number;
+  total_comments: number;
 }
 
 const STATUS_TONE: Record<string, string> = {
@@ -131,6 +150,10 @@ export default function AnalyticsDashboardPage() {
         avg_score: null,
         avg_cost: 0,
         rejection_rate: 0,
+        engagement_n: 0,
+        total_views: 0,
+        total_likes: 0,
+        total_comments: 0,
       };
       aggByTmpl.set(slug, row);
     }
@@ -143,6 +166,24 @@ export default function AnalyticsDashboardPage() {
     if (typeof p.reviewer_score === "number") {
       row.avg_score = ((row.avg_score ?? 0) * (row.posts - 1) + p.reviewer_score) / row.posts;
     }
+
+    // Engagement aggregation. Sum any platform's engagement counts onto
+    // the post's row, then count the post once if any platform reported
+    // data. avg = total / engagement_n at render time. As more platforms
+    // come online (TikTok / LinkedIn / Meta) this naturally aggregates
+    // across them; today only YouTube populates it.
+    if (p.status === "posted" && p.engagement_log?.metrics) {
+      let postHasEngagement = false;
+      for (const platform of Object.values(p.engagement_log.metrics)) {
+        const e = platform?.engagement;
+        if (!e) continue;
+        postHasEngagement = true;
+        if (typeof e.view_count === "number") row.total_views += e.view_count;
+        if (typeof e.like_count === "number") row.total_likes += e.like_count;
+        if (typeof e.comment_count === "number") row.total_comments += e.comment_count;
+      }
+      if (postHasEngagement) row.engagement_n += 1;
+    }
   }
   const aggs = Array.from(aggByTmpl.values())
     .map((r) => ({
@@ -150,7 +191,15 @@ export default function AnalyticsDashboardPage() {
       avg_cost: r.posts ? r.avg_cost / r.posts : 0,
       rejection_rate: r.posts ? (r.rejection_rate / r.posts) * 100 : 0,
     }))
-    .sort((a, b) => b.posts - a.posts);
+    .sort((a, b) => {
+      // Templates with measured engagement bubble up by avg likes; ties
+      // and unmeasured templates fall back to post volume so the table
+      // doesn't reorder dramatically once a single post gets metrics.
+      const aLikes = a.engagement_n ? a.total_likes / a.engagement_n : -1;
+      const bLikes = b.engagement_n ? b.total_likes / b.engagement_n : -1;
+      if (aLikes !== bLikes) return bLikes - aLikes;
+      return b.posts - a.posts;
+    });
 
   const recentPosted = allPosts.filter((p) => p.status === "posted").slice(0, 20);
 
@@ -191,7 +240,10 @@ export default function AnalyticsDashboardPage() {
           <CardHeader>
             <CardTitle>By template</CardTitle>
             <CardDescription>
-              Posts in last 30d, % posted, average reviewer score, average cost.
+              Posts in last 30d, % posted, reviewer score, cost. Engagement
+              columns aggregate per-platform analytics (YouTube live; TikTok /
+              LinkedIn / Meta to follow). Templates sort by avg likes when
+              measured, falling back to post volume for unmeasured templates.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -207,6 +259,10 @@ export default function AnalyticsDashboardPage() {
                     <TableHead className="text-right">Reject %</TableHead>
                     <TableHead className="text-right">Avg score</TableHead>
                     <TableHead className="text-right">Avg cost</TableHead>
+                    <TableHead className="text-right" title="Posts in window with engagement data on at least one platform">N</TableHead>
+                    <TableHead className="text-right">Avg views</TableHead>
+                    <TableHead className="text-right">Avg likes</TableHead>
+                    <TableHead className="text-right">Avg comments</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -224,6 +280,18 @@ export default function AnalyticsDashboardPage() {
                       <TableCell className="text-right text-xs font-mono">
                         ${r.avg_cost.toFixed(4)}
                       </TableCell>
+                      <TableCell className="text-right text-xs text-muted-foreground">
+                        {r.engagement_n || "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {r.engagement_n ? Math.round(r.total_views / r.engagement_n).toLocaleString() : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {r.engagement_n ? Math.round(r.total_likes / r.engagement_n).toLocaleString() : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-xs">
+                        {r.engagement_n ? Math.round(r.total_comments / r.engagement_n).toLocaleString() : "—"}
+                      </TableCell>
                     </TableRow>
                   ))}
                   <TableRow className="border-t-2">
@@ -238,6 +306,30 @@ export default function AnalyticsDashboardPage() {
                     </TableCell>
                     <TableCell className="text-right text-xs font-mono">
                       ${totalCost.toFixed(4)}
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      {aggs.reduce((s, r) => s + r.engagement_n, 0) || "—"}
+                    </TableCell>
+                    <TableCell className="text-right text-xs">
+                      {(() => {
+                        const n = aggs.reduce((s, r) => s + r.engagement_n, 0);
+                        const v = aggs.reduce((s, r) => s + r.total_views, 0);
+                        return n ? Math.round(v / n).toLocaleString() : "—";
+                      })()}
+                    </TableCell>
+                    <TableCell className="text-right text-xs">
+                      {(() => {
+                        const n = aggs.reduce((s, r) => s + r.engagement_n, 0);
+                        const v = aggs.reduce((s, r) => s + r.total_likes, 0);
+                        return n ? Math.round(v / n).toLocaleString() : "—";
+                      })()}
+                    </TableCell>
+                    <TableCell className="text-right text-xs">
+                      {(() => {
+                        const n = aggs.reduce((s, r) => s + r.engagement_n, 0);
+                        const v = aggs.reduce((s, r) => s + r.total_comments, 0);
+                        return n ? Math.round(v / n).toLocaleString() : "—";
+                      })()}
                     </TableCell>
                   </TableRow>
                 </TableBody>
