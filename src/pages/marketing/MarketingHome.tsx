@@ -190,7 +190,7 @@ export default function MarketingHome() {
     <MarketingLayout>
       <SEO
         title="AutoListing.io — Property Marketing on Autopilot"
-        description="Automated social posting + AI lead generation. Plus an auto-updated website, CRM and brochure generator built for estate agents. Set up in minutes, runs itself forever."
+        description="Automated video content, carousels and lead generation posted to all your social accounts. Plus an auto-updated website, CRM and brochure generator built for estate agents. Set up in minutes, runs itself forever."
       />
 
       {/* Hero */}
@@ -209,8 +209,9 @@ export default function MarketingHome() {
             </h1>
 
             <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-              Automated social posting and AI lead generation — plus a self-updating
-              property website, CRM and brochure generator. Built for estate agents.
+              Automated video content creation, carousels and lead generation posted
+              to all your social accounts — plus a self-updating property website,
+              CRM and brochure generator. Built for estate agents.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1">
