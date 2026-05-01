@@ -10,7 +10,7 @@ export interface AcademyVideo {
 export const academyVideos: AcademyVideo[] = [
   {
     id: 'getting-started',
-    title: 'Getting Started Guide',
+    title: 'Getting Started Video Guide',
     description: 'A quick overview of AutoListing — what it does and how to set it up.',
     url: 'https://youtu.be/RQhOENCec8o',
     addedAt: '2026-04-11',

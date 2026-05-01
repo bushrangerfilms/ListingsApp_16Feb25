@@ -231,7 +231,7 @@ export default function MarketingHome() {
 
             <GuidanceVideoLink
               url="https://youtu.be/RQhOENCec8o"
-              label="Getting Started Guide"
+              label="Getting Started Video Guide"
             />
           </div>
         </div>

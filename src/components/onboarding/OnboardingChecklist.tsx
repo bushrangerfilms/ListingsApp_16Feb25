@@ -17,9 +17,13 @@ import {
 } from '@/components/ui/collapsible';
 import { TaskItem } from './TaskItem';
 import { PostingPreferencesDialog } from './PostingPreferencesDialog';
+import { GuidanceVideoLink } from '@/components/ui/GuidanceVideoLink';
 import { useOnboarding, type OnboardingTask } from '@/hooks/useOnboarding';
 import { usePlanInfo } from '@/hooks/usePlanInfo';
+import { academyVideos } from '@/lib/academyVideos';
 import { cn } from '@/lib/utils';
+
+const gettingStartedVideo = academyVideos.find((v) => v.id === 'getting-started');
 
 interface OnboardingChecklistProps {
   className?: string;
@@ -118,6 +122,14 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
                 {visibleCompleted} of {visibleTotal} steps complete
               </DialogDescription>
               <Progress value={(visibleCompleted / visibleTotal) * 100} className="h-1.5 mt-2" />
+              {gettingStartedVideo && (
+                <div className="pt-2">
+                  <GuidanceVideoLink
+                    url={gettingStartedVideo.url}
+                    label="Getting Started Video Guide"
+                  />
+                </div>
+              )}
             </DialogHeader>
 
             <div className="space-y-1 py-2">
@@ -202,6 +214,15 @@ export function OnboardingChecklist({ className, compact = false }: OnboardingCh
             {visibleCompleted} of {visibleTotal} complete
           </p>
         </div>
+
+        {gettingStartedVideo && (
+          <div className="mt-3">
+            <GuidanceVideoLink
+              url={gettingStartedVideo.url}
+              label="Getting Started Video Guide"
+            />
+          </div>
+        )}
       </div>
 
       <CollapsibleContent>
