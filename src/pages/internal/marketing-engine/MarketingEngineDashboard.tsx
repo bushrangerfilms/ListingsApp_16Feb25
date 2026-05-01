@@ -59,6 +59,29 @@ interface FailedPost {
   updated_at: string;
 }
 
+interface PostedPost {
+  id: string;
+  topic: string;
+  posted_at: string | null;
+  channels: string[] | null;
+  // engagement_log shape: { metrics?: { <platform>: { raw?: { results?: [{ post_url, platform_post_id, success, error_message }] }, status?, post_url?, polled_at? } } }
+  engagement_log: {
+    metrics?: Record<string, {
+      raw?: {
+        results?: Array<{
+          post_url?: string;
+          platform_post_id?: string;
+          success?: boolean;
+          error_message?: string | null;
+        }>;
+      };
+      post_url?: string | null;
+      status?: string;
+    }>;
+    provider_response?: Record<string, { ok: boolean; request_id?: string; error?: string; skipped?: boolean }>;
+  } | null;
+}
+
 interface LogRow {
   id: string;
   capability: string;
@@ -236,6 +259,24 @@ export default function MarketingEngineDashboard() {
   const isReadyToShip =
     !!goLive?.publish_enabled && !!goLive?.upload_post_profile;
 
+  // Recent posts that landed publicly. Surfaces the actual platform
+  // URLs so the operator can click straight to the live post on
+  // TikTok / YouTube / etc. Pulled from engagement_log.metrics
+  // (populated by marketing-engine-analyst-cron).
+  const { data: posted } = useQuery<PostedPost[]>({
+    queryKey: ["marketing-engine-recent-posted"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketing_engine_posts")
+        .select("id, topic, posted_at, channels, engagement_log")
+        .eq("status", "posted")
+        .order("posted_at", { ascending: false })
+        .limit(10);
+      return (data ?? []) as PostedPost[];
+    },
+    refetchInterval: 60_000,
+  });
+
   // Failed posts in last 7d. Surfaces the actual reject_reason so the
   // operator sees the failure mode at a glance — most informative when
   // multiple posts are failing for the same reason (provider down, bad
@@ -392,6 +433,78 @@ export default function MarketingEngineDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {posted && posted.length > 0 && (
+          <Card className="border-emerald-500/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                <CheckCircle className="h-5 w-5" />
+                Recently posted
+              </CardTitle>
+              <CardDescription>
+                Last 10 posts that landed publicly. Click a platform pill to open the live post.
+                Per-platform URLs come from <code>marketing-engine-analyst-cron</code> (daily Sun 05:00 UTC) — fire it manually if you want fresh URLs immediately.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                {posted.map((p) => {
+                  const metrics = p.engagement_log?.metrics ?? {};
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-start gap-3 py-1.5 text-sm border-b last:border-b-0"
+                    >
+                      <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                      <code className="text-xs text-muted-foreground w-32 shrink-0 truncate">
+                        {p.topic}
+                      </code>
+                      <div className="flex-1 flex items-center gap-1.5 flex-wrap">
+                        {(p.channels ?? []).map((ch) => {
+                          const m = metrics[ch];
+                          const url = m?.raw?.results?.[0]?.post_url ?? m?.post_url ?? null;
+                          const success = m?.raw?.results?.[0]?.success;
+                          // Three states: live URL (success + url), succeeded-no-url (request_id only),
+                          // missing (skipped or not yet polled).
+                          if (url) {
+                            return (
+                              <a
+                                key={ch}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs px-2 py-0.5 rounded border bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 transition-colors inline-flex items-center gap-1"
+                              >
+                                {ch}
+                                <ChevronRight className="h-3 w-3" />
+                              </a>
+                            );
+                          }
+                          if (success === true) {
+                            return (
+                              <span
+                                key={ch}
+                                className="text-xs px-2 py-0.5 rounded border bg-blue-500/10 text-blue-600 border-blue-500/20"
+                                title="posted but URL not polled yet"
+                              >
+                                {ch} ⏳
+                              </span>
+                            );
+                          }
+                          // Skipped or not in metrics
+                          return null;
+                        })}
+                      </div>
+                      <span className="text-xs text-muted-foreground w-32 shrink-0 text-right">
+                        {p.posted_at ? new Date(p.posted_at).toLocaleString() : "—"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {failures && failures.length > 0 && (
           <Card className="border-red-500/40">
