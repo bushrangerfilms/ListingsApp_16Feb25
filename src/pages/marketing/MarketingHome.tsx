@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,11 +21,98 @@ import {
   Users,
   Home,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { GuidanceVideoLink } from '@/components/ui/GuidanceVideoLink';
 
 const DEMO_VIDEO_URL = 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/pilot-program-demo.mp4';
 const DEMO_THUMBNAIL_URL = 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/video-thumbnail.png';
+
+const VIDEO_STYLE_SAMPLES: Array<{
+  label: string;
+  url: string;
+  orientation: 'landscape' | 'portrait';
+}> = [
+  {
+    label: 'Style 1',
+    url: 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/real-estate-videos/c4db7362-9f98-4417-a393-289673638781_16x9_1769525532206.mp4',
+    orientation: 'landscape',
+  },
+  {
+    label: 'Style 4',
+    url: 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/video-style2/sessions/e63b1f0b-c7bf-4426-b315-8b651de0f399/renders/final_20feb986-5c48-46eb-afe2-f063dd1fa3d0.mp4',
+    orientation: 'landscape',
+  },
+  {
+    label: 'Style 2',
+    url: 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/video-style2/sessions/532dbe31-8127-46c8-9417-ecdf873a106b/renders/final_4ec4c565-7d42-468a-937c-5f3db9b64f2b.mp4',
+    orientation: 'portrait',
+  },
+  {
+    label: 'Style 6',
+    url: 'https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/video-style2/sessions/8bb63e39-d403-45c7-8cae-5e4ccebfceee/renders/video_style6_7872fc63-5ab6-4e6e-8667-a50c389b8c7e.mp4',
+    orientation: 'portrait',
+  },
+];
+
+function VideoStylePreviewModal({ url, onClose }: { url: string; onClose: () => void }) {
+  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={handleBackdropClick}>
+      <div className="relative w-[95vw] max-w-4xl max-h-[90vh]">
+        <button
+          onClick={onClose}
+          className="absolute -top-10 right-0 text-white hover:text-gray-300 z-10"
+          aria-label="Close preview"
+        >
+          <X className="h-6 w-6" />
+        </button>
+        <video
+          src={url}
+          controls
+          autoPlay
+          className="w-full max-h-[85vh] rounded-lg object-contain bg-black"
+        />
+      </div>
+    </div>
+  );
+}
+
+function VideoStyleThumbnail({ label, url, orientation, onClick }: {
+  label: string;
+  url: string;
+  orientation: 'landscape' | 'portrait';
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative group rounded-lg overflow-hidden border border-border hover:border-primary shadow-sm hover:shadow-md transition-all ${
+        orientation === 'landscape' ? 'aspect-video w-full' : 'aspect-[9/16] w-full'
+      }`}
+    >
+      <video src={url} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-white/95 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+          <Play className="h-5 w-5 text-primary ml-0.5" />
+        </div>
+      </div>
+      <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wider text-white bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded">
+        {label}
+      </span>
+    </button>
+  );
+}
 
 function PricingCard({ name, displayName, price, features, isPopular, isFree, billingInterval, currency }: {
   name: string;
@@ -79,6 +166,7 @@ function PricingCard({ name, displayName, price, features, isPopular, isFree, bi
 
 export default function MarketingHome() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [stylePreviewUrl, setStylePreviewUrl] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const { currency: detectedCurrency, locale } = useLocale();
@@ -209,21 +297,41 @@ export default function MarketingHome() {
               <h3 className="text-2xl font-bold">AI-Generated Property Videos</h3>
               <p className="text-muted-foreground text-lg">
                 Upload your listing photos and we create scroll-stopping videos automatically.
-                Multiple styles — from cinematic slideshows to AI motion clips.
+                A growing library of styles — from cinematic slideshows to AI motion clips —
+                with new ones added as AI models improve.
               </p>
               <ul className="space-y-2">
-                <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 2 video styles, carousels and image posts</li>
+                <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 6 video styles (and growing), 2 carousel types, and image posts</li>
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Auto-generated captions and hashtags</li>
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 9:16 and 16:9 formats for every platform</li>
               </ul>
             </div>
-            <div className="rounded-2xl overflow-hidden shadow-lg border">
-              <img
-                src="https://sjcfcxjpukgeaxxkffpq.supabase.co/storage/v1/object/public/public-assets/marketing-video-gen.png"
-                alt="AI-generated property video preview"
-                className="w-full h-auto"
-                loading="lazy"
-              />
+            <div className="rounded-2xl border bg-card p-5 sm:p-6 shadow-lg space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                {VIDEO_STYLE_SAMPLES.filter(s => s.orientation === 'landscape').map(s => (
+                  <VideoStyleThumbnail
+                    key={s.label}
+                    label={s.label}
+                    url={s.url}
+                    orientation={s.orientation}
+                    onClick={() => setStylePreviewUrl(s.url)}
+                  />
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3 max-w-[260px] sm:max-w-xs mx-auto">
+                {VIDEO_STYLE_SAMPLES.filter(s => s.orientation === 'portrait').map(s => (
+                  <VideoStyleThumbnail
+                    key={s.label}
+                    label={s.label}
+                    url={s.url}
+                    orientation={s.orientation}
+                    onClick={() => setStylePreviewUrl(s.url)}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground text-center">
+                Tap any sample to play. New styles released regularly as AI improves.
+              </p>
             </div>
           </div>
 
@@ -406,6 +514,10 @@ export default function MarketingHome() {
           </div>
         </div>
       </section>
+
+      {stylePreviewUrl && (
+        <VideoStylePreviewModal url={stylePreviewUrl} onClose={() => setStylePreviewUrl(null)} />
+      )}
     </MarketingLayout>
   );
 }
