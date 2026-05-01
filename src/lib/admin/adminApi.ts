@@ -1159,11 +1159,20 @@ export const adminApi = {
           email: string;
           name: string | null;
           source: "platform" | "external";
+          name_is_override: boolean;
         }>
       }>(
         `/broadcasts/audience-preview?${params}`
       );
     },
+    // Permanently exclude an email from every future broadcast — adds to
+    // broadcast_unsubscribes (idempotent) and removes any upload-sourced
+    // contact-book row. Works for platform users and external contacts alike.
+    excludeEmail: (email: string) =>
+      adminFetch<{ success: boolean }>(`/broadcasts/exclude-email`, {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      }),
     // Global, persistent external-contact pool. The Super Admin's "Interested"
     // list lives here across campaigns: re-uploading the same export only
     // inserts net-new addresses, and any name_override the admin set survives.
