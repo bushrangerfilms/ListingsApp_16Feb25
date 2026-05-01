@@ -190,7 +190,7 @@ export default function MarketingHome() {
     <MarketingLayout>
       <SEO
         title="AutoListing.io — Automate Your Property Social Media"
-        description="Post property listings to Instagram, TikTok, Facebook and more — automatically. AI-generated videos, smart scheduling, CRM and lead capture. Try free, no card required."
+        description="Post listings to Instagram, TikTok, Facebook and more — automatically. AI-generated videos, smart scheduling, CRM and lead capture. Try free, no card required."
       />
 
       {/* Hero */}
