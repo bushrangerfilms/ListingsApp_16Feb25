@@ -14,6 +14,9 @@ import {
   Calendar,
   Settings,
   Search,
+  Cpu,
+  AlertTriangle,
+  Send,
 } from "lucide-react";
 import {
   Card,
@@ -29,10 +32,20 @@ import { supabase } from "@/integrations/supabase/client";
 interface KpiData {
   posts_total: number;
   posts_pending: number;
+  posts_posted: number;
   posts_failed: number;
   cost_last_7d: number;
   log_count_24h: number;
   failure_count_24h: number;
+}
+
+interface GoLiveStatus {
+  publish_enabled: boolean;
+  upload_post_profile: string | null;
+  has_linkedin_id: boolean;
+  has_facebook_id: boolean;
+  has_instagram_id: boolean;
+  approved_unsent_count: number;
 }
 
 interface LogRow {
@@ -111,6 +124,13 @@ const ENGINE_TILES = [
     description: "Phase 7D-2 — repos + patterns to steal from",
     color: "text-fuchsia-500",
   },
+  {
+    href: "/internal/marketing-engine/model-watch",
+    icon: Cpu,
+    title: "Model Watch",
+    description: "Phase 5 — newly-released AI models for triage",
+    color: "text-orange-500",
+  },
 ] as const;
 
 export default function MarketingEngineDashboard() {
@@ -143,7 +163,8 @@ export default function MarketingEngineDashboard() {
 
       return {
         posts_total: posts.length,
-        posts_pending: posts.filter((p) => p.status === "pending_approval").length,
+        posts_pending: posts.filter((p) => p.status === "pending_approval" || p.status === "review_queue").length,
+        posts_posted: posts.filter((p) => p.status === "posted").length,
         posts_failed: posts.filter((p) => p.status === "failed").length,
         cost_last_7d: cost,
         log_count_24h: logs24.length,
@@ -151,6 +172,51 @@ export default function MarketingEngineDashboard() {
       };
     },
   });
+
+  // Go-live readiness — what's blocking marketing-engine-publish from
+  // shipping queued posts. Default state on a fresh project is:
+  // publish_enabled=false, brand_assets empty, no Upload Post profile
+  // configured. Surface each gate as a single clear pass/fail so the
+  // super-admin doesn't have to hunt for "why aren't posts shipping".
+  const { data: goLive } = useQuery<GoLiveStatus>({
+    queryKey: ["marketing-engine-go-live"],
+    queryFn: async () => {
+      const [enabledRes, assetsRes, approvedRes] = await Promise.all([
+        supabase
+          .from("marketing_engine_settings")
+          .select("value")
+          .eq("key", "publish_enabled")
+          .maybeSingle(),
+        supabase
+          .from("brand_assets")
+          .select("key, asset_value")
+          .in("key", ["upload_post_profile", "linkedin_page_id", "facebook_page_id", "instagram_business_id"]),
+        supabase
+          .from("marketing_engine_posts")
+          .select("id", { count: "exact", head: true })
+          .in("status", ["approved", "scheduled"])
+          .lte("scheduled_for", new Date().toISOString()),
+      ]);
+
+      const assetMap = new Map<string, string>();
+      for (const r of assetsRes.data ?? []) {
+        if (r.asset_value && r.asset_value.length > 0) assetMap.set(r.key, r.asset_value);
+      }
+
+      return {
+        publish_enabled: enabledRes.data?.value === true,
+        upload_post_profile: assetMap.get("upload_post_profile") ?? null,
+        has_linkedin_id: assetMap.has("linkedin_page_id"),
+        has_facebook_id: assetMap.has("facebook_page_id"),
+        has_instagram_id: assetMap.has("instagram_business_id"),
+        approved_unsent_count: approvedRes.count ?? 0,
+      };
+    },
+    refetchInterval: 30_000,
+  });
+
+  const isReadyToShip =
+    !!goLive?.publish_enabled && !!goLive?.upload_post_profile;
 
   const { data: recentLogs } = useQuery<LogRow[]>({
     queryKey: ["marketing-engine-recent-logs"],
@@ -186,9 +252,69 @@ export default function MarketingEngineDashboard() {
           <Badge variant="outline">Phase 0</Badge>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+        {/* Go-live readiness — only renders when something's blocking. */}
+        {goLive && !isReadyToShip && (
+          <Card className="border-amber-500/50 bg-amber-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                Go-live readiness
+              </CardTitle>
+              <CardDescription>
+                Posts approved past their scheduled time aren't publishing yet.
+                Each gate below must be green before <code>marketing-engine-publish-due</code> will ship them.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              <ReadinessRow
+                label="publish_enabled flag"
+                ok={goLive.publish_enabled}
+                hint={!goLive.publish_enabled ? "Set in marketing_engine_settings to true once below are green" : undefined}
+              />
+              <ReadinessRow
+                label="brand_assets.upload_post_profile"
+                ok={!!goLive.upload_post_profile}
+                hint={!goLive.upload_post_profile ? "Create Upload Post profile + connect socials via OAuth" : undefined}
+              />
+              <ReadinessRow
+                label="brand_assets.linkedin_page_id"
+                ok={goLive.has_linkedin_id}
+                hint={!goLive.has_linkedin_id ? "Required for LinkedIn channel" : undefined}
+                optional
+              />
+              <ReadinessRow
+                label="brand_assets.facebook_page_id"
+                ok={goLive.has_facebook_id}
+                hint={!goLive.has_facebook_id ? "Required for Facebook channel" : undefined}
+                optional
+              />
+              <ReadinessRow
+                label="brand_assets.instagram_business_id"
+                ok={goLive.has_instagram_id}
+                hint={!goLive.has_instagram_id ? "Required for Instagram channel" : undefined}
+                optional
+              />
+              {goLive.approved_unsent_count > 0 && (
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-amber-500/20 text-sm">
+                  <Send className="h-4 w-4 text-amber-600" />
+                  <span>
+                    <b>{goLive.approved_unsent_count}</b> approved post
+                    {goLive.approved_unsent_count === 1 ? "" : "s"} waiting to ship.
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
           <KpiCard label="Posts (all)" value={kpis?.posts_total ?? "—"} />
-          <KpiCard label="Pending approval" value={kpis?.posts_pending ?? "—"} />
+          <KpiCard label="In review" value={kpis?.posts_pending ?? "—"} />
+          <KpiCard
+            label="Posted"
+            value={kpis?.posts_posted ?? "—"}
+            tone={kpis && kpis.posts_posted > 0 ? "ok" : "default"}
+          />
           <KpiCard label="Failed" value={kpis?.posts_failed ?? "—"} />
           <KpiCard
             label="Cost (7d)"
@@ -286,7 +412,7 @@ function KpiCard({
 }: {
   label: string;
   value: number | string;
-  tone?: "default" | "warn";
+  tone?: "default" | "warn" | "ok";
 }) {
   return (
     <Card>
@@ -294,12 +420,41 @@ function KpiCard({
         <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
         <p
           className={`text-2xl font-semibold mt-1 ${
-            tone === "warn" ? "text-amber-500" : ""
+            tone === "warn" ? "text-amber-500" : tone === "ok" ? "text-emerald-500" : ""
           }`}
         >
           {value}
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+function ReadinessRow({
+  label,
+  ok,
+  hint,
+  optional,
+}: {
+  label: string;
+  ok: boolean;
+  hint?: string;
+  optional?: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-2 text-sm">
+      {ok ? (
+        <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+      ) : (
+        <XCircle className={`h-4 w-4 mt-0.5 shrink-0 ${optional ? "text-muted-foreground" : "text-amber-600"}`} />
+      )}
+      <div className="flex-1 min-w-0">
+        <code className="text-xs">{label}</code>
+        {optional && <span className="text-xs text-muted-foreground ml-2">(per channel)</span>}
+        {hint && !ok && (
+          <div className="text-xs text-muted-foreground mt-0.5">{hint}</div>
+        )}
+      </div>
+    </div>
   );
 }
