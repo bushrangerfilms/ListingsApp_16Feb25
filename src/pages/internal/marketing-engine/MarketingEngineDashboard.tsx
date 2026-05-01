@@ -343,6 +343,89 @@ export default function MarketingEngineDashboard() {
     refetchInterval: 60_000,
   });
 
+  // Publisher safety state — daily cap usage + circuit breaker + run lock.
+  // Lets the operator tell at a glance whether the publisher is gated
+  // (cap reached / breaker tripped) without digging into settings or
+  // edge-function logs.
+  const { data: safety } = useQuery<{
+    publishEnabled: boolean;
+    maxPostsPerDay: number;
+    todayPostedCount: number;
+    breakerEnabled: boolean;
+    breakerFailureRate: number;
+    breakerWindowMin: number;
+    recentAttempts: number;
+    recentFailures: number;
+    runLockHeld: boolean;
+    runLockExpiresAt: string | null;
+  }>({
+    queryKey: ["marketing-engine-publisher-safety"],
+    queryFn: async () => {
+      const todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
+
+      const [settingsR, postedR, lockR, recentR] = await Promise.all([
+        supabase
+          .from("marketing_engine_settings")
+          .select("key, value")
+          .in("key", [
+            "publish_enabled",
+            "max_posts_per_day",
+            "circuit_breaker_enabled",
+            "circuit_breaker_failure_rate",
+            "circuit_breaker_window_min",
+          ]),
+        supabase
+          .from("marketing_engine_posts")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "posted")
+          .gte("posted_at", todayStart.toISOString()),
+        supabase
+          .from("marketing_engine_run_locks")
+          .select("expires_at")
+          .eq("name", "publish_due")
+          .maybeSingle(),
+        // Use the same window the breaker reads. Default 60 if setting absent.
+        supabase
+          .from("media_generation_log")
+          .select("success")
+          .eq("capability", "social-publish")
+          .gte("created_at", new Date(Date.now() - 60 * 60_000).toISOString()),
+      ]);
+
+      const map = new Map<string, unknown>();
+      for (const r of settingsR.data ?? []) map.set(r.key, r.value);
+      const recent = recentR.data ?? [];
+      const lockRow = lockR.data as { expires_at?: string | null } | null;
+
+      return {
+        publishEnabled: map.get("publish_enabled") === true,
+        maxPostsPerDay:
+          typeof map.get("max_posts_per_day") === "number"
+            ? (map.get("max_posts_per_day") as number)
+            : 10,
+        todayPostedCount: postedR.count ?? 0,
+        breakerEnabled: map.get("circuit_breaker_enabled") !== false,
+        breakerFailureRate:
+          typeof map.get("circuit_breaker_failure_rate") === "number"
+            ? (map.get("circuit_breaker_failure_rate") as number)
+            : 0.6,
+        breakerWindowMin:
+          typeof map.get("circuit_breaker_window_min") === "number"
+            ? (map.get("circuit_breaker_window_min") as number)
+            : 60,
+        recentAttempts: recent.length,
+        recentFailures: recent.filter((r) => r.success === false).length,
+        runLockHeld: !!(
+          lockRow?.expires_at &&
+          new Date(lockRow.expires_at).getTime() > Date.now()
+        ),
+        runLockExpiresAt: lockRow?.expires_at ?? null,
+      };
+    },
+    refetchInterval: 30_000,
+  });
+
   const { data: recentLogs } = useQuery<LogRow[]>({
     queryKey: ["marketing-engine-recent-logs"],
     queryFn: async () => {
@@ -452,6 +535,89 @@ export default function MarketingEngineDashboard() {
             tone={kpis && kpis.failure_count_24h > 0 ? "warn" : "default"}
           />
         </div>
+
+        {/* Publisher safety net — daily cap usage, circuit breaker
+            state, run lock. Makes "why didn't anything ship?" answerable
+            without going into edge logs. */}
+        {safety && safety.publishEnabled && (() => {
+          const capRatio = safety.todayPostedCount / safety.maxPostsPerDay;
+          const breakerActive =
+            safety.breakerEnabled &&
+            safety.recentAttempts >= 5 &&
+            safety.recentFailures / safety.recentAttempts >= safety.breakerFailureRate;
+          const breakerRate =
+            safety.recentAttempts > 0
+              ? safety.recentFailures / safety.recentAttempts
+              : 0;
+          const capTone =
+            capRatio >= 1
+              ? "border-red-500/40 bg-red-500/5"
+              : capRatio >= 0.8
+                ? "border-amber-500/40 bg-amber-500/5"
+                : "border-emerald-500/30 bg-emerald-500/5";
+          const breakerTone = breakerActive
+            ? "border-red-500/40 bg-red-500/5"
+            : "border-emerald-500/30 bg-emerald-500/5";
+          const lockTone = safety.runLockHeld
+            ? "border-blue-500/40 bg-blue-500/5"
+            : "border-muted bg-muted/20";
+          return (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Publisher safety</CardTitle>
+                <CardDescription>
+                  Live state of run-lock, daily cap, and circuit breaker.
+                  Each of these can pause publishing without flipping <code>publish_enabled</code>.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className={`rounded border p-3 ${capTone}`}>
+                    <div className="text-xs text-muted-foreground">Daily cap</div>
+                    <div className="text-2xl font-bold tabular-nums">
+                      {safety.todayPostedCount}
+                      <span className="text-base text-muted-foreground"> / {safety.maxPostsPerDay}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {capRatio >= 1
+                        ? "cap hit — cron skipping until UTC midnight"
+                        : `${safety.maxPostsPerDay - safety.todayPostedCount} remaining today`}
+                    </div>
+                  </div>
+                  <div className={`rounded border p-3 ${breakerTone}`}>
+                    <div className="text-xs text-muted-foreground">Circuit breaker</div>
+                    <div className="text-2xl font-bold tabular-nums">
+                      {breakerActive ? "TRIPPED" : "closed"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {safety.breakerEnabled ? (
+                        <>
+                          {safety.recentFailures}/{safety.recentAttempts} fail (last {safety.breakerWindowMin}m)
+                          {" · "}
+                          trip at ≥{(safety.breakerFailureRate * 100).toFixed(0)}%
+                          {breakerActive && ` · current ${(breakerRate * 100).toFixed(0)}%`}
+                        </>
+                      ) : (
+                        "disabled"
+                      )}
+                    </div>
+                  </div>
+                  <div className={`rounded border p-3 ${lockTone}`}>
+                    <div className="text-xs text-muted-foreground">Run lock</div>
+                    <div className="text-2xl font-bold tabular-nums">
+                      {safety.runLockHeld ? "held" : "free"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {safety.runLockHeld && safety.runLockExpiresAt
+                        ? `expires ${new Date(safety.runLockExpiresAt).toLocaleTimeString()}`
+                        : "available for next cron tick"}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         <Card>
           <CardHeader className="pb-3">
