@@ -3564,26 +3564,196 @@ async function handleDeleteBroadcast(supabase: SupabaseClient, auth: AuthResult,
   return { success: true };
 }
 
-async function handleAudienceCount(supabase: SupabaseClient, auth: AuthResult, filters: any) {
+async function handleAudienceCount(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+  filters: any,
+  campaignId?: string,
+) {
   if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
 
-  const recipients = await buildRecipientList(supabase, filters);
-  return { count: recipients.length };
+  const recipients = await buildRecipientList(supabase, filters, campaignId);
+  const platform = recipients.filter((r) => r.source === "platform").length;
+  const external = recipients.length - platform;
+  return { count: recipients.length, platform_count: platform, external_count: external };
 }
 
-async function handleAudiencePreview(supabase: SupabaseClient, auth: AuthResult, filters: any) {
+async function handleAudiencePreview(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+  filters: any,
+  campaignId?: string,
+) {
   if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
 
-  const recipients = await buildRecipientList(supabase, filters);
+  const recipients = await buildRecipientList(supabase, filters, campaignId);
   return { recipients };
 }
 
-async function buildRecipientList(supabase: SupabaseClient, filters: any) {
+async function handleListExternalRecipients(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+  campaignId: string,
+) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const { data, error } = await supabase
+    .from("broadcast_external_recipients")
+    .select("id, email, name, source, created_at")
+    .eq("campaign_id", campaignId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw new Error(`Failed to fetch external recipients: ${error.message}`);
+
+  // Also report dedup stats — how many uploaded rows are already platform users
+  // (will be skipped at send) and how many are net new.
+  const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  const platformEmails = new Set(
+    (users?.users || [])
+      .map((u: any) => u.email?.toLowerCase())
+      .filter(Boolean),
+  );
+
+  let dedupedAgainstPlatform = 0;
+  for (const row of (data || [])) {
+    if (row.email && platformEmails.has(row.email.toLowerCase())) {
+      dedupedAgainstPlatform++;
+    }
+  }
+
+  return {
+    recipients: data || [],
+    total_uploaded: (data || []).length,
+    deduped_against_platform: dedupedAgainstPlatform,
+    net_new: (data || []).length - dedupedAgainstPlatform,
+  };
+}
+
+async function handleAddExternalRecipients(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+  campaignId: string,
+  body: any,
+) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  // Verify campaign exists and is editable
+  const { data: campaign } = await supabase
+    .from("broadcast_campaigns")
+    .select("id, status")
+    .eq("id", campaignId)
+    .single();
+
+  if (!campaign) throw new Error("Broadcast not found");
+  if (campaign.status !== "draft") {
+    throw new Error("External recipients can only be added to draft campaigns");
+  }
+
+  const incoming: Array<{ email?: string; name?: string }> = Array.isArray(body?.recipients)
+    ? body.recipients
+    : [];
+  const source: string = typeof body?.source === "string" && body.source.trim()
+    ? body.source.trim()
+    : "manual_upload";
+
+  // Normalize, validate, and dedupe within the upload.
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const seen = new Set<string>();
+  const rows: Array<{ campaign_id: string; email: string; name: string | null; source: string }> = [];
+  let invalidCount = 0;
+
+  for (const r of incoming) {
+    const rawEmail = (r?.email || "").trim().toLowerCase();
+    if (!rawEmail || !emailRegex.test(rawEmail)) {
+      invalidCount++;
+      continue;
+    }
+    if (seen.has(rawEmail)) continue;
+    seen.add(rawEmail);
+    rows.push({
+      campaign_id: campaignId,
+      email: rawEmail,
+      name: r?.name?.toString().trim() || null,
+      source,
+    });
+  }
+
+  if (rows.length === 0) {
+    return { inserted: 0, skipped_invalid: invalidCount, total_in_campaign: 0 };
+  }
+
+  // Upsert in batches of 500 — idempotent on (campaign_id, lower(email)).
+  for (let i = 0; i < rows.length; i += 500) {
+    const batch = rows.slice(i, i + 500);
+    const { error } = await supabase
+      .from("broadcast_external_recipients")
+      .upsert(batch, { onConflict: "campaign_id,email", ignoreDuplicates: true });
+    if (error) {
+      // Fall back to row-by-row insert if onConflict spec doesn't match the
+      // expression index — the table uses a UNIQUE INDEX on (campaign_id, lower(email))
+      // which Postgres can't always match via on_conflict spec.
+      for (const row of batch) {
+        await supabase
+          .from("broadcast_external_recipients")
+          .insert(row)
+          .then(() => undefined, () => undefined);
+      }
+    }
+  }
+
+  const { count } = await supabase
+    .from("broadcast_external_recipients")
+    .select("*", { count: "exact", head: true })
+    .eq("campaign_id", campaignId);
+
+  return {
+    inserted: rows.length,
+    skipped_invalid: invalidCount,
+    total_in_campaign: count || 0,
+  };
+}
+
+async function handleClearExternalRecipients(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+  campaignId: string,
+) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const { error } = await supabase
+    .from("broadcast_external_recipients")
+    .delete()
+    .eq("campaign_id", campaignId);
+
+  if (error) throw new Error(`Failed to clear external recipients: ${error.message}`);
+  return { success: true };
+}
+
+type RecipientRow = {
+  user_id: string | null;
+  email: string;
+  name: string | null;
+  source: "platform" | "external";
+};
+
+async function buildRecipientList(
+  supabase: SupabaseClient,
+  filters: any,
+  campaignId?: string,
+): Promise<RecipientRow[]> {
   // Get all users with email addresses
   const { data: users, error: usersError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   if (usersError) throw new Error(`Failed to list users: ${usersError.message}`);
 
   const allUsers = users?.users || [];
+
+  // All platform user emails (lowercased) — used to dedupe external uploads against
+  // the full platform user base, not just the filtered audience. A signed-up user
+  // who happens to also be in the PlusVibe export should never get the email twice.
+  const platformEmails = new Set<string>();
+  for (const u of allUsers) {
+    if (u.email) platformEmails.add(u.email.toLowerCase());
+  }
 
   // Get unsubscribes
   const { data: unsubscribes } = await supabase
@@ -3689,7 +3859,7 @@ async function buildRecipientList(supabase: SupabaseClient, filters: any) {
   }
 
   // Build final recipient list
-  const recipients: Array<{ user_id: string; email: string; name: string | null }> = [];
+  const recipients: RecipientRow[] = [];
   const seenEmails = new Set<string>();
 
   for (const user of allUsers) {
@@ -3708,7 +3878,38 @@ async function buildRecipientList(supabase: SupabaseClient, filters: any) {
       user_id: user.id,
       email: user.email,
       name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+      source: "platform",
     });
+  }
+
+  // Append external (uploaded) recipients for this campaign, deduped against
+  // ALL platform users (not just the filtered audience) so a signed-up contact
+  // never gets a duplicate email — they go through the platform path or none at all.
+  if (campaignId) {
+    const { data: external, error: externalError } = await supabase
+      .from("broadcast_external_recipients")
+      .select("email, name")
+      .eq("campaign_id", campaignId);
+
+    if (externalError) {
+      console.error("Error fetching external recipients:", externalError);
+    }
+
+    for (const ext of (external || [])) {
+      if (!ext.email) continue;
+      const emailLower = ext.email.toLowerCase();
+      if (unsubscribedEmails.has(emailLower)) continue;
+      if (platformEmails.has(emailLower)) continue;
+      if (seenEmails.has(emailLower)) continue;
+
+      seenEmails.add(emailLower);
+      recipients.push({
+        user_id: null,
+        email: ext.email,
+        name: ext.name || null,
+        source: "external",
+      });
+    }
   }
 
   return recipients;
@@ -3729,8 +3930,8 @@ async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, c
     throw new Error(`Cannot send a campaign with status: ${campaign.status}`);
   }
 
-  // Build recipient list
-  let recipients = await buildRecipientList(supabase, campaign.audience_filters || {});
+  // Build recipient list — include this campaign's external (uploaded) recipients
+  let recipients = await buildRecipientList(supabase, campaign.audience_filters || {}, campaignId);
 
   // Apply exclusions from the request body
   const excludedEmails: string[] = Array.isArray(body?.excluded_emails) ? body.excluded_emails : [];
@@ -4182,11 +4383,23 @@ serve(async (req) => {
     } else if (path === "/broadcasts/audience-count" && method === "GET") {
       const filtersParam = url.searchParams.get("filters");
       const filters = filtersParam ? JSON.parse(filtersParam) : {};
-      responseData = await handleAudienceCount(supabase, authResult, filters);
+      const campaignId = url.searchParams.get("campaign_id") || undefined;
+      responseData = await handleAudienceCount(supabase, authResult, filters, campaignId);
     } else if (path === "/broadcasts/audience-preview" && method === "GET") {
       const filtersParam = url.searchParams.get("filters");
       const filters = filtersParam ? JSON.parse(filtersParam) : {};
-      responseData = await handleAudiencePreview(supabase, authResult, filters);
+      const campaignId = url.searchParams.get("campaign_id") || undefined;
+      responseData = await handleAudiencePreview(supabase, authResult, filters, campaignId);
+    } else if (path.match(/^\/broadcasts\/[^/]+\/external-recipients$/) && method === "GET") {
+      const campaignId = path.replace("/broadcasts/", "").replace("/external-recipients", "");
+      responseData = await handleListExternalRecipients(supabase, authResult, campaignId);
+    } else if (path.match(/^\/broadcasts\/[^/]+\/external-recipients$/) && method === "POST") {
+      const campaignId = path.replace("/broadcasts/", "").replace("/external-recipients", "");
+      const body = await req.json().catch(() => ({}));
+      responseData = await handleAddExternalRecipients(supabase, authResult, campaignId, body);
+    } else if (path.match(/^\/broadcasts\/[^/]+\/external-recipients$/) && method === "DELETE") {
+      const campaignId = path.replace("/broadcasts/", "").replace("/external-recipients", "");
+      responseData = await handleClearExternalRecipients(supabase, authResult, campaignId);
     } else if (path.match(/^\/broadcasts\/[^/]+\/send$/) && method === "POST") {
       const campaignId = path.replace("/broadcasts/", "").replace("/send", "");
       const body = await req.json().catch(() => ({}));

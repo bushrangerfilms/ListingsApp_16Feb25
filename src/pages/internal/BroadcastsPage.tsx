@@ -29,8 +29,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Megaphone, Plus, Send, Eye, Pencil, Trash2, X, ArrowLeft, Users } from "lucide-react";
+import { Loader2, Megaphone, Plus, Send, Eye, Pencil, Trash2, X, ArrowLeft, Users, Upload, FileSpreadsheet } from "lucide-react";
 import { useState, useCallback, useEffect, useRef } from "react";
+import * as XLSX from "xlsx";
 import { adminApi, BroadcastCampaign, BroadcastCampaignInput, BroadcastCampaignDetail } from "@/lib/admin/adminApi";
 import { useSuperAdminPermissions } from '@/hooks/useSuperAdminPermissions';
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +69,46 @@ const ENGAGEMENT_OPTIONS = [
 
 type View = "list" | "compose" | "detail";
 
+type ParsedExternalRow = { email: string; name?: string };
+
+// Parse an XLSX/CSV file (PlusVibe export shape) into { email, name } rows.
+// Looks for an email-ish column case-insensitively; pulls a name column if present.
+async function parseContactFile(file: File): Promise<{ rows: ParsedExternalRow[]; rawCount: number }> {
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  if (!firstSheet) return { rows: [], rawCount: 0 };
+
+  const json: Record<string, unknown>[] = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+  if (json.length === 0) return { rows: [], rawCount: 0 };
+
+  // Find columns by best-fit name (case-insensitive, trimmed).
+  const columns = Object.keys(json[0]).map((k) => ({ raw: k, key: k.trim().toLowerCase() }));
+  const emailCol = columns.find((c) => c.key === "email" || c.key === "email address" || c.key === "e-mail")
+    ?? columns.find((c) => c.key.includes("email"));
+  if (!emailCol) return { rows: [], rawCount: json.length };
+
+  const firstNameCol = columns.find((c) => c.key === "first name" || c.key === "firstname" || c.key === "first_name");
+  const lastNameCol = columns.find((c) => c.key === "last name" || c.key === "lastname" || c.key === "last_name");
+  const fullNameCol = columns.find((c) => c.key === "name" || c.key === "full name" || c.key === "fullname" || c.key === "full_name" || c.key === "contact name");
+
+  const out: ParsedExternalRow[] = [];
+  for (const row of json) {
+    const email = String(row[emailCol.raw] || "").trim();
+    if (!email) continue;
+    let name: string | undefined;
+    if (fullNameCol) name = String(row[fullNameCol.raw] || "").trim() || undefined;
+    if (!name && (firstNameCol || lastNameCol)) {
+      const fn = firstNameCol ? String(row[firstNameCol.raw] || "").trim() : "";
+      const ln = lastNameCol ? String(row[lastNameCol.raw] || "").trim() : "";
+      const composed = `${fn} ${ln}`.trim();
+      name = composed || undefined;
+    }
+    out.push({ email, name });
+  }
+  return { rows: out, rawCount: json.length };
+}
+
 export default function BroadcastsPage() {
   const { hasSuperAdminAccess, loading: authLoading } = useSuperAdminPermissions();
   const { toast } = useToast();
@@ -93,6 +134,14 @@ export default function BroadcastsPage() {
   const [filterEngagement, setFilterEngagement] = useState<string[]>([]);
   const [previewTab, setPreviewTab] = useState<string>("edit");
 
+  // External (uploaded) recipients — for new compose, parsed rows are held in
+  // local state until the draft is saved. For an existing draft, they live on
+  // the server and are fetched via externalRecipients.list.
+  const [pendingExternalRows, setPendingExternalRows] = useState<ParsedExternalRow[]>([]);
+  const [pendingExternalFilename, setPendingExternalFilename] = useState<string | null>(null);
+  const [uploadParsing, setUploadParsing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   // List query
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["admin", "broadcasts"],
@@ -116,9 +165,16 @@ export default function BroadcastsPage() {
   };
 
   const { data: audienceData } = useQuery({
-    queryKey: ["admin", "broadcasts", "audience-count", audienceFilters],
-    queryFn: () => adminApi.broadcasts.audienceCount(audienceFilters),
+    queryKey: ["admin", "broadcasts", "audience-count", editingId, audienceFilters],
+    queryFn: () => adminApi.broadcasts.audienceCount(audienceFilters, editingId || undefined),
     enabled: view === "compose" && !authLoading && hasSuperAdminAccess,
+  });
+
+  // External (uploaded) recipients for an existing draft — fetched server-side.
+  const { data: externalData } = useQuery({
+    queryKey: ["admin", "broadcasts", editingId, "external-recipients"],
+    queryFn: () => adminApi.broadcasts.externalRecipients.list(editingId!),
+    enabled: view === "compose" && !!editingId,
   });
 
   // Mutations
@@ -154,6 +210,40 @@ export default function BroadcastsPage() {
     },
   });
 
+  const addExternalMutation = useMutation({
+    mutationFn: ({ campaignId, rows }: { campaignId: string; rows: ParsedExternalRow[] }) =>
+      adminApi.broadcasts.externalRecipients.add(campaignId, rows),
+    onSuccess: (result, vars) => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "broadcasts", vars.campaignId, "external-recipients"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-count"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-preview"] });
+      toast({
+        title: "Upload complete",
+        description: `Added ${result.inserted} contact${result.inserted === 1 ? "" : "s"}${
+          result.skipped_invalid > 0 ? ` (${result.skipped_invalid} invalid email${result.skipped_invalid === 1 ? "" : "s"} skipped)` : ""
+        }.`,
+      });
+    },
+    onError: (err: Error) =>
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
+  });
+
+  const clearExternalMutation = useMutation({
+    mutationFn: (campaignId: string) => adminApi.broadcasts.externalRecipients.clear(campaignId),
+    onSuccess: (_result, campaignId) => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "broadcasts", campaignId, "external-recipients"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-count"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-preview"] });
+      toast({ title: "Uploaded list cleared" });
+    },
+    onError: (err: Error) =>
+      toast({ title: "Clear failed", description: err.message, variant: "destructive" }),
+  });
+
   // Load recipient preview when review dialog opens.
   // In compose mode, use the in-flight audienceFilters; when reviewing an existing
   // campaign, use that campaign's saved filters.
@@ -169,10 +259,10 @@ export default function BroadcastsPage() {
       if (reviewCampaignId) {
         const campaign = campaigns?.find((c) => c.id === reviewCampaignId);
         if (campaign) {
-          return adminApi.broadcasts.audiencePreview(campaign.audience_filters || {});
+          return adminApi.broadcasts.audiencePreview(campaign.audience_filters || {}, reviewCampaignId);
         }
       }
-      return adminApi.broadcasts.audiencePreview(audienceFilters);
+      return adminApi.broadcasts.audiencePreview(audienceFilters, editingId || undefined);
     },
     enabled: reviewDialogOpen,
   });
@@ -225,6 +315,54 @@ export default function BroadcastsPage() {
     setExcludedEmails(new Set());
     setEditingId(null);
     setPreviewTab("edit");
+    setPendingExternalRows([]);
+    setPendingExternalFilename(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleFilePicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadParsing(true);
+    try {
+      const { rows, rawCount } = await parseContactFile(file);
+      if (rows.length === 0) {
+        toast({
+          title: "No emails found",
+          description: rawCount === 0
+            ? "The file appears to be empty."
+            : "Couldn't find an email column. The file needs a column named 'email' (or similar).",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (editingId) {
+        // Existing draft — upload immediately to the server.
+        addExternalMutation.mutate({ campaignId: editingId, rows });
+      } else {
+        // No draft yet — hold rows in state. They'll be flushed on Save Draft / Send.
+        setPendingExternalRows(rows);
+        setPendingExternalFilename(file.name);
+        toast({
+          title: "File parsed",
+          description: `${rows.length} contact${rows.length === 1 ? "" : "s"} ready. Save the draft to upload them.`,
+        });
+      }
+    } catch (err: any) {
+      toast({ title: "Parse failed", description: err?.message || "Unable to read file", variant: "destructive" });
+    } finally {
+      setUploadParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  function handleClearExternal() {
+    if (editingId) {
+      clearExternalMutation.mutate(editingId);
+    } else {
+      setPendingExternalRows([]);
+      setPendingExternalFilename(null);
+    }
   }
 
   function openCompose(campaign?: BroadcastCampaign) {
@@ -256,16 +394,27 @@ export default function BroadcastsPage() {
       audience_filters: audienceFilters,
     };
 
-    const onDone = () => {
+    const finish = () => {
       toast({ title: editingId ? "Draft updated" : "Draft saved" });
       resetForm();
       setView("list");
     };
 
     if (editingId) {
-      updateMutation.mutate({ id: editingId, data }, { onSuccess: onDone });
+      updateMutation.mutate({ id: editingId, data }, { onSuccess: finish });
     } else {
-      createMutation.mutate(data, { onSuccess: onDone });
+      createMutation.mutate(data, {
+        onSuccess: (created) => {
+          if (pendingExternalRows.length > 0) {
+            addExternalMutation.mutate(
+              { campaignId: created.id, rows: pendingExternalRows },
+              { onSuccess: finish, onError: finish },
+            );
+          } else {
+            finish();
+          }
+        },
+      });
     }
   }
 
@@ -290,7 +439,7 @@ export default function BroadcastsPage() {
         },
       });
     } else {
-      // Create then open review dialog
+      // Create then upload pending external recipients (if any) then open review dialog
       const data: BroadcastCampaignInput = {
         subject,
         body_html: bodyHtml,
@@ -299,8 +448,18 @@ export default function BroadcastsPage() {
       };
       createMutation.mutate(data, {
         onSuccess: (created) => {
-          openReviewDialog(created.id, true);
-          setView("list");
+          const openReview = () => {
+            openReviewDialog(created.id, true);
+            setView("list");
+          };
+          if (pendingExternalRows.length > 0) {
+            addExternalMutation.mutate(
+              { campaignId: created.id, rows: pendingExternalRows },
+              { onSuccess: openReview, onError: openReview },
+            );
+          } else {
+            openReview();
+          }
         },
       });
     }
@@ -387,7 +546,7 @@ export default function BroadcastsPage() {
                   const isExcluded = excludedEmails.has(r.email);
                   return (
                     <label
-                      key={r.user_id}
+                      key={r.email}
                       className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
                     >
                       <Checkbox
@@ -402,6 +561,11 @@ export default function BroadcastsPage() {
                           <p className="text-xs text-muted-foreground truncate">{r.email}</p>
                         )}
                       </div>
+                      {r.source === "external" && (
+                        <Badge variant="secondary" className="text-[10px] uppercase">
+                          External
+                        </Badge>
+                      )}
                     </label>
                   );
                 })}
@@ -673,7 +837,7 @@ export default function BroadcastsPage() {
                   Audience
                   <Badge variant="outline" className="text-lg px-3">
                     {audienceData?.count !== undefined
-                      ? `${Math.max(0, audienceData.count - excludedEmails.size)} recipients`
+                      ? `${Math.max(0, audienceData.count + (editingId ? 0 : pendingExternalRows.length) - excludedEmails.size)} recipients`
                       : "... recipients"}
                   </Badge>
                 </CardTitle>
@@ -783,6 +947,93 @@ export default function BroadcastsPage() {
                       </Badge>
                     ))}
                   </div>
+                </div>
+
+                <div className="space-y-2 pt-3 border-t">
+                  <Label className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    External Recipients (Upload)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Upload an XLSX or CSV (e.g. PlusVibe export). The file needs an{" "}
+                    <code className="px-1 bg-muted rounded">email</code> column. Anyone already
+                    a platform user is skipped automatically — no double-sends.
+                  </p>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                    className="hidden"
+                    onChange={handleFilePicked}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadParsing || addExternalMutation.isPending}
+                  >
+                    {uploadParsing || addExternalMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4 mr-2" />
+                    )}
+                    {uploadParsing ? "Parsing…" : addExternalMutation.isPending ? "Uploading…" : "Upload contact list"}
+                  </Button>
+
+                  {/* Existing-draft summary (server-side stats) */}
+                  {editingId && externalData && externalData.total_uploaded > 0 && (
+                    <div className="rounded-md border bg-muted/30 p-3 space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Uploaded contacts</span>
+                        <span className="font-medium">{externalData.total_uploaded}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Already platform users</span>
+                        <span className="font-medium">{externalData.deduped_against_platform}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Net new external</span>
+                        <span className="font-medium text-foreground">{externalData.net_new}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full mt-1 h-7 text-xs"
+                        onClick={handleClearExternal}
+                        disabled={clearExternalMutation.isPending}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Clear uploaded list
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* New-draft pending summary (client-side, pre-save) */}
+                  {!editingId && pendingExternalRows.length > 0 && (
+                    <div className="rounded-md border bg-amber-50 border-amber-200 p-3 space-y-1 text-xs">
+                      <p className="font-medium text-amber-900">
+                        {pendingExternalRows.length} contact{pendingExternalRows.length === 1 ? "" : "s"} parsed from{" "}
+                        <span className="font-mono">{pendingExternalFilename}</span>
+                      </p>
+                      <p className="text-amber-800">
+                        Save the draft to upload them. Platform-user dedup runs server-side at that point.
+                      </p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full mt-1 h-7 text-xs"
+                        onClick={handleClearExternal}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Discard
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
