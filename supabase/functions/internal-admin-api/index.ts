@@ -3437,31 +3437,73 @@ const ROLE_LOCAL_PARTS = new Set([
 ]);
 
 const COMMON_FIRST_NAMES: string[] = [
-  "mark", "david", "john", "peter", "paul", "patrick", "pat", "james",
-  "michael", "andrew", "andy", "ali", "louis", "eugene", "edward", "rowan",
-  "finbarr", "sean", "cyril", "tomas", "thomas", "tom", "nigel", "kevin",
-  "anthony", "aidan", "jarlath", "colm", "cathal", "cormac", "liam",
-  "kenneth", "ken", "martin", "stephen", "steve", "brian", "bryan",
-  "charlie", "charles", "jonathan", "mike", "gerry", "gerald", "gerard",
-  "donal", "darragh", "matthew", "matt", "harry", "klara", "joe", "joseph",
-  "william", "will", "graham", "gavin", "sunny", "darren", "noel", "barry",
-  "kieran", "ciaran", "kenny", "george", "jack", "oliver", "benjamin",
-  "ben", "alex", "alexander", "robert", "rob", "richard", "rich",
-  "christopher", "chris", "nicholas", "nick", "philip", "phil", "tony",
-  "frank", "francis", "eamon", "eamonn", "brendan", "seamus", "shane",
-  "declan", "damien", "dermot", "fergal", "oisin", "ronan", "hugh",
-  "hugo", "daniel", "dan", "simon", "samuel", "sam", "tim", "timothy",
-  "rory", "conor", "connor", "ruairi", "padraig", "padraic", "donnacha",
-  "diarmuid", "fintan", "owen", "ross",
-  "mary", "sarah", "jane", "caroline", "amanda", "lisa", "julia",
-  "anne", "ann", "maria", "catherine", "kate", "katie", "helen",
-  "emma", "sophie", "sophia", "sophi", "olivia", "emily", "amy",
-  "rachel", "rebecca", "becky", "laura", "jenny", "jennifer", "claire",
-  "clare", "andrea", "adeline", "theresa", "therese", "noeleen",
-  "valerie", "fiona", "roisin", "michelle", "orla", "aoife", "niamh",
-  "sinead", "siobhan", "deirdre", "eimear", "grainne", "caoimhe",
-  "ellen", "ella", "alice", "hannah", "lucy", "molly", "ruth", "joan",
-  "jacqui", "jacqueline", "louise", "lou",
+  // Male — UK/Irish-leaning
+  "aaron", "adam", "adrian", "aidan", "alan", "alex", "alexander", "ali",
+  "andrew", "andy", "anthony", "archie", "arthur", "austin", "barry", "ben",
+  "benjamin", "bernard", "bobby", "brendan", "brian", "bryan", "callum",
+  "cameron", "carl", "cathal", "charles", "charlie", "chris", "christopher",
+  "christy", "ciaran", "clive", "colin", "colm", "conn", "connor", "conor",
+  "cormac", "craig", "cyril", "damian", "damien", "dan", "daniel", "darragh",
+  "darren", "david", "declan", "dermot", "diarmuid", "dominic", "donal",
+  "donnacha", "douglas", "duncan", "dylan", "eamon", "eamonn", "ed", "eddie",
+  "edward", "eoghan", "eoin", "ethan", "eugene", "evan", "fergal", "fergus",
+  "finbarr", "finn", "fintan", "francis", "frank", "fred", "gareth", "garrett",
+  "garry", "gary", "gavin", "geoff", "geoffrey", "george", "gerald", "gerard",
+  "gerry", "glenn", "gordon", "graham", "grant", "greg", "gregory", "harry",
+  "henry", "howard", "hugh", "hugo", "iain", "ian", "isaac", "ivan", "jack",
+  "jacob", "jake", "james", "jamie", "jarlath", "jason", "jay", "jeff",
+  "jeffrey", "jeremy", "jim", "jimmy", "joe", "joel", "john", "johnny",
+  "jonathan", "jonathon", "jordan", "joseph", "josh", "joshua", "julian",
+  "justin", "karl", "keith", "ken", "kenneth", "kenny", "kevin", "kieran",
+  "killian", "klara", "kyle", "lance", "lawrence", "leo", "leon", "leslie",
+  "lewis", "liam", "lloyd", "logan", "louis", "luke", "malcolm", "marcus",
+  "mark", "martin", "mason", "matt", "matthew", "max", "maxwell", "michael",
+  "mike", "miles", "milo", "mitch", "morgan", "murray", "nathan", "neal",
+  "neil", "niall", "nicholas", "nick", "nigel", "noel", "oisin", "oliver",
+  "oran", "oscar", "owen", "paddy", "pat", "patrick", "paul", "pearse",
+  "peter", "phil", "philip", "pierce", "quinn", "ray", "raymond", "reece",
+  "reuben", "rich", "richard", "rob", "robert", "robin", "roger", "ronan",
+  "rory", "ross", "roy", "ruairi", "russell", "ryan", "sam", "samuel", "scott",
+  "sean", "seamus", "sebastian", "shane", "shaun", "shay", "simon", "stan",
+  "stephen", "steve", "stewart", "stuart", "sullivan", "sunny", "ted", "terry",
+  "theo", "thomas", "tim", "timothy", "tom", "tomas", "tony", "trevor", "troy",
+  "tyler", "victor", "vincent", "wade", "walter", "warren", "wayne", "wesley",
+  "william", "will", "yvan", "zach", "zachary",
+  // Female — UK/Irish-leaning
+  "abigail", "adeline", "agnes", "aileen", "aine", "alice", "alison", "amanda",
+  "amy", "anastasia", "andrea", "ann", "anna", "anne", "annie", "aoife",
+  "april", "ashley", "audrey", "barbara", "becky", "beth", "bethany",
+  "beverly", "bridget", "bronagh", "caitlin", "cara", "caroline", "carol",
+  "catherine", "cathy", "cecilia", "celine", "charlotte", "chloe", "christina",
+  "christine", "ciara", "claire", "clare", "constance", "courtney", "danielle",
+  "deborah", "debbie", "debra", "deirdre", "denise", "diana", "diane", "donna",
+  "dora", "dorothy", "eileen", "eimear", "elaine", "eleanor", "elinor",
+  "elise", "eliza", "elizabeth", "ella", "ellen", "ellie", "emer", "emily",
+  "emma", "erin", "eva", "evelyn", "faye", "fiona", "florence", "frances",
+  "francesca", "freya", "gemma", "georgina", "geraldine", "gillian", "gloria",
+  "grace", "grainne", "hannah", "harriet", "hayley", "hazel", "heather",
+  "helen", "helena", "holly", "ida", "imelda", "iris", "isabel", "isabella",
+  "isobel", "jacinta", "jacqueline", "jacqui", "jane", "janet", "janice",
+  "jean", "jen", "jenny", "jennifer", "jess", "jessica", "jill", "joan",
+  "joanna", "joanne", "jocelyn", "jodie", "judith", "julia", "julie", "june",
+  "karen", "karina", "kate", "kathleen", "kathryn", "kathy", "katie",
+  "kayleigh", "keira", "kelly", "kerry", "kim", "kimberly", "kirsty", "klara",
+  "kristina", "lara", "laura", "lauren", "lea", "leah", "leigh", "leona",
+  "linda", "lindsey", "lisa", "lorna", "lottie", "lou", "louise", "lucia",
+  "lucy", "lydia", "lynn", "mabel", "madeline", "mairead", "marcella",
+  "marcia", "margaret", "margot", "maria", "marian", "marie", "marilyn",
+  "marion", "martha", "mary", "maureen", "megan", "melanie", "melissa",
+  "michelle", "millie", "miriam", "molly", "monica", "muriel", "nadia",
+  "naomi", "natalie", "natasha", "niamh", "nicola", "nicole", "noeleen",
+  "nora", "norah", "nuala", "olivia", "olwen", "orla", "pamela", "patricia",
+  "paula", "pauline", "phoebe", "phyllis", "polly", "rachel", "rebecca",
+  "regina", "rhonda", "rita", "roisin", "rosalind", "rose", "rosemary", "ruth",
+  "samantha", "sandra", "sara", "sarah", "shannon", "sharon", "sherry",
+  "shirley", "sinead", "siobhan", "sonia", "sophi", "sophia", "sophie",
+  "stephanie", "susan", "suzanne", "sylvia", "tamara", "tammy", "tara",
+  "teresa", "therese", "theresa", "tina", "tracey", "tracy", "trudy", "una",
+  "ursula", "valerie", "vera", "vicki", "victoria", "vivienne", "wendy",
+  "yvonne", "zoe",
 ].sort((a, b) => b.length - a.length);
 
 function capitalizeName(s: string): string {
@@ -3483,22 +3525,38 @@ function deriveFirstName(name: string | null, email: string): string | null {
     }
   }
 
+  const displayLower = displayFirst ? displayFirst.toLowerCase() : null;
+  const displayInDict = displayLower ? COMMON_FIRST_NAMES.includes(displayLower) : false;
+
+  // 1. Display name matches start of local-part — high confidence (mark@markwebster…).
+  if (!isRole && displayLower && localPart.startsWith(displayLower)) {
+    return capitalizeName(displayFirst!);
+  }
+
+  // 2. Display name's first word is itself a known first name — trust the
+  //    sender's stated identity even when the local-part is unrelated
+  //    (e.g. "Michael <murphy@sereno.com>" or "Tomas Cunningham <cunauct1@…>").
+  //    Runs even for role local-parts so "Mary <info@…>" still resolves.
+  if (displayInDict) {
+    return capitalizeName(displayFirst!);
+  }
+
   const localStripped = localPart.replace(/[._\-\d]+/g, "");
 
   if (!isRole) {
-    if (displayFirst && localPart.startsWith(displayFirst.toLowerCase())) {
-      return capitalizeName(displayFirst);
-    }
+    // 3. Local-part starts with a known first name (linda@dngcyrilburk.ie).
     if (localStripped.length >= 2) {
       const match = COMMON_FIRST_NAMES.find((n) => localStripped.startsWith(n));
       if (match) return capitalizeName(match);
     }
+    // 4. Separator-split — first segment is usually the first name.
     const segments = localPart.split(/[._-]+/).filter(Boolean);
     if (segments.length > 1 && segments[0].length >= 2 && !/\d/.test(segments[0])) {
       return capitalizeName(segments[0]);
     }
   }
 
+  // 5. Domain SLD prefix-matches a known first name (info@marklawless.ie).
   const domainParts = domainPart.split(".");
   const sld =
     domainParts.length >= 3 && /^(co|com|org|net|gov|ac)$/.test(domainParts[domainParts.length - 2])
@@ -3655,11 +3713,10 @@ async function handleAudienceCount(
   supabase: SupabaseClient,
   auth: AuthResult,
   filters: any,
-  campaignId?: string,
 ) {
   if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
 
-  const recipients = await buildRecipientList(supabase, filters, campaignId);
+  const recipients = await buildRecipientList(supabase, filters);
   const platform = recipients.filter((r) => r.source === "platform").length;
   const external = recipients.length - platform;
   return { count: recipients.length, platform_count: platform, external_count: external };
@@ -3669,31 +3726,29 @@ async function handleAudiencePreview(
   supabase: SupabaseClient,
   auth: AuthResult,
   filters: any,
-  campaignId?: string,
 ) {
   if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
 
-  const recipients = await buildRecipientList(supabase, filters, campaignId);
+  const recipients = await buildRecipientList(supabase, filters);
   return { recipients };
 }
 
-async function handleListExternalRecipients(
+async function handleListExternalContacts(
   supabase: SupabaseClient,
   auth: AuthResult,
-  campaignId: string,
 ) {
   if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
 
   const { data, error } = await supabase
-    .from("broadcast_external_recipients")
-    .select("id, email, name, source, created_at")
-    .eq("campaign_id", campaignId)
-    .order("created_at", { ascending: true });
+    .from("broadcast_external_contacts")
+    .select("id, email, name, name_override, source, created_at, updated_at, last_uploaded_at")
+    .order("created_at", { ascending: false });
 
-  if (error) throw new Error(`Failed to fetch external recipients: ${error.message}`);
+  if (error) throw new Error(`Failed to fetch external contacts: ${error.message}`);
 
-  // Also report dedup stats — how many uploaded rows are already platform users
-  // (will be skipped at send) and how many are net new.
+  // Dedup stats — how many of the global contacts overlap with platform users
+  // (those will be silently skipped at send so they only get the email once
+  // through the platform-user path).
   const { data: users } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   const platformEmails = new Set(
     (users?.users || [])
@@ -3709,44 +3764,33 @@ async function handleListExternalRecipients(
   }
 
   return {
-    recipients: data || [],
-    total_uploaded: (data || []).length,
+    contacts: data || [],
+    total: (data || []).length,
     deduped_against_platform: dedupedAgainstPlatform,
     net_new: (data || []).length - dedupedAgainstPlatform,
   };
 }
 
-async function handleAddExternalRecipients(
+async function handleUpsertExternalContacts(
   supabase: SupabaseClient,
   auth: AuthResult,
-  campaignId: string,
   body: any,
 ) {
   if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
 
-  // Verify campaign exists and is editable
-  const { data: campaign } = await supabase
-    .from("broadcast_campaigns")
-    .select("id, status")
-    .eq("id", campaignId)
-    .single();
-
-  if (!campaign) throw new Error("Broadcast not found");
-  if (campaign.status !== "draft") {
-    throw new Error("External recipients can only be added to draft campaigns");
-  }
-
-  const incoming: Array<{ email?: string; name?: string }> = Array.isArray(body?.recipients)
-    ? body.recipients
-    : [];
+  const incoming: Array<{ email?: string; name?: string }> = Array.isArray(body?.contacts)
+    ? body.contacts
+    : Array.isArray(body?.recipients)
+      ? body.recipients
+      : [];
   const source: string = typeof body?.source === "string" && body.source.trim()
     ? body.source.trim()
     : "manual_upload";
 
-  // Normalize, validate, and dedupe within the upload.
+  // Normalize, validate, and dedupe within the upload itself.
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const seen = new Set<string>();
-  const rows: Array<{ campaign_id: string; email: string; name: string | null; source: string }> = [];
+  const cleaned: Array<{ email: string; name: string | null }> = [];
   let invalidCount = 0;
 
   for (const r of incoming) {
@@ -3757,62 +3801,135 @@ async function handleAddExternalRecipients(
     }
     if (seen.has(rawEmail)) continue;
     seen.add(rawEmail);
-    rows.push({
-      campaign_id: campaignId,
+    cleaned.push({
       email: rawEmail,
       name: r?.name?.toString().trim() || null,
-      source,
     });
   }
 
-  if (rows.length === 0) {
-    return { inserted: 0, skipped_invalid: invalidCount, total_in_campaign: 0 };
+  if (cleaned.length === 0) {
+    const { count: totalNow } = await supabase
+      .from("broadcast_external_contacts")
+      .select("*", { count: "exact", head: true });
+    return {
+      inserted: 0,
+      preserved: 0,
+      skipped_invalid: invalidCount,
+      total: totalNow || 0,
+    };
   }
 
-  // Upsert in batches of 500 — idempotent on (campaign_id, lower(email)).
+  // Find which emails are already in the global pool — those keep their
+  // existing rows untouched (preserves any name_override the admin set).
+  const incomingEmails = cleaned.map((r) => r.email);
+  const { data: existing } = await supabase
+    .from("broadcast_external_contacts")
+    .select("email")
+    .in("email", incomingEmails);
+
+  const existingSet = new Set((existing || []).map((r: any) => r.email.toLowerCase()));
+
+  // Touch last_uploaded_at on already-known emails so we can sort by recency
+  // without disturbing name_override / created_at.
+  if (existingSet.size > 0) {
+    await supabase
+      .from("broadcast_external_contacts")
+      .update({ last_uploaded_at: new Date().toISOString() })
+      .in("email", Array.from(existingSet))
+      .then(() => undefined, () => undefined);
+  }
+
+  const netNew = cleaned.filter((r) => !existingSet.has(r.email));
+  const rows = netNew.map((r) => ({
+    email: r.email,
+    name: r.name,
+    source,
+  }));
+
+  let insertedCount = 0;
   for (let i = 0; i < rows.length; i += 500) {
     const batch = rows.slice(i, i + 500);
     const { error } = await supabase
-      .from("broadcast_external_recipients")
-      .upsert(batch, { onConflict: "campaign_id,email", ignoreDuplicates: true });
+      .from("broadcast_external_contacts")
+      .insert(batch);
     if (error) {
-      // Fall back to row-by-row insert if onConflict spec doesn't match the
-      // expression index — the table uses a UNIQUE INDEX on (campaign_id, lower(email))
-      // which Postgres can't always match via on_conflict spec.
+      // Race-safe fallback: row-by-row insert, ignore unique-violation duplicates.
       for (const row of batch) {
-        await supabase
-          .from("broadcast_external_recipients")
-          .insert(row)
-          .then(() => undefined, () => undefined);
+        const { error: rowErr } = await supabase
+          .from("broadcast_external_contacts")
+          .insert(row);
+        if (!rowErr) insertedCount++;
       }
+    } else {
+      insertedCount += batch.length;
     }
   }
 
-  const { count } = await supabase
-    .from("broadcast_external_recipients")
-    .select("*", { count: "exact", head: true })
-    .eq("campaign_id", campaignId);
+  const { count: totalAfter } = await supabase
+    .from("broadcast_external_contacts")
+    .select("*", { count: "exact", head: true });
 
   return {
-    inserted: rows.length,
+    inserted: insertedCount,
+    preserved: existingSet.size,
     skipped_invalid: invalidCount,
-    total_in_campaign: count || 0,
+    total: totalAfter || 0,
   };
 }
 
-async function handleClearExternalRecipients(
+async function handleUpdateExternalContact(
   supabase: SupabaseClient,
   auth: AuthResult,
-  campaignId: string,
+  contactId: string,
+  body: any,
+) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if ("name_override" in body) {
+    const v = (body.name_override || "").toString().trim();
+    updates.name_override = v ? v : null;
+  }
+
+  const { data, error } = await supabase
+    .from("broadcast_external_contacts")
+    .update(updates)
+    .eq("id", contactId)
+    .select("id, email, name, name_override, source, created_at, updated_at, last_uploaded_at")
+    .single();
+
+  if (error) throw new Error(`Failed to update external contact: ${error.message}`);
+  return { contact: data };
+}
+
+async function handleDeleteExternalContact(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+  contactId: string,
 ) {
   if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
 
   const { error } = await supabase
-    .from("broadcast_external_recipients")
+    .from("broadcast_external_contacts")
     .delete()
-    .eq("campaign_id", campaignId);
+    .eq("id", contactId);
 
-  if (error) throw new Error(`Failed to clear external recipients: ${error.message}`);
+  if (error) throw new Error(`Failed to delete external contact: ${error.message}`);
+  return { success: true };
+}
+
+async function handleClearExternalContacts(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const { error } = await supabase
+    .from("broadcast_external_contacts")
+    .delete()
+    .gt("created_at", "1970-01-01");
+
+  if (error) throw new Error(`Failed to clear external contacts: ${error.message}`);
   return { success: true };
 }
 
@@ -3826,7 +3943,6 @@ type RecipientRow = {
 async function buildRecipientList(
   supabase: SupabaseClient,
   filters: any,
-  campaignId?: string,
 ): Promise<RecipientRow[]> {
   // Get all users with email addresses
   const { data: users, error: usersError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
@@ -3969,34 +4085,33 @@ async function buildRecipientList(
     });
   }
 
-  // Append external (uploaded) recipients for this campaign, deduped against
-  // ALL platform users (not just the filtered audience) so a signed-up contact
-  // never gets a duplicate email — they go through the platform path or none at all.
-  if (campaignId) {
-    const { data: external, error: externalError } = await supabase
-      .from("broadcast_external_recipients")
-      .select("email, name")
-      .eq("campaign_id", campaignId);
+  // Append the global external-contact pool, deduped against ALL platform users
+  // (not just the filtered audience) so a signed-up contact never gets a
+  // duplicate email — they go through the platform path or none at all.
+  // `name_override` (Super Admin's manual correction) wins over the parsed
+  // upload name so the {firstName} token uses the corrected value.
+  const { data: external, error: externalError } = await supabase
+    .from("broadcast_external_contacts")
+    .select("email, name, name_override");
 
-    if (externalError) {
-      console.error("Error fetching external recipients:", externalError);
-    }
+  if (externalError) {
+    console.error("Error fetching external contacts:", externalError);
+  }
 
-    for (const ext of (external || [])) {
-      if (!ext.email) continue;
-      const emailLower = ext.email.toLowerCase();
-      if (unsubscribedEmails.has(emailLower)) continue;
-      if (platformEmails.has(emailLower)) continue;
-      if (seenEmails.has(emailLower)) continue;
+  for (const ext of (external || [])) {
+    if (!ext.email) continue;
+    const emailLower = ext.email.toLowerCase();
+    if (unsubscribedEmails.has(emailLower)) continue;
+    if (platformEmails.has(emailLower)) continue;
+    if (seenEmails.has(emailLower)) continue;
 
-      seenEmails.add(emailLower);
-      recipients.push({
-        user_id: null,
-        email: ext.email,
-        name: ext.name || null,
-        source: "external",
-      });
-    }
+    seenEmails.add(emailLower);
+    recipients.push({
+      user_id: null,
+      email: ext.email,
+      name: (ext.name_override && ext.name_override.trim()) || ext.name || null,
+      source: "external",
+    });
   }
 
   return recipients;
@@ -4017,8 +4132,8 @@ async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, c
     throw new Error(`Cannot send a campaign with status: ${campaign.status}`);
   }
 
-  // Build recipient list — include this campaign's external (uploaded) recipients
-  let recipients = await buildRecipientList(supabase, campaign.audience_filters || {}, campaignId);
+  // Build recipient list — global external-contact pool is always merged in.
+  let recipients = await buildRecipientList(supabase, campaign.audience_filters || {});
 
   // Apply exclusions from the request body
   const excludedEmails: string[] = Array.isArray(body?.excluded_emails) ? body.excluded_emails : [];
@@ -4470,23 +4585,25 @@ serve(async (req) => {
     } else if (path === "/broadcasts/audience-count" && method === "GET") {
       const filtersParam = url.searchParams.get("filters");
       const filters = filtersParam ? JSON.parse(filtersParam) : {};
-      const campaignId = url.searchParams.get("campaign_id") || undefined;
-      responseData = await handleAudienceCount(supabase, authResult, filters, campaignId);
+      responseData = await handleAudienceCount(supabase, authResult, filters);
     } else if (path === "/broadcasts/audience-preview" && method === "GET") {
       const filtersParam = url.searchParams.get("filters");
       const filters = filtersParam ? JSON.parse(filtersParam) : {};
-      const campaignId = url.searchParams.get("campaign_id") || undefined;
-      responseData = await handleAudiencePreview(supabase, authResult, filters, campaignId);
-    } else if (path.match(/^\/broadcasts\/[^/]+\/external-recipients$/) && method === "GET") {
-      const campaignId = path.replace("/broadcasts/", "").replace("/external-recipients", "");
-      responseData = await handleListExternalRecipients(supabase, authResult, campaignId);
-    } else if (path.match(/^\/broadcasts\/[^/]+\/external-recipients$/) && method === "POST") {
-      const campaignId = path.replace("/broadcasts/", "").replace("/external-recipients", "");
+      responseData = await handleAudiencePreview(supabase, authResult, filters);
+    } else if (path === "/broadcasts/external-contacts" && method === "GET") {
+      responseData = await handleListExternalContacts(supabase, authResult);
+    } else if (path === "/broadcasts/external-contacts" && method === "POST") {
       const body = await req.json().catch(() => ({}));
-      responseData = await handleAddExternalRecipients(supabase, authResult, campaignId, body);
-    } else if (path.match(/^\/broadcasts\/[^/]+\/external-recipients$/) && method === "DELETE") {
-      const campaignId = path.replace("/broadcasts/", "").replace("/external-recipients", "");
-      responseData = await handleClearExternalRecipients(supabase, authResult, campaignId);
+      responseData = await handleUpsertExternalContacts(supabase, authResult, body);
+    } else if (path === "/broadcasts/external-contacts" && method === "DELETE") {
+      responseData = await handleClearExternalContacts(supabase, authResult);
+    } else if (path.match(/^\/broadcasts\/external-contacts\/[^/]+$/) && method === "PATCH") {
+      const contactId = path.replace("/broadcasts/external-contacts/", "");
+      const body = await req.json().catch(() => ({}));
+      responseData = await handleUpdateExternalContact(supabase, authResult, contactId, body);
+    } else if (path.match(/^\/broadcasts\/external-contacts\/[^/]+$/) && method === "DELETE") {
+      const contactId = path.replace("/broadcasts/external-contacts/", "");
+      responseData = await handleDeleteExternalContact(supabase, authResult, contactId);
     } else if (path.match(/^\/broadcasts\/[^/]+\/send$/) && method === "POST") {
       const campaignId = path.replace("/broadcasts/", "").replace("/send", "");
       const body = await req.json().catch(() => ({}));

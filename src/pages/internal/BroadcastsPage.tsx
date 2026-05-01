@@ -72,6 +72,17 @@ type View = "list" | "compose" | "detail";
 
 type ParsedExternalRow = { email: string; name?: string };
 
+type ExternalContact = {
+  id: string;
+  email: string;
+  name: string | null;
+  name_override: string | null;
+  source: string;
+  created_at: string;
+  updated_at: string;
+  last_uploaded_at: string;
+};
+
 // Parse an XLSX/CSV contact file into { email, name } rows.
 //
 // Two formats are supported:
@@ -182,13 +193,19 @@ export default function BroadcastsPage() {
   const [filterEngagement, setFilterEngagement] = useState<string[]>([]);
   const [previewTab, setPreviewTab] = useState<string>("edit");
 
-  // External (uploaded) recipients — for new compose, parsed rows are held in
-  // local state until the draft is saved. For an existing draft, they live on
-  // the server and are fetched via externalRecipients.list.
-  const [pendingExternalRows, setPendingExternalRows] = useState<ParsedExternalRow[]>([]);
-  const [pendingExternalFilename, setPendingExternalFilename] = useState<string | null>(null);
+  // External contacts (global, persistent pool). Same list across every
+  // campaign. Re-uploading the same Interested export only inserts net-new
+  // emails; existing rows keep their `name_override`. Cleared explicitly via
+  // the "Clear all" action.
   const [uploadParsing, setUploadParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [confirmClearContactsOpen, setConfirmClearContactsOpen] = useState(false);
+
+  // Inline name-override editor in the recipient review dialog. Tracks the
+  // contact id currently being edited and the in-flight value so blur-to-save
+  // doesn't fire on every keystroke.
+  const [editingOverrideId, setEditingOverrideId] = useState<string | null>(null);
+  const [editingOverrideValue, setEditingOverrideValue] = useState<string>("");
 
   // List query
   const { data: campaigns, isLoading } = useQuery({
@@ -213,17 +230,28 @@ export default function BroadcastsPage() {
   };
 
   const { data: audienceData } = useQuery({
-    queryKey: ["admin", "broadcasts", "audience-count", editingId, audienceFilters],
-    queryFn: () => adminApi.broadcasts.audienceCount(audienceFilters, editingId || undefined),
+    queryKey: ["admin", "broadcasts", "audience-count", audienceFilters],
+    queryFn: () => adminApi.broadcasts.audienceCount(audienceFilters),
     enabled: view === "compose" && !authLoading && hasSuperAdminAccess,
   });
 
-  // External (uploaded) recipients for an existing draft — fetched server-side.
-  const { data: externalData } = useQuery({
-    queryKey: ["admin", "broadcasts", editingId, "external-recipients"],
-    queryFn: () => adminApi.broadcasts.externalRecipients.list(editingId!),
-    enabled: view === "compose" && !!editingId,
+  // Global external-contact pool — loaded whenever the compose view is active
+  // so the upload card can show the running stats.
+  const { data: externalContactsData } = useQuery({
+    queryKey: ["admin", "broadcasts", "external-contacts"],
+    queryFn: () => adminApi.broadcasts.externalContacts.list(),
+    enabled: view === "compose" && !authLoading && hasSuperAdminAccess,
   });
+
+  // Lookup: lowercased email → contact (so the review dialog can find a
+  // contact id from the recipient row's email and offer override editing).
+  const contactByEmail = (() => {
+    const m = new Map<string, ExternalContact>();
+    for (const c of (externalContactsData?.contacts || [])) {
+      m.set(c.email.toLowerCase(), c as ExternalContact);
+    }
+    return m;
+  })();
 
   // Mutations
   const createMutation = useMutation({
@@ -258,76 +286,79 @@ export default function BroadcastsPage() {
     },
   });
 
-  const addExternalMutation = useMutation({
-    mutationFn: ({ campaignId, rows }: { campaignId: string; rows: ParsedExternalRow[] }) =>
-      adminApi.broadcasts.externalRecipients.add(campaignId, rows),
+  const upsertContactsMutation = useMutation({
+    mutationFn: ({ rows }: { rows: ParsedExternalRow[]; filename: string }) =>
+      adminApi.broadcasts.externalContacts.upsert(rows),
     onSuccess: (result, vars) => {
-      queryClient.invalidateQueries({
-        queryKey: ["admin", "broadcasts", vars.campaignId, "external-recipients"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "external-contacts"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-count"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-preview"] });
+      const parts: string[] = [`${result.inserted} new`];
+      if (result.preserved > 0) parts.push(`${result.preserved} already on list`);
+      if (result.skipped_invalid > 0) parts.push(`${result.skipped_invalid} invalid`);
       toast({
-        title: "Upload complete",
-        description: `Added ${result.inserted} contact${result.inserted === 1 ? "" : "s"}${
-          result.skipped_invalid > 0 ? ` (${result.skipped_invalid} invalid email${result.skipped_invalid === 1 ? "" : "s"} skipped)` : ""
-        }.`,
+        title: `Imported ${vars.filename}`,
+        description: `${parts.join(" · ")} · ${result.total} total`,
       });
     },
     onError: (err: Error) =>
       toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
   });
 
-  const clearExternalMutation = useMutation({
-    mutationFn: (campaignId: string) => adminApi.broadcasts.externalRecipients.clear(campaignId),
-    onSuccess: (_result, campaignId) => {
-      queryClient.invalidateQueries({
-        queryKey: ["admin", "broadcasts", campaignId, "external-recipients"],
-      });
+  const updateContactMutation = useMutation({
+    mutationFn: ({ id, name_override }: { id: string; name_override: string | null }) =>
+      adminApi.broadcasts.externalContacts.update(id, { name_override }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "external-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-preview"] });
+    },
+    onError: (err: Error) =>
+      toast({ title: "Save failed", description: err.message, variant: "destructive" }),
+  });
+
+  const removeContactMutation = useMutation({
+    mutationFn: (id: string) => adminApi.broadcasts.externalContacts.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "external-contacts"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-count"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-preview"] });
-      toast({ title: "Uploaded list cleared" });
+    },
+    onError: (err: Error) =>
+      toast({ title: "Remove failed", description: err.message, variant: "destructive" }),
+  });
+
+  const clearContactsMutation = useMutation({
+    mutationFn: () => adminApi.broadcasts.externalContacts.clear(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "external-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-count"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-preview"] });
+      toast({ title: "External contact list cleared" });
+      setConfirmClearContactsOpen(false);
     },
     onError: (err: Error) =>
       toast({ title: "Clear failed", description: err.message, variant: "destructive" }),
   });
 
-  // Load recipient preview when review dialog opens.
-  // In compose mode, use the in-flight audienceFilters; when reviewing an existing
-  // campaign, use that campaign's saved filters. For a brand-new compose with
-  // pending uploaded rows (parsed but not yet persisted), merge them into the
-  // server preview client-side so the user can review/exclude them before saving.
+  // Load recipient preview when review dialog opens. The global external pool
+  // is merged in server-side, so the only inputs we need are filters (compose)
+  // or the campaign's saved filters (existing draft).
   const { data: previewData, isLoading: previewLoading } = useQuery({
     queryKey: [
       "admin",
       "broadcasts",
       "audience-preview",
       reviewCampaignId || "compose",
-      editingId,
       audienceFilters,
-      pendingExternalRows.length,
     ],
     queryFn: async () => {
       if (reviewCampaignId) {
         const campaign = campaigns?.find((c) => c.id === reviewCampaignId);
         if (campaign) {
-          return adminApi.broadcasts.audiencePreview(campaign.audience_filters || {}, reviewCampaignId);
+          return adminApi.broadcasts.audiencePreview(campaign.audience_filters || {});
         }
       }
-      const serverPreview = await adminApi.broadcasts.audiencePreview(audienceFilters, editingId || undefined);
-      if (editingId || pendingExternalRows.length === 0) return serverPreview;
-
-      // New compose with pending uploaded rows — merge client-side. Final
-      // platform-user dedup runs server-side at send; this preview is best-effort.
-      const seen = new Set(serverPreview.recipients.map((r) => r.email.toLowerCase()));
-      const extras: typeof serverPreview.recipients = [];
-      for (const row of pendingExternalRows) {
-        const lc = row.email.toLowerCase();
-        if (seen.has(lc)) continue;
-        seen.add(lc);
-        extras.push({ user_id: null, email: row.email, name: row.name || null, source: "external" });
-      }
-      return { recipients: [...serverPreview.recipients, ...extras] };
+      return adminApi.broadcasts.audiencePreview(audienceFilters);
     },
     enabled: reviewDialogOpen,
   });
@@ -380,8 +411,6 @@ export default function BroadcastsPage() {
     setExcludedEmails(new Set());
     setEditingId(null);
     setPreviewTab("edit");
-    setPendingExternalRows([]);
-    setPendingExternalFilename(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -401,18 +430,10 @@ export default function BroadcastsPage() {
         });
         return;
       }
-      if (editingId) {
-        // Existing draft — upload immediately to the server.
-        addExternalMutation.mutate({ campaignId: editingId, rows });
-      } else {
-        // No draft yet — hold rows in state. They'll be flushed on Save Draft / Send.
-        setPendingExternalRows(rows);
-        setPendingExternalFilename(file.name);
-        toast({
-          title: "File parsed",
-          description: `${rows.length} contact${rows.length === 1 ? "" : "s"} ready. Save the draft to upload them.`,
-        });
-      }
+      // Always upload to the persistent global pool. Existing emails are
+      // preserved (with their name_override intact); only net-new addresses
+      // are inserted.
+      upsertContactsMutation.mutate({ rows, filename: file.name });
     } catch (err: any) {
       toast({ title: "Parse failed", description: err?.message || "Unable to read file", variant: "destructive" });
     } finally {
@@ -421,13 +442,20 @@ export default function BroadcastsPage() {
     }
   }
 
-  function handleClearExternal() {
-    if (editingId) {
-      clearExternalMutation.mutate(editingId);
-    } else {
-      setPendingExternalRows([]);
-      setPendingExternalFilename(null);
+  function commitOverride(id: string, raw: string) {
+    const next = raw.trim();
+    const current = contactByEmail.get(
+      (externalContactsData?.contacts || []).find((c) => c.id === id)?.email.toLowerCase() || ""
+    );
+    const existing = current?.name_override?.trim() || "";
+    if (next === existing) {
+      setEditingOverrideId(null);
+      return;
     }
+    updateContactMutation.mutate(
+      { id, name_override: next || null },
+      { onSettled: () => setEditingOverrideId(null) },
+    );
   }
 
   function openCompose(campaign?: BroadcastCampaign) {
@@ -468,18 +496,7 @@ export default function BroadcastsPage() {
     if (editingId) {
       updateMutation.mutate({ id: editingId, data }, { onSuccess: finish });
     } else {
-      createMutation.mutate(data, {
-        onSuccess: (created) => {
-          if (pendingExternalRows.length > 0) {
-            addExternalMutation.mutate(
-              { campaignId: created.id, rows: pendingExternalRows },
-              { onSuccess: finish, onError: finish },
-            );
-          } else {
-            finish();
-          }
-        },
-      });
+      createMutation.mutate(data, { onSuccess: finish });
     }
   }
 
@@ -489,14 +506,14 @@ export default function BroadcastsPage() {
       return;
     }
 
-    // If editing, save first then open review dialog
+    const data: BroadcastCampaignInput = {
+      subject,
+      body_html: bodyHtml,
+      preview_text: previewText || undefined,
+      audience_filters: audienceFilters,
+    };
+
     if (editingId) {
-      const data: Partial<BroadcastCampaignInput> = {
-        subject,
-        body_html: bodyHtml,
-        preview_text: previewText || undefined,
-        audience_filters: audienceFilters,
-      };
       updateMutation.mutate({ id: editingId, data }, {
         onSuccess: () => {
           openReviewDialog(editingId, true);
@@ -504,27 +521,10 @@ export default function BroadcastsPage() {
         },
       });
     } else {
-      // Create then upload pending external recipients (if any) then open review dialog
-      const data: BroadcastCampaignInput = {
-        subject,
-        body_html: bodyHtml,
-        preview_text: previewText || undefined,
-        audience_filters: audienceFilters,
-      };
       createMutation.mutate(data, {
         onSuccess: (created) => {
-          const openReview = () => {
-            openReviewDialog(created.id, true);
-            setView("list");
-          };
-          if (pendingExternalRows.length > 0) {
-            addExternalMutation.mutate(
-              { campaignId: created.id, rows: pendingExternalRows },
-              { onSuccess: openReview, onError: openReview },
-            );
-          } else {
-            openReview();
-          }
+          openReviewDialog(created.id, true);
+          setView("list");
         },
       });
     }
@@ -610,14 +610,19 @@ export default function BroadcastsPage() {
                 {previewData.recipients.map((r) => {
                   const isExcluded = excludedEmails.has(r.email);
                   const greeting = firstNameOf(r.name, r.email);
+                  const contact = r.source === "external"
+                    ? contactByEmail.get(r.email.toLowerCase())
+                    : undefined;
+                  const isEditingOverride = !!contact && editingOverrideId === contact.id;
                   return (
-                    <label
+                    <div
                       key={r.email}
-                      className="flex items-center gap-3 p-2 rounded hover:bg-accent cursor-pointer"
+                      className="flex items-start gap-3 p-2 rounded hover:bg-accent"
                     >
                       <Checkbox
                         checked={!isExcluded}
                         onCheckedChange={() => toggleExclude(r.email)}
+                        className="mt-1"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
@@ -626,16 +631,65 @@ export default function BroadcastsPage() {
                         {r.name && (
                           <p className="text-xs text-muted-foreground truncate">{r.email}</p>
                         )}
-                        <p className="text-xs text-muted-foreground italic truncate">
-                          → "Hi {greeting},"
-                        </p>
+                        {isEditingOverride && contact ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <Input
+                              value={editingOverrideValue}
+                              onChange={(e) => setEditingOverrideValue(e.target.value)}
+                              onBlur={() => commitOverride(contact.id, editingOverrideValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  commitOverride(contact.id, editingOverrideValue);
+                                } else if (e.key === "Escape") {
+                                  setEditingOverrideId(null);
+                                }
+                              }}
+                              autoFocus
+                              placeholder="First name to use"
+                              className="h-7 text-xs"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-xs text-muted-foreground italic truncate">
+                              → "Hi {greeting},"
+                            </p>
+                            {contact && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingOverrideId(contact.id);
+                                  setEditingOverrideValue(contact.name_override || "");
+                                }}
+                                className="text-xs text-primary hover:underline"
+                              >
+                                {contact.name_override ? "edit" : "fix"}
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      {r.source === "external" && (
-                        <Badge variant="secondary" className="text-[10px] uppercase">
-                          External
-                        </Badge>
-                      )}
-                    </label>
+                      <div className="flex items-center gap-1">
+                        {r.source === "external" && (
+                          <Badge variant="secondary" className="text-[10px] uppercase">
+                            External
+                          </Badge>
+                        )}
+                        {contact && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeContactMutation.mutate(contact.id)}
+                            title="Remove from external contact list"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -683,6 +737,33 @@ export default function BroadcastsPage() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+
+  // Clear-All confirmation — rendered in both compose and list views since
+  // the trigger lives in the compose sidebar but the user can also stay there
+  // through the modal lifecycle.
+  const clearContactsDialog = (
+    <AlertDialog open={confirmClearContactsOpen} onOpenChange={setConfirmClearContactsOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Clear external contact list?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Removes every uploaded external contact and all the name overrides
+            you've set. This affects every campaign — past and future. You can
+            re-upload the Interested list afterwards, but overrides will be lost.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => clearContactsMutation.mutate()}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Clear list
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 
   // Aggregate stats
@@ -906,7 +987,7 @@ export default function BroadcastsPage() {
                   Audience
                   <Badge variant="outline" className="text-lg px-3">
                     {audienceData?.count !== undefined
-                      ? `${Math.max(0, audienceData.count + (editingId ? 0 : pendingExternalRows.length) - excludedEmails.size)} recipients`
+                      ? `${Math.max(0, audienceData.count - excludedEmails.size)} recipients`
                       : "... recipients"}
                   </Badge>
                 </CardTitle>
@@ -1021,12 +1102,13 @@ export default function BroadcastsPage() {
                 <div className="space-y-2 pt-3 border-t">
                   <Label className="flex items-center gap-2">
                     <FileSpreadsheet className="h-4 w-4" />
-                    External Recipients (Upload)
+                    External Contact List
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Upload an XLSX or CSV (e.g. PlusVibe export). The file needs an{" "}
-                    <code className="px-1 bg-muted rounded">email</code> column. Anyone already
-                    a platform user is skipped automatically — no double-sends.
+                    Persistent across campaigns. Upload an XLSX or CSV (e.g. PlusVibe export);
+                    only net-new emails are added. Existing entries — including any name
+                    overrides you set — are preserved. Anyone who's a platform user is
+                    skipped automatically.
                   </p>
 
                   <input
@@ -1042,64 +1124,46 @@ export default function BroadcastsPage() {
                     size="sm"
                     className="w-full"
                     onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadParsing || addExternalMutation.isPending}
+                    disabled={uploadParsing || upsertContactsMutation.isPending}
                   >
-                    {uploadParsing || addExternalMutation.isPending ? (
+                    {uploadParsing || upsertContactsMutation.isPending ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
                       <Upload className="h-4 w-4 mr-2" />
                     )}
-                    {uploadParsing ? "Parsing…" : addExternalMutation.isPending ? "Uploading…" : "Upload contact list"}
+                    {uploadParsing
+                      ? "Parsing…"
+                      : upsertContactsMutation.isPending
+                        ? "Importing…"
+                        : externalContactsData && externalContactsData.total > 0
+                          ? "Re-upload Interested list"
+                          : "Upload contact list"}
                   </Button>
 
-                  {/* Existing-draft summary (server-side stats) */}
-                  {editingId && externalData && externalData.total_uploaded > 0 && (
+                  {externalContactsData && externalContactsData.total > 0 && (
                     <div className="rounded-md border bg-muted/30 p-3 space-y-1 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Uploaded contacts</span>
-                        <span className="font-medium">{externalData.total_uploaded}</span>
+                        <span className="text-muted-foreground">Total external contacts</span>
+                        <span className="font-medium">{externalContactsData.total}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Already platform users</span>
-                        <span className="font-medium">{externalData.deduped_against_platform}</span>
+                        <span className="font-medium">{externalContactsData.deduped_against_platform}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Net new external</span>
-                        <span className="font-medium text-foreground">{externalData.net_new}</span>
+                        <span className="text-muted-foreground">Net new (will be sent)</span>
+                        <span className="font-medium text-foreground">{externalContactsData.net_new}</span>
                       </div>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="w-full mt-1 h-7 text-xs"
-                        onClick={handleClearExternal}
-                        disabled={clearExternalMutation.isPending}
+                        className="w-full mt-1 h-7 text-xs text-destructive hover:text-destructive"
+                        onClick={() => setConfirmClearContactsOpen(true)}
+                        disabled={clearContactsMutation.isPending}
                       >
                         <X className="h-3 w-3 mr-1" />
-                        Clear uploaded list
-                      </Button>
-                    </div>
-                  )}
-
-                  {/* New-draft pending summary (client-side, pre-save) */}
-                  {!editingId && pendingExternalRows.length > 0 && (
-                    <div className="rounded-md border bg-amber-50 border-amber-200 p-3 space-y-1 text-xs">
-                      <p className="font-medium text-amber-900">
-                        {pendingExternalRows.length} contact{pendingExternalRows.length === 1 ? "" : "s"} parsed from{" "}
-                        <span className="font-mono">{pendingExternalFilename}</span>
-                      </p>
-                      <p className="text-amber-800">
-                        Save the draft to upload them. Platform-user dedup runs server-side at that point.
-                      </p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="w-full mt-1 h-7 text-xs"
-                        onClick={handleClearExternal}
-                      >
-                        <X className="h-3 w-3 mr-1" />
-                        Discard
+                        Clear entire list
                       </Button>
                     </div>
                   )}
@@ -1145,6 +1209,7 @@ export default function BroadcastsPage() {
         </div>
 
         {reviewDialog}
+        {clearContactsDialog}
       </div>
     );
   }
@@ -1322,6 +1387,8 @@ export default function BroadcastsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {clearContactsDialog}
     </div>
   );
 }

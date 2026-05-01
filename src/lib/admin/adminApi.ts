@@ -1145,16 +1145,14 @@ export const adminApi = {
       adminFetch<{ success: boolean }>(`/broadcasts/${id}/cancel`, {
         method: "POST",
       }),
-    audienceCount: (filters: BroadcastCampaign['audience_filters'], campaignId?: string) => {
+    audienceCount: (filters: BroadcastCampaign['audience_filters']) => {
       const params = new URLSearchParams({ filters: JSON.stringify(filters) });
-      if (campaignId) params.set("campaign_id", campaignId);
       return adminFetch<{ count: number; platform_count: number; external_count: number }>(
         `/broadcasts/audience-count?${params}`
       );
     },
-    audiencePreview: (filters: BroadcastCampaign['audience_filters'], campaignId?: string) => {
+    audiencePreview: (filters: BroadcastCampaign['audience_filters']) => {
       const params = new URLSearchParams({ filters: JSON.stringify(filters) });
-      if (campaignId) params.set("campaign_id", campaignId);
       return adminFetch<{
         recipients: Array<{
           user_id: string | null;
@@ -1166,24 +1164,48 @@ export const adminApi = {
         `/broadcasts/audience-preview?${params}`
       );
     },
-    externalRecipients: {
-      list: (campaignId: string) =>
+    // Global, persistent external-contact pool. The Super Admin's "Interested"
+    // list lives here across campaigns: re-uploading the same export only
+    // inserts net-new addresses, and any name_override the admin set survives.
+    externalContacts: {
+      list: () =>
         adminFetch<{
-          recipients: Array<{ id: string; email: string; name: string | null; source: string; created_at: string }>;
-          total_uploaded: number;
+          contacts: Array<{
+            id: string;
+            email: string;
+            name: string | null;
+            name_override: string | null;
+            source: string;
+            created_at: string;
+            updated_at: string;
+            last_uploaded_at: string;
+          }>;
+          total: number;
           deduped_against_platform: number;
           net_new: number;
-        }>(`/broadcasts/${campaignId}/external-recipients`),
-      add: (campaignId: string, recipients: Array<{ email: string; name?: string }>, source = "manual_upload") =>
-        adminFetch<{ inserted: number; skipped_invalid: number; total_in_campaign: number }>(
-          `/broadcasts/${campaignId}/external-recipients`,
+        }>(`/broadcasts/external-contacts`),
+      upsert: (contacts: Array<{ email: string; name?: string }>, source = "manual_upload") =>
+        adminFetch<{ inserted: number; preserved: number; skipped_invalid: number; total: number }>(
+          `/broadcasts/external-contacts`,
           {
             method: "POST",
-            body: JSON.stringify({ recipients, source }),
+            body: JSON.stringify({ contacts, source }),
           }
         ),
-      clear: (campaignId: string) =>
-        adminFetch<{ success: boolean }>(`/broadcasts/${campaignId}/external-recipients`, {
+      update: (contactId: string, patch: { name_override?: string | null }) =>
+        adminFetch<{ contact: { id: string; email: string; name: string | null; name_override: string | null } }>(
+          `/broadcasts/external-contacts/${contactId}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(patch),
+          }
+        ),
+      remove: (contactId: string) =>
+        adminFetch<{ success: boolean }>(`/broadcasts/external-contacts/${contactId}`, {
+          method: "DELETE",
+        }),
+      clear: () =>
+        adminFetch<{ success: boolean }>(`/broadcasts/external-contacts`, {
           method: "DELETE",
         }),
     },
