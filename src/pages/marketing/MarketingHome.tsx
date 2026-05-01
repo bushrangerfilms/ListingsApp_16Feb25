@@ -282,9 +282,9 @@ export default function MarketingHome() {
       <section className="py-20 bg-muted/50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
           <div className="text-center space-y-4">
-            <h2 className="text-3xl font-bold">Everything You Need to Dominate Social Media</h2>
+            <h2 className="text-3xl font-bold">Everything You Need to Dominate Social Media on Autopilot</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              From video creation to posting — fully automated for estate agents
+              From content creation to posting — fully automated.
             </p>
           </div>
 
@@ -302,7 +302,7 @@ export default function MarketingHome() {
               </p>
               <ul className="space-y-2">
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 6 video styles (and growing), 2 carousel types, and image posts</li>
-                <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> Auto-generated captions and hashtags</li>
+                <li className="flex items-start gap-2 text-sm"><Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" /> Auto-generated on-screen captions, post descriptions and hashtags posted to all your accounts</li>
                 <li className="flex items-center gap-2 text-sm"><Check className="w-4 h-4 text-green-500" /> 9:16 and 16:9 formats for every platform</li>
               </ul>
             </div>
