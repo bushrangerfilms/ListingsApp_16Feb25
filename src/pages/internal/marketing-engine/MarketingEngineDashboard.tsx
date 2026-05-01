@@ -578,6 +578,7 @@ export default function MarketingEngineDashboard() {
               <div className="space-y-1">
                 {posted.map((p) => {
                   const metrics = p.engagement_log?.metrics ?? {};
+                  const providerResp = p.engagement_log?.provider_response ?? {};
                   return (
                     <div
                       key={p.id}
@@ -590,11 +591,15 @@ export default function MarketingEngineDashboard() {
                       <div className="flex-1 flex items-center gap-1.5 flex-wrap">
                         {(p.channels ?? []).map((ch) => {
                           const m = metrics[ch];
+                          const channelOutcome = providerResp[ch] as
+                            | { ok?: boolean; skipped?: boolean; error?: string }
+                            | undefined;
                           const url = m?.raw?.results?.[0]?.post_url ?? m?.post_url ?? null;
                           const success = m?.raw?.results?.[0]?.success;
                           const engagement = m?.engagement;
-                          // Three states: live URL (success + url), succeeded-no-url (request_id only),
-                          // missing (skipped or not yet polled).
+                          // Four states: live URL (success + url), succeeded-no-url
+                          // (request_id only), skipped (channel not connected /
+                          // content-type mismatch), missing (no log entry).
                           if (url) {
                             const stats = engagement
                               ? formatEngagement(engagement)
@@ -629,7 +634,28 @@ export default function MarketingEngineDashboard() {
                               </span>
                             );
                           }
-                          // Skipped or not in metrics
+                          if (channelOutcome?.skipped) {
+                            return (
+                              <span
+                                key={ch}
+                                className="text-xs px-2 py-0.5 rounded border bg-muted/40 text-muted-foreground border-muted-foreground/20"
+                                title={channelOutcome.error ?? "skipped — channel not connected"}
+                              >
+                                {ch} <span className="opacity-60">skipped</span>
+                              </span>
+                            );
+                          }
+                          if (channelOutcome && channelOutcome.ok === false) {
+                            return (
+                              <span
+                                key={ch}
+                                className="text-xs px-2 py-0.5 rounded border bg-red-500/10 text-red-600 border-red-500/20"
+                                title={channelOutcome.error ?? "publish failed"}
+                              >
+                                {ch} ✕
+                              </span>
+                            );
+                          }
                           return null;
                         })}
                       </div>
