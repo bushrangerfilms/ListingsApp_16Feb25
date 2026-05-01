@@ -191,7 +191,7 @@ export default function SignupWizard() {
 
             <GuidanceVideoLink
               url="https://youtu.be/RQhOENCec8o"
-              label="Getting Started Guide"
+              label="Getting Started Video Guide"
             />
           </div>
 
