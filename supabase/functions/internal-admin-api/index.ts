@@ -3983,11 +3983,49 @@ async function handleClearExternalContacts(
   return { success: true };
 }
 
+// Permanently exclude an email from every future broadcast — works for
+// platform users and external contacts alike. Inserts into broadcast_unsubscribes
+// (idempotent on email) and also removes any upload-sourced contact-book row
+// so the global pool stays clean. Override-only rows are left in place; the
+// unsubscribe entry alone is enough to skip them at send time.
+async function handleExcludeEmail(
+  supabase: SupabaseClient,
+  auth: AuthResult,
+  body: any,
+) {
+  if (!auth.isSuperAdmin) throw new Error("Super Admin access required");
+
+  const email = (body?.email || "").toString().trim().toLowerCase();
+  if (!email) throw new Error("email is required");
+
+  const { error: unsubErr } = await supabase
+    .from("broadcast_unsubscribes")
+    .upsert(
+      { email, reason: "super_admin_exclude" },
+      { onConflict: "email", ignoreDuplicates: true },
+    );
+  if (unsubErr) throw new Error(`Failed to record unsubscribe: ${unsubErr.message}`);
+
+  await supabase
+    .from("broadcast_external_contacts")
+    .delete()
+    .eq("email", email)
+    .neq("source", "platform_override")
+    .then(() => undefined, () => undefined);
+
+  return { success: true };
+}
+
 type RecipientRow = {
   user_id: string | null;
   email: string;
   name: string | null;
   source: "platform" | "external";
+  // True when `name` came from broadcast_external_contacts.name_override.
+  // The send loop trusts override names verbatim instead of running them
+  // through the firstName heuristics — so an admin who types "Roshani" gets
+  // "Hi Roshani," even though "Roshani" isn't in the names dictionary.
+  name_is_override: boolean;
 };
 
 async function buildRecipientList(
@@ -4150,6 +4188,7 @@ async function buildRecipientList(
       email: user.email,
       name: override || user.user_metadata?.full_name || user.user_metadata?.name || null,
       source: "platform",
+      name_is_override: !!override,
     });
   }
 
@@ -4165,15 +4204,26 @@ async function buildRecipientList(
     if (seenEmails.has(emailLower)) continue;
 
     seenEmails.add(emailLower);
+    const overrideName = ext.name_override && ext.name_override.trim();
     recipients.push({
       user_id: null,
       email: ext.email,
-      name: (ext.name_override && ext.name_override.trim()) || ext.name || null,
+      name: overrideName || ext.name || null,
       source: "external",
+      name_is_override: !!overrideName,
     });
   }
 
   return recipients;
+}
+
+// Capitalize the first word of an admin-set override and use it verbatim.
+// Bypasses the firstName heuristics — the admin literally typed this so we
+// trust them, even if the name isn't in the dictionary.
+function firstNameFromOverride(name: string): string | null {
+  const word = (name.trim().split(/\s+/)[0] || "").replace(/[^\w'-]/g, "");
+  if (word.length < 1) return null;
+  return word[0].toUpperCase() + word.slice(1).toLowerCase();
 }
 
 async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, campaignId: string, body: any) {
@@ -4272,9 +4322,13 @@ async function handleSendBroadcast(supabase: SupabaseClient, auth: AuthResult, c
 
         const unsubscribeUrl = `${siteUrl}/functions/v1/broadcast-unsubscribe?email=${encodeURIComponent(recipient.email)}&token=${token}`;
 
-        // Personalize subject and body per recipient
+        // Personalize subject and body per recipient. Admin-set overrides
+        // bypass the firstName heuristics and are used verbatim.
+        const overrideFirst = recipient.name_is_override && recipient.name
+          ? firstNameFromOverride(recipient.name)
+          : null;
         const vars: Record<string, string> = {
-          firstName: firstNameOf(recipient.name, recipient.email),
+          firstName: overrideFirst || firstNameOf(recipient.name, recipient.email),
           fullName: recipient.name || "there",
           email: recipient.email,
         };
@@ -4659,6 +4713,9 @@ serve(async (req) => {
     } else if (path === "/broadcasts/external-contacts/override" && method === "PUT") {
       const body = await req.json().catch(() => ({}));
       responseData = await handleSetContactOverrideByEmail(supabase, authResult, body);
+    } else if (path === "/broadcasts/exclude-email" && method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      responseData = await handleExcludeEmail(supabase, authResult, body);
     } else if (path.match(/^\/broadcasts\/external-contacts\/[^/]+$/) && method === "PATCH") {
       const contactId = path.replace("/broadcasts/external-contacts/", "");
       const body = await req.json().catch(() => ({}));

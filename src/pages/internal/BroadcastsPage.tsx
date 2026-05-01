@@ -207,6 +207,11 @@ export default function BroadcastsPage() {
   const [editingOverrideEmail, setEditingOverrideEmail] = useState<string | null>(null);
   const [editingOverrideValue, setEditingOverrideValue] = useState<string>("");
 
+  // Permanent-exclude confirmation. Carries the email so the dialog renders
+  // outside the row (a per-row AlertDialog gets unmounted while the trigger
+  // disappears, breaking the close handler).
+  const [confirmExcludeEmail, setConfirmExcludeEmail] = useState<string | null>(null);
+
   // List query
   const { data: campaigns, isLoading } = useQuery({
     queryKey: ["admin", "broadcasts"],
@@ -316,15 +321,17 @@ export default function BroadcastsPage() {
       toast({ title: "Save failed", description: err.message, variant: "destructive" }),
   });
 
-  const removeContactMutation = useMutation({
-    mutationFn: (id: string) => adminApi.broadcasts.externalContacts.remove(id),
-    onSuccess: () => {
+  const excludeEmailMutation = useMutation({
+    mutationFn: (email: string) => adminApi.broadcasts.excludeEmail(email),
+    onSuccess: (_r, email) => {
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "external-contacts"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-count"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "broadcasts", "audience-preview"] });
+      toast({ title: "Excluded from broadcasts", description: email });
+      setConfirmExcludeEmail(null);
     },
     onError: (err: Error) =>
-      toast({ title: "Remove failed", description: err.message, variant: "destructive" }),
+      toast({ title: "Exclude failed", description: err.message, variant: "destructive" }),
   });
 
   const clearContactsMutation = useMutation({
@@ -608,9 +615,15 @@ export default function BroadcastsPage() {
                   const isExcluded = excludedEmails.has(r.email);
                   const emailLower = r.email.toLowerCase();
                   const contact = contactByEmail.get(emailLower);
-                  const greeting = firstNameOf(r.name, r.email);
+                  const overrideName = contact?.name_override?.trim() || "";
+                  // Admin-set override is the literal first name to use — no
+                  // dictionary check, just capitalize the first word. Falls back
+                  // to the smart resolver when no override is set.
+                  const greeting = overrideName
+                    ? (overrideName.split(/\s+/)[0].replace(/[^\w'-]/g, "").replace(/^./, (c) => c.toUpperCase()) || "there")
+                    : firstNameOf(r.name, r.email);
                   const isEditingOverride = editingOverrideEmail === emailLower;
-                  const hasOverride = !!contact?.name_override?.trim();
+                  const hasOverride = !!overrideName;
                   return (
                     <div
                       key={r.email}
@@ -671,18 +684,16 @@ export default function BroadcastsPage() {
                             External
                           </Badge>
                         )}
-                        {contact && contact.source !== "platform_override" && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => removeContactMutation.mutate(contact.id)}
-                            title="Remove from external contact list"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => setConfirmExcludeEmail(r.email)}
+                          title="Permanently exclude from broadcasts"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
                   );
@@ -732,6 +743,40 @@ export default function BroadcastsPage() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+
+  // Permanent-exclude confirmation — fires from any recipient row's trash
+  // icon. Adds the email to broadcast_unsubscribes and removes any
+  // upload-sourced contact-book row.
+  const excludeEmailDialog = (
+    <AlertDialog
+      open={!!confirmExcludeEmail}
+      onOpenChange={(open) => {
+        if (!open) setConfirmExcludeEmail(null);
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Permanently exclude from broadcasts?</AlertDialogTitle>
+          <AlertDialogDescription>
+            <span className="font-mono">{confirmExcludeEmail}</span> will be added
+            to the unsubscribe list and skipped on every future broadcast. If
+            they're an uploaded contact, their entry is also removed from the
+            external pool. To re-enable later, delete the row from
+            broadcast_unsubscribes manually.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => confirmExcludeEmail && excludeEmailMutation.mutate(confirmExcludeEmail)}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Exclude
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 
   // Clear-All confirmation — rendered in both compose and list views since
@@ -1205,6 +1250,7 @@ export default function BroadcastsPage() {
 
         {reviewDialog}
         {clearContactsDialog}
+        {excludeEmailDialog}
       </div>
     );
   }
@@ -1384,6 +1430,7 @@ export default function BroadcastsPage() {
       </AlertDialog>
 
       {clearContactsDialog}
+      {excludeEmailDialog}
     </div>
   );
 }
