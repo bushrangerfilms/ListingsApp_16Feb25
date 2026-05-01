@@ -1145,15 +1145,47 @@ export const adminApi = {
       adminFetch<{ success: boolean }>(`/broadcasts/${id}/cancel`, {
         method: "POST",
       }),
-    audienceCount: (filters: BroadcastCampaign['audience_filters']) => {
+    audienceCount: (filters: BroadcastCampaign['audience_filters'], campaignId?: string) => {
       const params = new URLSearchParams({ filters: JSON.stringify(filters) });
-      return adminFetch<{ count: number }>(`/broadcasts/audience-count?${params}`);
+      if (campaignId) params.set("campaign_id", campaignId);
+      return adminFetch<{ count: number; platform_count: number; external_count: number }>(
+        `/broadcasts/audience-count?${params}`
+      );
     },
-    audiencePreview: (filters: BroadcastCampaign['audience_filters']) => {
+    audiencePreview: (filters: BroadcastCampaign['audience_filters'], campaignId?: string) => {
       const params = new URLSearchParams({ filters: JSON.stringify(filters) });
-      return adminFetch<{ recipients: Array<{ user_id: string; email: string; name: string | null }> }>(
+      if (campaignId) params.set("campaign_id", campaignId);
+      return adminFetch<{
+        recipients: Array<{
+          user_id: string | null;
+          email: string;
+          name: string | null;
+          source: "platform" | "external";
+        }>
+      }>(
         `/broadcasts/audience-preview?${params}`
       );
+    },
+    externalRecipients: {
+      list: (campaignId: string) =>
+        adminFetch<{
+          recipients: Array<{ id: string; email: string; name: string | null; source: string; created_at: string }>;
+          total_uploaded: number;
+          deduped_against_platform: number;
+          net_new: number;
+        }>(`/broadcasts/${campaignId}/external-recipients`),
+      add: (campaignId: string, recipients: Array<{ email: string; name?: string }>, source = "manual_upload") =>
+        adminFetch<{ inserted: number; skipped_invalid: number; total_in_campaign: number }>(
+          `/broadcasts/${campaignId}/external-recipients`,
+          {
+            method: "POST",
+            body: JSON.stringify({ recipients, source }),
+          }
+        ),
+      clear: (campaignId: string) =>
+        adminFetch<{ success: boolean }>(`/broadcasts/${campaignId}/external-recipients`, {
+          method: "DELETE",
+        }),
     },
   },
 };
