@@ -71,8 +71,19 @@ type View = "list" | "compose" | "detail";
 
 type ParsedExternalRow = { email: string; name?: string };
 
-// Parse an XLSX/CSV file (PlusVibe export shape) into { email, name } rows.
-// Looks for an email-ish column case-insensitively; pulls a name column if present.
+// Parse an XLSX/CSV contact file into { email, name } rows.
+//
+// Two formats are supported:
+//   - **Plain contact list** — one row per contact. Looked up by an "email" /
+//     "email address" / "e-mail" column with optional name columns.
+//   - **Inbox / thread export** (e.g. PlusVibe inbox export) — many rows per
+//     thread + per message, with `Direction` (IN/OUT) and `From Email` columns.
+//     We filter to `Direction = IN` rows so we only pull the lead's address
+//     (the thread-header `Thread From Email` often holds OUR outbound sender).
+//
+// Email-column lookup also skips obvious non-address fields like "Email ID",
+// "Email Date", "Email Account ID" — words that contain "email" but aren't
+// the address itself.
 async function parseContactFile(file: File): Promise<{ rows: ParsedExternalRow[]; rawCount: number }> {
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array" });
@@ -82,20 +93,52 @@ async function parseContactFile(file: File): Promise<{ rows: ParsedExternalRow[]
   const json: Record<string, unknown>[] = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
   if (json.length === 0) return { rows: [], rawCount: 0 };
 
-  // Find columns by best-fit name (case-insensitive, trimmed).
   const columns = Object.keys(json[0]).map((k) => ({ raw: k, key: k.trim().toLowerCase() }));
-  const emailCol = columns.find((c) => c.key === "email" || c.key === "email address" || c.key === "e-mail")
-    ?? columns.find((c) => c.key.includes("email"));
+
+  const directionCol = columns.find((c) => c.key === "direction");
+
+  // Filter out columns that contain "email" but aren't actual addresses
+  // (Email ID, Email Date, Email Account ID, Email Subject, Email Status, …).
+  const isAddressColumn = (key: string) => {
+    if (!key.includes("email") && !key.includes("e-mail")) return false;
+    return !/\b(id|date|account|subject|status|count|category|client|type|template)\b/.test(key);
+  };
+
+  // Inbox exports: per-message "From Email" is the lead's address on incoming rows.
+  // Plain contact lists: just "Email" / "Email Address" / "E-mail".
+  const emailCol =
+    columns.find((c) => c.key === "email" || c.key === "email address" || c.key === "e-mail")
+    ?? (directionCol ? columns.find((c) => c.key === "from email") : undefined)
+    ?? columns.find((c) => c.key === "from email" || c.key === "thread from email")
+    ?? columns.find((c) => isAddressColumn(c.key));
   if (!emailCol) return { rows: [], rawCount: json.length };
 
   const firstNameCol = columns.find((c) => c.key === "first name" || c.key === "firstname" || c.key === "first_name");
   const lastNameCol = columns.find((c) => c.key === "last name" || c.key === "lastname" || c.key === "last_name");
   const fullNameCol = columns.find((c) => c.key === "name" || c.key === "full name" || c.key === "fullname" || c.key === "full_name" || c.key === "contact name");
+  // "From" column on inbox exports holds 'Display Name <email>'; we strip the email.
+  const fromCol = columns.find((c) => c.key === "from");
 
+  const extractDisplayName = (raw: string): string | undefined => {
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    const m = trimmed.match(/^"?([^<"]+?)"?\s*<[^>]+>\s*$/);
+    if (m) return m[1].trim() || undefined;
+    if (trimmed.includes("@")) return undefined;
+    return trimmed;
+  };
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const out: ParsedExternalRow[] = [];
   for (const row of json) {
+    if (directionCol) {
+      const direction = String(row[directionCol.raw] || "").trim().toUpperCase();
+      if (direction !== "IN") continue;
+    }
+
     const email = String(row[emailCol.raw] || "").trim();
-    if (!email) continue;
+    if (!email || !emailRegex.test(email)) continue;
+
     let name: string | undefined;
     if (fullNameCol) name = String(row[fullNameCol.raw] || "").trim() || undefined;
     if (!name && (firstNameCol || lastNameCol)) {
@@ -104,6 +147,10 @@ async function parseContactFile(file: File): Promise<{ rows: ParsedExternalRow[]
       const composed = `${fn} ${ln}`.trim();
       name = composed || undefined;
     }
+    if (!name && fromCol) {
+      name = extractDisplayName(String(row[fromCol.raw] || ""));
+    }
+
     out.push({ email, name });
   }
   return { rows: out, rawCount: json.length };
