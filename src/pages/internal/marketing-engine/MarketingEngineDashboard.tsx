@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -18,6 +19,8 @@ import {
   AlertTriangle,
   Send,
   Users,
+  Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import {
   Card,
@@ -386,6 +389,50 @@ export default function MarketingEngineDashboard() {
     },
   });
 
+  // Preview-next-pick — calls the pipeline edge function with dry_run:true
+  // to show the operator what the strategist would mint right now (with
+  // current engagement multipliers + master switches), without actually
+  // burning producer cost. Showcase of the closed-loop AI plus a debug
+  // surface for verifying multipliers bias picks correctly.
+  type PreviewResponse = {
+    ok: boolean;
+    pick?: {
+      topic_slug: string;
+      topic_category: string;
+      template_slug: string;
+      channels: string[];
+      variation_axes: { tone: string; hook_style: string; cta_style: string };
+      scheduled_for: string;
+    };
+    reasoning?: {
+      template_adjustment_enabled: boolean;
+      template_multipliers: Record<string, number>;
+      topic_adjustment_enabled: boolean;
+      topic_multipliers: Record<string, number>;
+      variation_axis_adjustment_enabled: boolean;
+      variation_axis_multipliers: {
+        tone: Record<string, number>;
+        hook_style: Record<string, number>;
+        cta_style: Record<string, number>;
+      };
+    };
+    error?: string;
+  };
+  const [previewResult, setPreviewResult] = useState<PreviewResponse | null>(null);
+  const previewMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke(
+        "marketing-engine-pipeline",
+        { body: { dry_run: true } },
+      );
+      if (error) throw error;
+      return data as PreviewResponse;
+    },
+    onSuccess: (data) => setPreviewResult(data),
+    onError: (err: Error) =>
+      setPreviewResult({ ok: false, error: err.message }),
+  });
+
   // Top performers — posted posts in the last 30 days ranked by total
   // YouTube view count. Surfaces winners so the operator can see what's
   // working at a glance, and the closed-loop optimization decisions
@@ -701,6 +748,131 @@ export default function MarketingEngineDashboard() {
             tone={kpis && kpis.failure_count_24h > 0 ? "warn" : "default"}
           />
         </div>
+
+        {/* Preview next pick — operator clicks, the strategist runs all
+            its picking logic (template, topic, variation axes, including
+            engagement multipliers) and returns the plan WITHOUT inserting
+            a post or burning producer cost. Direct showcase of the
+            closed-loop AI plus a verification surface for the multiplier
+            settings on the engagement-driven adjustment switches. */}
+        <Card className="border-purple-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-purple-700 dark:text-purple-400">
+              <Sparkles className="h-4 w-4" />
+              Preview next pick
+            </CardTitle>
+            <CardDescription>
+              Run the strategist's full picking logic — template, topic, hook
+              style, tone, CTA — with current engagement multipliers, without
+              minting a post. Cheap dry-run for "what would the AI do right now?"
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 mb-3">
+              <Button
+                size="sm"
+                onClick={() => previewMutation.mutate()}
+                disabled={previewMutation.isPending}
+                data-testid="button-preview-pick"
+              >
+                {previewMutation.isPending ? (
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                {previewResult ? "Pick again" : "Preview next pick"}
+              </Button>
+              {previewResult?.ok && previewResult.pick && (
+                <span className="text-xs text-muted-foreground">
+                  scheduled for{" "}
+                  {new Date(previewResult.pick.scheduled_for).toLocaleString()}
+                </span>
+              )}
+            </div>
+            {previewResult?.error && (
+              <div className="text-sm text-rose-700 dark:text-rose-400">
+                {previewResult.error}
+              </div>
+            )}
+            {previewResult?.ok && previewResult.pick && previewResult.reasoning && (() => {
+              const p = previewResult.pick;
+              const r = previewResult.reasoning;
+              const tplMult = r.template_multipliers[p.template_slug];
+              const topMult = r.topic_multipliers[p.topic_slug];
+              const toneMult = r.variation_axis_multipliers.tone[p.variation_axes.tone];
+              const hookMult = r.variation_axis_multipliers.hook_style[p.variation_axes.hook_style];
+              const ctaMult = r.variation_axis_multipliers.cta_style[p.variation_axes.cta_style];
+              const PickTile = ({
+                label,
+                value,
+                multiplier,
+                adjustmentOn,
+              }: {
+                label: string;
+                value: string;
+                multiplier: number | undefined;
+                adjustmentOn: boolean;
+              }) => {
+                const tone = !adjustmentOn || multiplier === undefined
+                  ? "text-muted-foreground"
+                  : multiplier > 1.05
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : multiplier < 0.95
+                      ? "text-rose-700 dark:text-rose-400"
+                      : "text-muted-foreground";
+                return (
+                  <div className="rounded border border-border/60 bg-muted/20 p-2">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                      {label}
+                    </div>
+                    <div className="font-mono text-sm">{value}</div>
+                    <div className={`text-[10px] tabular-nums mt-0.5 ${tone}`}>
+                      {!adjustmentOn
+                        ? "uniform random"
+                        : multiplier === undefined
+                          ? "no engagement data"
+                          : `multiplier ×${multiplier.toFixed(2)}`}
+                    </div>
+                  </div>
+                );
+              };
+              return (
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                  <PickTile
+                    label="template"
+                    value={p.template_slug}
+                    multiplier={tplMult}
+                    adjustmentOn={r.template_adjustment_enabled}
+                  />
+                  <PickTile
+                    label="topic"
+                    value={p.topic_slug}
+                    multiplier={topMult}
+                    adjustmentOn={r.topic_adjustment_enabled}
+                  />
+                  <PickTile
+                    label="hook style"
+                    value={p.variation_axes.hook_style}
+                    multiplier={hookMult}
+                    adjustmentOn={r.variation_axis_adjustment_enabled}
+                  />
+                  <PickTile
+                    label="tone"
+                    value={p.variation_axes.tone}
+                    multiplier={toneMult}
+                    adjustmentOn={r.variation_axis_adjustment_enabled}
+                  />
+                  <PickTile
+                    label="cta"
+                    value={p.variation_axes.cta_style}
+                    multiplier={ctaMult}
+                    adjustmentOn={r.variation_axis_adjustment_enabled}
+                  />
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
 
         {/* Publisher safety net — daily cap usage, circuit breaker
             state, run lock. Makes "why didn't anything ship?" answerable
