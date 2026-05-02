@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -10,6 +10,8 @@ import {
   Sparkles,
   AlertCircle,
   Calendar,
+  MessageCircle,
+  Send,
 } from "lucide-react";
 import {
   Card,
@@ -503,8 +505,193 @@ function PostCard({ post, onChange }: { post: MarketingPost; onChange: () => voi
             </Button>
           </div>
         </div>
+        <OverseerChatPanel postId={post.id} />
       </CardContent>
     </Card>
+  );
+}
+
+// Per-post chat with the Overseer agent. Phase 1: read-only conversation
+// — Overseer reads the post + relevant settings (taste rubric, banned
+// phrases, hook seeds, product framing) and returns concrete diagnoses
+// + suggested rubric edits. The operator copies suggestions into the
+// Settings page manually; no auto-apply yet (Phase 2 will add propose-
+// approve cards). History persists per-post in localStorage so the
+// conversation survives a page reload.
+function OverseerChatPanel({ postId }: { postId: string }) {
+  const storageKey = `me-overseer-chat-${postId}`;
+  const [open, setOpen] = useState<boolean>(false);
+  const [messages, setMessages] = useState<
+    Array<{ role: "user" | "assistant"; content: string }>
+  >(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {/* ignore */}
+    return [];
+  });
+  const [draft, setDraft] = useState<string>("");
+  const [sending, setSending] = useState<boolean>(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Persist on every change.
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(messages));
+    } catch {/* ignore quota */}
+  }, [messages, storageKey]);
+
+  // Scroll to bottom on new messages.
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, open]);
+
+  const send = async () => {
+    const text = draft.trim();
+    if (!text || sending) return;
+    const next: typeof messages = [...messages, { role: "user", content: text }];
+    setMessages(next);
+    setDraft("");
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "marketing-engine-overseer-chat",
+        { body: { post_id: postId, messages: next } },
+      );
+      if (error) throw error;
+      const ok = (data as { ok?: boolean }).ok;
+      if (!ok) {
+        throw new Error(
+          (data as { error?: string }).error ?? "Overseer call failed",
+        );
+      }
+      const reply = String(
+        (data as { assistant_message?: string }).assistant_message ?? "",
+      );
+      setMessages([...next, { role: "assistant", content: reply }]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error("Overseer", { description: msg });
+      setMessages([
+        ...next,
+        { role: "assistant", content: `*Error: ${msg}*` },
+      ]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const clearHistory = () => {
+    setMessages([]);
+    try { localStorage.removeItem(storageKey); } catch {/* ignore */}
+  };
+
+  return (
+    <div className="border-t pt-4 mt-4">
+      <div className="flex items-center justify-between mb-2">
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-xs flex items-center gap-1.5 text-purple-700 dark:text-purple-400 hover:underline"
+        >
+          <MessageCircle className="h-3.5 w-3.5" />
+          {open ? "Hide" : "Discuss with"} Overseer
+          {messages.length > 0 && (
+            <Badge variant="outline" className="text-[10px] h-4 px-1 ml-1">
+              {messages.length}
+            </Badge>
+          )}
+        </button>
+        {open && messages.length > 0 && (
+          <button
+            onClick={clearHistory}
+            className="text-[10px] text-muted-foreground hover:text-foreground"
+          >
+            clear history
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="rounded border bg-muted/20 p-3 space-y-3">
+          <div
+            ref={scrollRef}
+            className="max-h-[400px] overflow-y-auto space-y-3 text-sm"
+          >
+            {messages.length === 0 ? (
+              <div className="text-xs text-muted-foreground text-center py-6">
+                Ask the Overseer about this post. Examples:
+                <ul className="list-disc list-inside mt-2 text-left max-w-md mx-auto space-y-0.5">
+                  <li>"the headline is generic — too similar to last week"</li>
+                  <li>"caption uses 'unlock' which feels off-brand"</li>
+                  <li>"hook is buried, the AutoListing pitch lands first"</li>
+                  <li>"the visual is washed out / no contrast"</li>
+                </ul>
+              </div>
+            ) : (
+              messages.map((m, i) => (
+                <div
+                  key={i}
+                  className={
+                    m.role === "user"
+                      ? "flex justify-end"
+                      : "flex justify-start"
+                  }
+                >
+                  <div
+                    className={
+                      m.role === "user"
+                        ? "max-w-[80%] rounded-lg px-3 py-2 bg-primary text-primary-foreground text-xs whitespace-pre-wrap"
+                        : "max-w-[90%] rounded-lg px-3 py-2 bg-background border text-xs whitespace-pre-wrap"
+                    }
+                  >
+                    {m.content}
+                  </div>
+                </div>
+              ))
+            )}
+            {sending && (
+              <div className="flex justify-start">
+                <div className="rounded-lg px-3 py-2 bg-background border text-xs text-muted-foreground inline-flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Overseer thinking…
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex items-end gap-2">
+            <Textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="What's wrong with this post?"
+              className="min-h-[60px] text-sm flex-1"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              disabled={sending}
+            />
+            <Button
+              size="sm"
+              onClick={send}
+              disabled={sending || !draft.trim()}
+            >
+              <Send className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            Phase 1: read-only. Overseer suggests edits — copy them into
+            <code className="mx-1">/internal/marketing-engine/settings</code>
+            manually. Phase 2 will add direct apply. Cmd/Ctrl+Enter to send.
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
