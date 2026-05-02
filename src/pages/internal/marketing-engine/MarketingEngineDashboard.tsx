@@ -386,6 +386,57 @@ export default function MarketingEngineDashboard() {
     },
   });
 
+  // Variation-axis engagement aggregates. Three axes (tone, hook_style,
+  // cta_style) — fetched in parallel via the parameterised SQL function.
+  // Hook style is the highest-leverage axis per the taste rubric.
+  type AxisRow = {
+    axis_value: string;
+    posts_with_data: number;
+    avg_views: number | null;
+    multiplier: number;
+  };
+  const { data: axisAgg } = useQuery<{
+    tone: AxisRow[];
+    hook_style: AxisRow[];
+    cta_style: AxisRow[];
+  }>({
+    queryKey: ["marketing-engine-variation-axis-aggregates"],
+    queryFn: async () => {
+      const fetchAxis = async (key: string): Promise<AxisRow[]> => {
+        const { data, error } = await supabase.rpc(
+          "marketing_engine_variation_axis_aggregates",
+          { p_axis_key: key },
+        );
+        if (error || !Array.isArray(data)) return [];
+        return data.map((r) => ({
+          axis_value: String(r.axis_value),
+          posts_with_data: Number(r.posts_with_data),
+          avg_views: r.avg_views === null ? null : Number(r.avg_views),
+          multiplier: Number(r.multiplier),
+        }));
+      };
+      const [tone, hook_style, cta_style] = await Promise.all([
+        fetchAxis("tone"),
+        fetchAxis("hook_style"),
+        fetchAxis("cta_style"),
+      ]);
+      return { tone, hook_style, cta_style };
+    },
+    refetchInterval: 60_000,
+  });
+
+  const { data: axisAdjEnabled } = useQuery<boolean>({
+    queryKey: ["marketing-engine-variation-axis-adj-flag"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketing_engine_settings")
+        .select("value")
+        .eq("key", "variation_axis_engagement_adjustment_enabled")
+        .maybeSingle();
+      return data?.value === true;
+    },
+  });
+
   // Publisher safety state — daily cap usage + circuit breaker + run lock.
   // Lets the operator tell at a glance whether the publisher is gated
   // (cap reached / breaker tripped) without digging into settings or
@@ -738,6 +789,84 @@ export default function MarketingEngineDashboard() {
               </Card>
             );
           })()}
+
+        {/* Variation-axis engagement aggregates. Three axes side-by-side:
+            tone, hook_style, cta_style. Hook style is the load-bearing
+            axis per the taste rubric. Renders only when at least one
+            axis has data OR adjustment is on. */}
+        {axisAgg && (axisAdjEnabled || (
+          axisAgg.tone.some((a) => a.posts_with_data > 0) ||
+          axisAgg.hook_style.some((a) => a.posts_with_data > 0) ||
+          axisAgg.cta_style.some((a) => a.posts_with_data > 0)
+        )) && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                Variation-axis engagement
+                {axisAdjEnabled ? (
+                  <Badge variant="default" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                    biasing picks
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-muted-foreground">
+                    observing only
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Per-axis YouTube view aggregates over the last 14 days.
+                When <code>variation_axis_engagement_adjustment_enabled</code> is on,
+                the strategist biases each axis pick toward values that have
+                outperformed the median. Hook style especially is load-bearing
+                per the taste rubric (first 5–8 words = 85% of post success).
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                {(["hook_style", "tone", "cta_style"] as const).map((axisKey) => {
+                  const rows = axisAgg[axisKey];
+                  return (
+                    <div key={axisKey}>
+                      <div className="text-xs font-mono text-muted-foreground mb-2">
+                        {axisKey}
+                      </div>
+                      <div className="space-y-1">
+                        {rows.length === 0 ? (
+                          <div className="text-xs text-muted-foreground">no data yet</div>
+                        ) : (
+                          rows.map((r) => {
+                            const tone =
+                              r.multiplier > 1.05
+                                ? "text-emerald-700 dark:text-emerald-400"
+                                : r.multiplier < 0.95
+                                  ? "text-rose-700 dark:text-rose-400"
+                                  : "text-muted-foreground";
+                            return (
+                              <div
+                                key={r.axis_value}
+                                className="flex items-center gap-2 py-1 text-xs border-b last:border-b-0"
+                              >
+                                <code className="flex-1 truncate">{r.axis_value}</code>
+                                <span className="text-muted-foreground tabular-nums">
+                                  {r.posts_with_data === 0
+                                    ? "no data"
+                                    : `${r.posts_with_data} · ${r.avg_views?.toFixed(1)}v`}
+                                </span>
+                                <span className={`font-mono tabular-nums w-12 text-right ${tone}`}>
+                                  ×{r.multiplier.toFixed(2)}
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="pb-3">
