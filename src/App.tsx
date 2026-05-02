@@ -120,6 +120,7 @@ const MarketingEngineSettings = lazyWithRetry(() => import("./pages/internal/mar
 const MarketingEngineResearchInbox = lazyWithRetry(() => import("./pages/internal/marketing-engine/ResearchInboxPage"));
 const MarketingEngineModelWatch = lazyWithRetry(() => import("./pages/internal/marketing-engine/ModelWatchInboxPage"));
 const MarketingEngineSocialAccounts = lazyWithRetry(() => import("./pages/internal/marketing-engine/SocialAccountsPage"));
+const MarketingEngineEmailCopy = lazyWithRetry(() => import("./pages/internal/marketing-engine/EmailCopyPage"));
 const PilotSettingsPage = lazyWithRetry(() => import("./pages/internal/PilotSettingsPage"));
 const BroadcastsPage = lazyWithRetry(() => import("./pages/internal/BroadcastsPage"));
 
@@ -300,6 +301,7 @@ function AdminRoutes() {
         <Route path="/internal/marketing-engine/research-inbox" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineResearchInbox /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/marketing-engine/model-watch" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineModelWatch /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/marketing-engine/social-accounts" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineSocialAccounts /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
+        <Route path="/internal/marketing-engine/email-copy" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><MarketingEngineEmailCopy /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
         <Route path="/internal/pilot" element={<SuperAdminOnlyRouteGuard><SuperAdminLayout><PilotSettingsPage /></SuperAdminLayout></SuperAdminOnlyRouteGuard>} />
 
         <Route path="/alert-preferences/:token" element={<UpdateAlertPreferences />} />

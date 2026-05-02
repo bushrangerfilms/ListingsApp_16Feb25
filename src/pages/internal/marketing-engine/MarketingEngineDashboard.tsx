@@ -21,6 +21,7 @@ import {
   Users,
   Sparkles,
   RefreshCw,
+  Mail,
 } from "lucide-react";
 import {
   Card,
@@ -182,6 +183,13 @@ const ENGINE_TILES = [
     title: "Model Watch",
     description: "Phase 5 — newly-released AI models for triage",
     color: "text-orange-500",
+  },
+  {
+    href: "/internal/marketing-engine/email-copy",
+    icon: Mail,
+    title: "Email Copy",
+    description: "Draft + improve PlusVibe campaign copy. 4×4 sequences with spintax + UTM attribution.",
+    color: "text-teal-500",
   },
 ] as const;
 
