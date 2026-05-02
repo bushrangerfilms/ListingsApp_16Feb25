@@ -343,6 +343,49 @@ export default function MarketingEngineDashboard() {
     refetchInterval: 60_000,
   });
 
+  // Per-template engagement aggregates — surfaces the data the strategist
+  // would use to bias template selection (when
+  // template_engagement_adjustment_enabled is on). Sourced via the
+  // marketing_engine_template_engagement_aggregates() SQL function so the
+  // dashboard sees the same numbers the strategist would.
+  const { data: templateEngagement } = useQuery<Array<{
+    template_slug: string;
+    base_weight: number;
+    posts_with_data: number;
+    avg_views: number | null;
+    multiplier: number;
+    effective_weight: number;
+  }>>({
+    queryKey: ["marketing-engine-template-engagement"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "marketing_engine_template_engagement_aggregates",
+      );
+      if (error || !Array.isArray(data)) return [];
+      return data.map((r) => ({
+        template_slug: String(r.template_slug),
+        base_weight: Number(r.base_weight),
+        posts_with_data: Number(r.posts_with_data),
+        avg_views: r.avg_views === null ? null : Number(r.avg_views),
+        multiplier: Number(r.multiplier),
+        effective_weight: Number(r.effective_weight),
+      }));
+    },
+    refetchInterval: 60_000,
+  });
+
+  const { data: engagementAdjEnabled } = useQuery<boolean>({
+    queryKey: ["marketing-engine-template-adjustment-flag"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketing_engine_settings")
+        .select("value")
+        .eq("key", "template_engagement_adjustment_enabled")
+        .maybeSingle();
+      return data?.value === true;
+    },
+  });
+
   // Publisher safety state — daily cap usage + circuit breaker + run lock.
   // Lets the operator tell at a glance whether the publisher is gated
   // (cap reached / breaker tripped) without digging into settings or
@@ -618,6 +661,83 @@ export default function MarketingEngineDashboard() {
             </Card>
           );
         })()}
+
+        {/* Per-template engagement aggregates. Renders only when at least
+            one template has data (or when adjustment is on — operator needs
+            to see what's happening). The strategist multiplies base_weight
+            by multiplier when template_engagement_adjustment_enabled=true. */}
+        {templateEngagement && templateEngagement.length > 0 &&
+          (templateEngagement.some((t) => t.posts_with_data > 0) || engagementAdjEnabled) && (() => {
+            const sorted = [...templateEngagement].sort(
+              (a, b) => b.effective_weight - a.effective_weight,
+            );
+            return (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    Template engagement
+                    {engagementAdjEnabled ? (
+                      <Badge variant="default" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
+                        adjusting weights
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        observing only
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <CardDescription>
+                    Per-template YouTube view aggregates over the last 14 days. When
+                    {" "}<code>template_engagement_adjustment_enabled</code> is on, the strategist
+                    multiplies base weight by the engagement multiplier
+                    (clamped 0.25×–4×, requires ≥3 posts of data per template).
+                    TikTok engagement is deferred — most static-card templates
+                    won't get adjustments until that ships.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1">
+                    {sorted.map((t) => {
+                      const mult = Number(t.multiplier);
+                      const tone =
+                        mult > 1.05
+                          ? "text-emerald-700 dark:text-emerald-400"
+                          : mult < 0.95
+                            ? "text-rose-700 dark:text-rose-400"
+                            : "text-muted-foreground";
+                      const noData = t.posts_with_data === 0;
+                      return (
+                        <div
+                          key={t.template_slug}
+                          className="flex items-center gap-3 py-1.5 text-sm border-b last:border-b-0"
+                        >
+                          <code className="text-xs w-44 shrink-0 truncate">
+                            {t.template_slug}
+                          </code>
+                          <span className="text-xs text-muted-foreground w-20 shrink-0 tabular-nums text-right">
+                            base {t.base_weight}
+                          </span>
+                          <span className="text-xs text-muted-foreground w-24 shrink-0 tabular-nums text-right">
+                            {noData ? "no data" : `${t.posts_with_data} post${t.posts_with_data === 1 ? "" : "s"}`}
+                          </span>
+                          <span className="text-xs text-muted-foreground w-24 shrink-0 tabular-nums text-right">
+                            {t.avg_views === null ? "—" : `${t.avg_views.toFixed(1)} views avg`}
+                          </span>
+                          <span className={`text-xs w-16 shrink-0 tabular-nums text-right font-mono ${tone}`}>
+                            ×{mult.toFixed(2)}
+                          </span>
+                          <span className="text-xs flex-1 text-right tabular-nums">
+                            <span className="text-muted-foreground">→ </span>
+                            <span className="font-medium">{Math.round(t.effective_weight)}</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
         <Card>
           <CardHeader className="pb-3">
