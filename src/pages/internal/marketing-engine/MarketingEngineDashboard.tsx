@@ -191,6 +191,13 @@ const ENGINE_TILES = [
     description: "Draft + improve PlusVibe campaign copy. 4×4 sequences with spintax + UTM attribution.",
     color: "text-teal-500",
   },
+  {
+    href: "/internal/marketing-engine/overseer",
+    icon: Sparkles,
+    title: "Overseer",
+    description: "Cross-post strategy chat. Discuss patterns, propose rubric / banned-phrase / hook-seed edits with one-click apply.",
+    color: "text-purple-500",
+  },
 ] as const;
 
 // Compact engagement display for the platform pill in "Recently posted".
