@@ -518,17 +518,36 @@ function PostCard({ post, onChange }: { post: MarketingPost; onChange: () => voi
 // Settings page manually; no auto-apply yet (Phase 2 will add propose-
 // approve cards). History persists per-post in localStorage so the
 // conversation survives a page reload.
+// Anthropic content block shapes. Plain string user messages get
+// promoted to a single text block on send.
+type ChatBlock =
+  | { type: "text"; text: string }
+  | {
+      type: "tool_use";
+      id: string;
+      name: string;
+      input: Record<string, unknown>;
+      // Local-only — tracks whether the operator has approved/rejected
+      // this proposal. Persisted in localStorage so refreshes preserve it.
+      _decision?: "pending" | "approved" | "rejected";
+      _appliedAt?: string;
+    }
+  | { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean };
+
+interface ChatMsg {
+  role: "user" | "assistant";
+  content: string | ChatBlock[];
+}
+
 function OverseerChatPanel({ postId }: { postId: string }) {
   const storageKey = `me-overseer-chat-${postId}`;
   const [open, setOpen] = useState<boolean>(false);
-  const [messages, setMessages] = useState<
-    Array<{ role: "user" | "assistant"; content: string }>
-  >(() => {
+  const [messages, setMessages] = useState<ChatMsg[]>(() => {
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) return parsed as ChatMsg[];
       }
     } catch {/* ignore */}
     return [];
@@ -537,26 +556,22 @@ function OverseerChatPanel({ postId }: { postId: string }) {
   const [sending, setSending] = useState<boolean>(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Persist on every change.
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(messages));
     } catch {/* ignore quota */}
   }, [messages, storageKey]);
 
-  // Scroll to bottom on new messages.
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, open]);
 
-  const send = async () => {
-    const text = draft.trim();
-    if (!text || sending) return;
-    const next: typeof messages = [...messages, { role: "user", content: text }];
+  // Send the next user turn (either fresh text or follow-up tool_results
+  // after the operator has approved/rejected proposals).
+  const sendMessages = async (next: ChatMsg[]) => {
     setMessages(next);
-    setDraft("");
     setSending(true);
     try {
       const { data, error } = await supabase.functions.invoke(
@@ -570,20 +585,147 @@ function OverseerChatPanel({ postId }: { postId: string }) {
           (data as { error?: string }).error ?? "Overseer call failed",
         );
       }
-      const reply = String(
-        (data as { assistant_message?: string }).assistant_message ?? "",
-      );
-      setMessages([...next, { role: "assistant", content: reply }]);
+      const responseContent = (data as { content?: ChatBlock[] }).content;
+      const newAssistant: ChatMsg = {
+        role: "assistant",
+        content: Array.isArray(responseContent) ? responseContent : [],
+      };
+      setMessages([...next, newAssistant]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error("Overseer", { description: msg });
       setMessages([
         ...next,
-        { role: "assistant", content: `*Error: ${msg}*` },
+        {
+          role: "assistant",
+          content: [{ type: "text", text: `*Error: ${msg}*` }],
+        },
       ]);
     } finally {
       setSending(false);
     }
+  };
+
+  const send = async () => {
+    const text = draft.trim();
+    if (!text || sending) return;
+    const next: ChatMsg[] = [...messages, { role: "user", content: text }];
+    setDraft("");
+    await sendMessages(next);
+  };
+
+  // Approve a proposed setting change: hit the apply endpoint, mark the
+  // tool_use block as approved, append a tool_result block as the user's
+  // next turn so Overseer knows the proposal was accepted.
+  const approveProposal = async (
+    msgIdx: number,
+    blockIdx: number,
+    block: Extract<ChatBlock, { type: "tool_use" }>,
+  ) => {
+    if (sending) return;
+    if (block.name !== "propose_setting_change") {
+      toast.error(`unknown tool: ${block.name}`);
+      return;
+    }
+    const input = block.input as {
+      setting_key?: string;
+      new_value?: unknown;
+      rationale?: string;
+    };
+    if (!input.setting_key || input.new_value === undefined) {
+      toast.error("Invalid proposal");
+      return;
+    }
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "marketing-engine-overseer-apply-change",
+        {
+          body: {
+            setting_key: input.setting_key,
+            new_value: input.new_value,
+            rationale: input.rationale ?? "(no rationale)",
+            related_post_id: postId,
+            source: "overseer",
+          },
+        },
+      );
+      if (error) throw error;
+      if (!(data as { ok?: boolean }).ok) {
+        throw new Error(
+          (data as { error?: string }).error ?? "apply failed",
+        );
+      }
+      // Mark the block as approved.
+      const updated = messages.map((m, i): ChatMsg => {
+        if (i !== msgIdx) return m;
+        if (typeof m.content === "string") return m;
+        return {
+          ...m,
+          content: m.content.map((b, j): ChatBlock => {
+            if (j !== blockIdx) return b;
+            if (b.type !== "tool_use") return b;
+            return { ...b, _decision: "approved", _appliedAt: new Date().toISOString() };
+          }),
+        };
+      });
+      // Send tool_result as next user turn so Overseer can follow up.
+      const next: ChatMsg[] = [
+        ...updated,
+        {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: block.id,
+              content: `Applied. setting_key=${input.setting_key} updated successfully.`,
+            },
+          ],
+        },
+      ];
+      toast.success(`Applied: ${input.setting_key}`);
+      await sendMessages(next);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error("Apply failed", { description: msg });
+      setSending(false);
+    }
+  };
+
+  const rejectProposal = (
+    msgIdx: number,
+    blockIdx: number,
+    block: Extract<ChatBlock, { type: "tool_use" }>,
+  ) => {
+    const updated = messages.map((m, i): ChatMsg => {
+      if (i !== msgIdx) return m;
+      if (typeof m.content === "string") return m;
+      return {
+        ...m,
+        content: m.content.map((b, j): ChatBlock => {
+          if (j !== blockIdx) return b;
+          if (b.type !== "tool_use") return b;
+          return { ...b, _decision: "rejected" };
+        }),
+      };
+    });
+    // Optionally send a tool_result with is_error so Overseer knows
+    // the operator rejected; let them follow up with another proposal.
+    const next: ChatMsg[] = [
+      ...updated,
+      {
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: "Rejected by operator. Suggest a different approach.",
+            is_error: true,
+          },
+        ],
+      },
+    ];
+    sendMessages(next);
   };
 
   const clearHistory = () => {
@@ -632,26 +774,77 @@ function OverseerChatPanel({ postId }: { postId: string }) {
                 </ul>
               </div>
             ) : (
-              messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={
-                    m.role === "user"
-                      ? "flex justify-end"
-                      : "flex justify-start"
-                  }
-                >
-                  <div
-                    className={
-                      m.role === "user"
-                        ? "max-w-[80%] rounded-lg px-3 py-2 bg-primary text-primary-foreground text-xs whitespace-pre-wrap"
-                        : "max-w-[90%] rounded-lg px-3 py-2 bg-background border text-xs whitespace-pre-wrap"
-                    }
-                  >
-                    {m.content}
+              messages.map((m, i) => {
+                // Plain string user messages.
+                if (typeof m.content === "string") {
+                  return (
+                    <div
+                      key={i}
+                      className={
+                        m.role === "user"
+                          ? "flex justify-end"
+                          : "flex justify-start"
+                      }
+                    >
+                      <div
+                        className={
+                          m.role === "user"
+                            ? "max-w-[80%] rounded-lg px-3 py-2 bg-primary text-primary-foreground text-xs whitespace-pre-wrap"
+                            : "max-w-[90%] rounded-lg px-3 py-2 bg-background border text-xs whitespace-pre-wrap"
+                        }
+                      >
+                        {m.content}
+                      </div>
+                    </div>
+                  );
+                }
+                // Content-block array (assistant + tool_result).
+                return (
+                  <div key={i} className="space-y-2">
+                    {m.content.map((block, j) => {
+                      if (block.type === "text") {
+                        return (
+                          <div
+                            key={j}
+                            className={
+                              m.role === "user"
+                                ? "flex justify-end"
+                                : "flex justify-start"
+                            }
+                          >
+                            <div
+                              className={
+                                m.role === "user"
+                                  ? "max-w-[80%] rounded-lg px-3 py-2 bg-primary text-primary-foreground text-xs whitespace-pre-wrap"
+                                  : "max-w-[90%] rounded-lg px-3 py-2 bg-background border text-xs whitespace-pre-wrap"
+                              }
+                            >
+                              {block.text}
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (block.type === "tool_use") {
+                        return (
+                          <ProposalCard
+                            key={j}
+                            block={block}
+                            onApprove={() => approveProposal(i, j, block)}
+                            onReject={() => rejectProposal(i, j, block)}
+                            disabled={sending}
+                          />
+                        );
+                      }
+                      if (block.type === "tool_result") {
+                        // Confirmation that a tool ran. Don't show inline —
+                        // the approve card already shows the decision.
+                        return null;
+                      }
+                      return null;
+                    })}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
             {sending && (
               <div className="flex justify-start">
@@ -685,9 +878,9 @@ function OverseerChatPanel({ postId }: { postId: string }) {
             </Button>
           </div>
           <div className="text-[10px] text-muted-foreground">
-            Phase 1: read-only. Overseer suggests edits — copy them into
-            <code className="mx-1">/internal/marketing-engine/settings</code>
-            manually. Phase 2 will add direct apply. Cmd/Ctrl+Enter to send.
+            Phase 2: Overseer can propose settings changes inline — review the
+            diff, click Approve to apply (audit-logged), or Reject to ask for
+            something different. Cmd/Ctrl+Enter to send.
           </div>
         </div>
       )}
@@ -768,4 +961,148 @@ function VideoPreview({ post }: { post: MarketingPost }) {
       )}
     </div>
   );
+}
+
+// Renders a propose_setting_change tool_use block as an inline approve-
+// reject card. Shows a compact diff so the operator can verify the
+// change before applying. Approval invokes the apply edge function;
+// rejection sends a tool_result back to Overseer so it can suggest
+// something different.
+function ProposalCard({
+  block,
+  onApprove,
+  onReject,
+  disabled,
+}: {
+  block: {
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+    _decision?: "pending" | "approved" | "rejected";
+    _appliedAt?: string;
+  };
+  onApprove: () => void;
+  onReject: () => void;
+  disabled: boolean;
+}) {
+  const decision = block._decision ?? "pending";
+  const input = block.input as {
+    setting_key?: string;
+    new_value?: unknown;
+    rationale?: string;
+  };
+  const settingKey = input.setting_key ?? "(unknown)";
+  const rationale = input.rationale ?? "";
+  const newValue = input.new_value;
+  const previewLines = describeNewValue(settingKey, newValue);
+
+  if (decision === "approved") {
+    return (
+      <div className="rounded border border-emerald-500/40 bg-emerald-500/5 p-2 text-xs">
+        <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+          <Check className="h-3.5 w-3.5" />
+          <span className="font-semibold">Applied:</span>
+          <code>{settingKey}</code>
+          {block._appliedAt && (
+            <span className="text-muted-foreground ml-auto">
+              {new Date(block._appliedAt).toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+        {rationale && (
+          <div className="mt-1 text-muted-foreground italic">{rationale}</div>
+        )}
+      </div>
+    );
+  }
+
+  if (decision === "rejected") {
+    return (
+      <div className="rounded border border-rose-500/40 bg-rose-500/5 p-2 text-xs text-rose-700 dark:text-rose-400">
+        <div className="flex items-center gap-2">
+          <X className="h-3.5 w-3.5" />
+          <span className="font-semibold">Rejected:</span>
+          <code>{settingKey}</code>
+        </div>
+      </div>
+    );
+  }
+
+  // Pending — render the approve/reject card.
+  return (
+    <div className="rounded border border-purple-500/40 bg-purple-500/5 p-3 text-xs">
+      <div className="flex items-center gap-2 mb-2">
+        <Sparkles className="h-3.5 w-3.5 text-purple-700 dark:text-purple-400" />
+        <span className="font-semibold text-purple-700 dark:text-purple-400">
+          Proposed change:
+        </span>
+        <code className="text-[11px]">{settingKey}</code>
+      </div>
+      {rationale && (
+        <div className="text-muted-foreground italic mb-2">{rationale}</div>
+      )}
+      <div className="rounded bg-muted/40 p-2 font-mono text-[10px] max-h-48 overflow-y-auto whitespace-pre-wrap break-words">
+        {previewLines}
+      </div>
+      <div className="flex items-center gap-2 mt-2">
+        <Button
+          size="sm"
+          onClick={onApprove}
+          disabled={disabled}
+          className="bg-emerald-600 hover:bg-emerald-700"
+        >
+          <Check className="h-3.5 w-3.5 mr-1" /> Apply change
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onReject}
+          disabled={disabled}
+        >
+          <X className="h-3.5 w-3.5 mr-1" /> Reject
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Compact preview of the proposed new_value. Strings shown verbatim;
+// arrays shown as numbered list with first-line preview.
+function describeNewValue(key: string, value: unknown): string {
+  if (value === undefined || value === null) return "(empty)";
+  if (typeof value === "string") {
+    if (value.length > 600) return value.slice(0, 600) + "…";
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "(empty array)";
+    const lines: string[] = [`array · ${value.length} items`];
+    for (const [i, item] of value.entries()) {
+      if (i >= 30) {
+        lines.push(`… and ${value.length - 30} more`);
+        break;
+      }
+      if (typeof item === "string") {
+        lines.push(`${i + 1}. ${item.slice(0, 200)}`);
+      } else if (item && typeof item === "object") {
+        const o = item as Record<string, unknown>;
+        const text = String(o.text ?? "").slice(0, 120);
+        const theme = o.theme ?? "";
+        const kind = o.kind ?? "";
+        lines.push(`${i + 1}. [${kind} · ${theme}] ${text}`);
+      } else {
+        lines.push(`${i + 1}. ${String(item).slice(0, 120)}`);
+      }
+    }
+    return lines.join("\n");
+  }
+  try {
+    return JSON.stringify(value, null, 2).slice(0, 1000);
+  } catch {
+    return "(unserializable)";
+  }
+  void key;
 }
