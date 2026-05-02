@@ -247,7 +247,21 @@ function PostCard({ post, onChange }: { post: MarketingPost; onChange: () => voi
         status: next.status,
         updated_at: new Date().toISOString(),
       };
-      if (next.status === "approved") updates.approved_at = new Date().toISOString();
+      if (next.status === "approved") {
+        // Hard human-approval gate. The publisher (Socials side) refuses
+        // to ship any post with approved_by IS NULL — defense against
+        // AI auto-approval bypass. Capture the authenticated user id so
+        // the row is audit-traceable to a real human click.
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        if (!userId) {
+          throw new Error(
+            "approve: not authenticated — sign in again before approving",
+          );
+        }
+        updates.approved_at = new Date().toISOString();
+        updates.approved_by = userId;
+      }
       if ("rejected_reason" in next) updates.rejected_reason = next.rejected_reason ?? null;
       if (next.scheduled_for) updates.scheduled_for = next.scheduled_for;
       const { error } = await supabase
