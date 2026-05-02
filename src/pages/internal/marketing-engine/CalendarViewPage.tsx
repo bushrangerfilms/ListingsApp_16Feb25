@@ -389,6 +389,15 @@ function MonthView({
 
 // ── Week view ──────────────────────────────────────────────────────
 
+// 12 two-hour slot anchors per day, UTC. Mirrors the migration
+// 20260502110900 contract: slot N anchors at hour N*2 UTC.
+const SLOT_HOURS = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22] as const;
+
+// Look up the slot index (0..11) of a UTC timestamp.
+function slotIndexOf(t: Date): number {
+  return Math.floor(t.getUTCHours() / 2);
+}
+
 function WeekView({
   currentWeek,
   onPrev,
@@ -427,12 +436,20 @@ function WeekView({
     return out;
   }, [weekStart]);
 
-  const postsByDay = useMemo(() => {
-    const map = new Map<string, PostRow[]>();
+  // Slot grid: keyed by `${dayIso}|${slotIdx}`. Active posts collide-free
+  // (one per slot via the unique partial index in DB); rejected/failed
+  // can pile up but are visually distinct enough to share a cell.
+  const postBySlot = useMemo(() => {
+    const map = new Map<string, PostRow>();
     for (const p of posts ?? []) {
       if (!p.scheduled_for) continue;
-      const key = p.scheduled_for.slice(0, 10);
-      map.set(key, [...(map.get(key) ?? []), p]);
+      const dt = new Date(p.scheduled_for);
+      const dayKey = format(dt, "yyyy-MM-dd");
+      const key = `${dayKey}|${slotIndexOf(dt)}`;
+      // First wins — should never collide for active posts due to DB
+      // unique index on scheduled_for. Rejected/failed siblings get
+      // dropped in this view (visible in Review tab + Recent failures).
+      if (!map.has(key)) map.set(key, p);
     }
     return map;
   }, [posts]);
@@ -465,61 +482,102 @@ function WeekView({
           </div>
           <div className="flex items-center gap-3 text-xs">
             <KpiPill label="Posts in view" value={total} />
+            <span className="text-muted-foreground text-[10px]">
+              12 slots/day · 2h each · UTC
+            </span>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-7 gap-2">
+      <CardContent className="overflow-x-auto">
+        {/* Day header row: time-label gutter + 7 day columns */}
+        <div
+          className="grid gap-1 mb-1"
+          style={{ gridTemplateColumns: "60px repeat(7, minmax(0, 1fr))" }}
+        >
+          <div /> {/* gutter spacer */}
           {days.map((day, i) => {
-            const dayPosts = postsByDay.get(format(day, "yyyy-MM-dd")) ?? [];
             const today = isToday(day);
             return (
               <div
                 key={day.toISOString()}
                 className={cn(
-                  "min-h-[480px] border rounded-md p-2 flex flex-col",
-                  today ? "border-primary ring-1 ring-primary/40 bg-primary/5" : "bg-background",
+                  "text-center py-1.5 border-b text-xs",
+                  today && "bg-primary/5",
                 )}
               >
-                <div className="flex items-center justify-between mb-2 pb-2 border-b">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      {weekDayHeaders[i]}
-                    </div>
-                    <div
-                      className={cn(
-                        "text-lg font-semibold",
-                        today && "text-primary",
-                      )}
-                    >
-                      {format(day, "d")}
-                    </div>
-                  </div>
-                  {dayPosts.length > 0 && (
-                    <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                      {dayPosts.length}
-                    </Badge>
-                  )}
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {weekDayHeaders[i]}
                 </div>
-                <div className="space-y-1.5 flex-1 overflow-y-auto">
-                  {dayPosts.length === 0 ? (
-                    <div className="text-[10px] text-muted-foreground text-center py-4">
-                      No posts
-                    </div>
-                  ) : (
-                    dayPosts.map((p) => (
-                      <PostCard
-                        key={p.id}
-                        post={p}
-                        onClick={() => onPostClick(p.id)}
-                      />
-                    ))
+                <div
+                  className={cn(
+                    "font-semibold",
+                    today && "text-primary",
                   )}
+                >
+                  {format(day, "d MMM")}
                 </div>
               </div>
             );
           })}
         </div>
+
+        {/* Slot rows: one row per 2-hour slot, 12 rows */}
+        {SLOT_HOURS.map((hour) => (
+          <div
+            key={hour}
+            className="grid gap-1 mb-1"
+            style={{ gridTemplateColumns: "60px repeat(7, minmax(0, 1fr))" }}
+          >
+            <div className="flex items-start justify-end pr-2 pt-1.5">
+              <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
+                {String(hour).padStart(2, "0")}:00
+              </span>
+            </div>
+            {days.map((day) => {
+              const dayKey = format(day, "yyyy-MM-dd");
+              const slotIdx = SLOT_HOURS.indexOf(hour);
+              const post = postBySlot.get(`${dayKey}|${slotIdx}`);
+              const today = isToday(day);
+              return (
+                <div
+                  key={`${dayKey}-${hour}`}
+                  className={cn(
+                    "min-h-[42px] border rounded p-0.5 transition-colors",
+                    today && "bg-primary/5",
+                    post ? "" : "bg-muted/20 border-dashed border-muted-foreground/15",
+                  )}
+                >
+                  {post ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => onPostClick(post.id)}
+                          className={cn(
+                            "w-full h-full text-left text-[10px] leading-tight rounded px-1.5 py-1 border truncate hover:opacity-80 transition-opacity",
+                            STATUS_CHIP[post.status] ?? STATUS_CHIP.planning,
+                          )}
+                        >
+                          <div className="flex items-center gap-1">
+                            <span
+                              className={cn(
+                                "h-1.5 w-1.5 rounded-full shrink-0",
+                                STATUS_DOT[post.status] ?? STATUS_DOT.planning,
+                              )}
+                            />
+                            <span className="truncate">{post.topic}</span>
+                          </div>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <PostTooltip post={post} />
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </CardContent>
     </Card>
   );
@@ -776,44 +834,10 @@ function PostPill({
   );
 }
 
-function PostCard({
-  post,
-  onClick,
-}: {
-  post: PostRow;
-  onClick: () => void;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          onClick={onClick}
-          className={cn(
-            "w-full text-left text-xs rounded px-2 py-1.5 border hover:opacity-80 transition-opacity",
-            STATUS_CHIP[post.status] ?? STATUS_CHIP.planning,
-          )}
-        >
-          <div className="flex items-center gap-1 mb-0.5">
-            <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full shrink-0",
-                STATUS_DOT[post.status] ?? STATUS_DOT.planning,
-              )}
-            />
-            <span className="font-mono text-[10px] tabular-nums">
-              {post.scheduled_for &&
-                format(new Date(post.scheduled_for), "HH:mm")}
-            </span>
-          </div>
-          <div className="text-[11px] truncate font-medium">{post.topic}</div>
-        </button>
-      </TooltipTrigger>
-      <TooltipContent className="max-w-xs">
-        <PostTooltip post={post} />
-      </TooltipContent>
-    </Tooltip>
-  );
-}
+// PostCard removed — Week view's old day-column layout was replaced
+// with a slot grid (12 rows × 7 days) that renders posts inline.
+// PostPill (above) handles the Month view; the slot grid uses
+// dedicated inline rendering per cell.
 
 function PostTooltip({ post }: { post: PostRow }) {
   return (
