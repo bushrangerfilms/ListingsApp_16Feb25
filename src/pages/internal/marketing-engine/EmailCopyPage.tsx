@@ -658,6 +658,10 @@ const TOOL_LABELS: Record<string, string> = {
   get_variation_stats: "Get variation stats",
   lint_for_spam: "Spam lint",
   push_draft_to_plusvibe: "Push to PlusVibe",
+  list_workspace_leads: "List workspace leads",
+  plan_bucketing: "Plan bucketed launch",
+  execute_bucketing: "Execute bucketed launch",
+  get_bucket_attribution: "Bucket attribution report",
 };
 
 function ChatTab() {
