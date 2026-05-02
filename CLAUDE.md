@@ -211,6 +211,24 @@ RLS policies enforce org isolation. All queries scoped by `organization_id`.
 - All licence/registration displays use `regulatory.licenceDisplayLabel` (not hardcoded "PSRA")
 - DB column remains `psr_licence_number` (generic text field) — labels are locale-driven
 
+## Marketing Engine UI (super-admin only)
+
+Internal social automation for AutoListing's own brand. Backend lives in the Socials repo (`Socials/supabase/functions/marketing-engine-*`); this repo hosts the operator UI under `src/pages/internal/marketing-engine/` (12+ pages). Routes wired via `SuperAdminOnlyRouteGuard` in `src/App.tsx`. **Canonical doc: `~/Documents/Claude/HANDOVER-marketing-engine.md`.**
+
+### Pages
+- `MarketingEngineDashboard.tsx` — KPIs, Preview-next-pick, Publisher safety, Engagement panels, Top performers, Recently posted
+- `ApprovalQueuePage.tsx` — review + approve drafts. Each card has an inline **Overseer chat panel** (Phase 2 tool-use)
+- `CalendarViewPage.tsx` — Month / Week / Review tabs with 12 × 7 slot grid
+- `OverseerStandalonePage.tsx` — cross-post strategy chat + setting-change audit history
+- `SettingsPage.tsx` — direct edit of taste rubric, banned phrases, etc
+- `SocialAccountsPage.tsx` — connect TikTok / YouTube / LinkedIn / FB / IG via Upload Post OAuth
+- `BrandAssetsPage.tsx`, `AnalyticsDashboardPage.tsx`, `CostTelemetryPage.tsx`, `ProviderRegistryPage.tsx`, `RoutingPage.tsx`, `ResearchInboxPage.tsx`, `ModelWatchInboxPage.tsx`, `EmailCopyPage.tsx`
+
+### Hard rules (mirror Socials CLAUDE.md "Marketing Engine" section)
+- **Approve mutation** must capture `auth.getUser().id` into `approved_by`. Without it, the publisher's hard gate refuses to ship. Already enforced in `ApprovalQueuePage.tsx` and `CalendarViewPage.tsx` (Review tab).
+- **Overseer chat** uses Anthropic tool-use to propose setting changes. UI parses the content blocks and renders `tool_use` as approve/reject cards. Approve invokes `marketing-engine-overseer-apply-change` (validates value + writes audit row).
+- **localStorage keys** for chat history: per-post is `me-overseer-chat-{post_id}`, standalone is `me-overseer-standalone-chat-v1`.
+
 ## AL — in-app AI chatbot (shipped 2026-04-27)
 
 The floating sparkle-button assistant available across both subdomains. Backend (edge functions, KB pipeline, DB tables) lives in this repo; the React components are mirrored into Socials.
