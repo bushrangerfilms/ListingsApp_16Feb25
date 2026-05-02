@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,6 +12,11 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  MessageSquare,
+  ChevronRight,
+  Wrench,
+  RotateCcw,
+  AlertCircle,
 } from "lucide-react";
 import {
   Card,
@@ -124,8 +129,12 @@ export default function EmailCopyPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="generate" className="space-y-4">
+      <Tabs defaultValue="chat" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="chat" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Chat
+          </TabsTrigger>
           <TabsTrigger value="generate" className="gap-2">
             <Sparkles className="h-4 w-4" />
             Generate New Campaign
@@ -139,6 +148,10 @@ export default function EmailCopyPage() {
             PlusVibe Campaigns
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="chat" className="space-y-4">
+          <ChatTab />
+        </TabsContent>
 
         <TabsContent value="generate" className="space-y-4">
           <GenerateTab />
@@ -600,6 +613,319 @@ function ImproveTab() {
       </Card>
     </div>
   );
+}
+
+// ── Chat tab (tool-using agent) ──────────────────────────────────────
+
+type TraceEvent =
+  | { kind: "assistant_text"; text: string }
+  | {
+    kind: "tool_call";
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+    is_error: boolean;
+    result_text: string;
+    ui_payload?: unknown;
+  }
+  | { kind: "stop"; reason: string; iteration: number }
+  | { kind: "error"; message: string };
+
+interface ChatTurn {
+  id: string;
+  user_message: string;
+  trace: TraceEvent[];
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens: number;
+    cache_creation_input_tokens: number;
+    iterations: number;
+  };
+  pending?: boolean;
+  error?: string;
+}
+
+interface MessageParam {
+  role: "user" | "assistant";
+  content: unknown;
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  improve_variation: "Improve variation",
+  generate_campaign: "Generate campaign",
+  list_plusvibe_campaigns: "List PlusVibe campaigns",
+  get_variation_stats: "Get variation stats",
+  lint_for_spam: "Spam lint",
+  push_draft_to_plusvibe: "Push to PlusVibe",
+};
+
+function ChatTab() {
+  const { toast } = useToast();
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [messages, setMessages] = useState<MessageParam[]>([]);
+  const [draft, setDraft] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [turns]);
+
+  const send = useMutation({
+    mutationFn: async (user_message: string) => {
+      const { data, error } = await supabase.functions.invoke(
+        "marketing-engine-email-chat",
+        { body: { messages, user_message } },
+      );
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "chat turn failed");
+      return data as {
+        trace: TraceEvent[];
+        updated_messages: MessageParam[];
+        usage: ChatTurn["usage"];
+      };
+    },
+    onMutate: (user_message: string) => {
+      const id = crypto.randomUUID();
+      setTurns((t) => [...t, { id, user_message, trace: [], pending: true }]);
+      return { id };
+    },
+    onSuccess: (data, _vars, ctx) => {
+      setMessages(data.updated_messages);
+      setTurns((t) =>
+        t.map((turn) =>
+          turn.id === ctx?.id
+            ? { ...turn, trace: data.trace, usage: data.usage, pending: false }
+            : turn,
+        ),
+      );
+    },
+    onError: (e: Error, _vars, ctx) => {
+      setTurns((t) =>
+        t.map((turn) =>
+          turn.id === ctx?.id
+            ? { ...turn, pending: false, error: e.message }
+            : turn,
+        ),
+      );
+      toast({ title: "Chat error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = draft.trim();
+    if (!text || send.isPending) return;
+    setDraft("");
+    send.mutate(text);
+  };
+
+  const reset = () => {
+    setTurns([]);
+    setMessages([]);
+    setDraft("");
+  };
+
+  return (
+    <Card className="flex flex-col" style={{ height: "calc(100vh - 280px)", minHeight: 560 }}>
+      <CardHeader className="pb-3 flex flex-row items-start justify-between gap-3 shrink-0">
+        <div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Email writer agent
+            <Badge variant="outline" className="text-[10px] font-mono">opus 4.7 · adaptive thinking · xhigh effort</Badge>
+          </CardTitle>
+          <CardDescription>
+            Tool-using copywriting partner. Has access to: improve, generate, list PlusVibe campaigns,
+            get variation stats, spam lint, push to PlusVibe. State-mutating tools (push) require your
+            explicit go-ahead.
+          </CardDescription>
+        </div>
+        <Button variant="ghost" size="sm" onClick={reset} disabled={turns.length === 0} className="gap-2">
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reset
+        </Button>
+      </CardHeader>
+
+      <CardContent className="flex-1 overflow-hidden flex flex-col gap-3 pb-3">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-4">
+          {turns.length === 0 ? (
+            <ChatEmptyState />
+          ) : (
+            turns.map((t) => <TurnView key={t.id} turn={t} />)
+          )}
+        </div>
+
+        <form onSubmit={submit} className="flex gap-2 shrink-0">
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                submit(e);
+              }
+            }}
+            placeholder="Ask the agent anything — 'rewrite UK Launch step 1A as time-saved angle', 'which angle is converting on UK Launch', 'draft a NZ-launch campaign for solo agents using Canva'…"
+            rows={3}
+            className="font-sans text-sm resize-none"
+            disabled={send.isPending}
+          />
+          <Button type="submit" disabled={!draft.trim() || send.isPending} className="self-end gap-2">
+            {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Send
+          </Button>
+        </form>
+        <div className="text-[10px] text-muted-foreground shrink-0">
+          ⌘+Enter to send. Conversation lives in this tab only — Reset wipes it. Tool calls stream
+          back as a timeline; expand any one for the JSON input/output.
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ChatEmptyState() {
+  return (
+    <div className="text-sm text-muted-foreground py-12 text-center space-y-3">
+      <MessageSquare className="h-8 w-8 mx-auto opacity-40" />
+      <div className="font-medium">Start a conversation with the email writer agent</div>
+      <div className="text-xs space-y-1.5 max-w-md mx-auto">
+        <div>Try: <em>"What campaigns are currently running?"</em></div>
+        <div>Or: <em>"Show me variation stats for UK Launch and tell me which angle is winning."</em></div>
+        <div>Or: <em>"Draft an Irish-launch campaign targeting solo auctioneers in Galway/Limerick."</em></div>
+      </div>
+    </div>
+  );
+}
+
+function TurnView({ turn }: { turn: ChatTurn }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <div className="bg-primary/10 text-primary rounded-lg px-3 py-2 text-sm max-w-[85%] whitespace-pre-wrap">
+          {turn.user_message}
+        </div>
+      </div>
+
+      {turn.pending && turn.trace.length === 0 && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Agent is thinking…
+        </div>
+      )}
+
+      {turn.trace.map((ev, i) => (
+        <TraceEventView key={i} event={ev} />
+      ))}
+
+      {turn.error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-xs">{turn.error}</AlertDescription>
+        </Alert>
+      )}
+
+      {turn.usage && (
+        <div className="text-[10px] text-muted-foreground font-mono pl-1">
+          {turn.usage.iterations} iter · in {turn.usage.input_tokens} (
+          {turn.usage.cache_read_input_tokens} cached) · out {turn.usage.output_tokens}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TraceEventView({ event }: { event: TraceEvent }) {
+  if (event.kind === "assistant_text") {
+    return (
+      <div className="bg-muted/30 rounded-lg px-3 py-2 text-sm whitespace-pre-wrap">
+        {event.text}
+      </div>
+    );
+  }
+  if (event.kind === "tool_call") {
+    return <ToolCallView event={event} />;
+  }
+  if (event.kind === "error") {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription className="text-xs">{event.message}</AlertDescription>
+      </Alert>
+    );
+  }
+  if (event.kind === "stop" && event.reason !== "end_turn") {
+    return (
+      <div className="text-[10px] text-muted-foreground italic">
+        stopped: {event.reason} (iter {event.iteration})
+      </div>
+    );
+  }
+  return null;
+}
+
+function ToolCallView({
+  event,
+}: {
+  event: Extract<TraceEvent, { kind: "tool_call" }>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const label = TOOL_LABELS[event.name] ?? event.name;
+  return (
+    <div
+      className={`border rounded-md text-xs ${
+        event.is_error ? "border-destructive/40 bg-destructive/5" : "border-muted-foreground/20 bg-muted/20"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/30 text-left"
+      >
+        <ChevronRight
+          className={`h-3.5 w-3.5 transition-transform shrink-0 ${expanded ? "rotate-90" : ""}`}
+        />
+        <Wrench className="h-3.5 w-3.5 shrink-0" />
+        <span className="font-medium">{label}</span>
+        {event.is_error && (
+          <Badge variant="destructive" className="text-[10px] ml-1">
+            error
+          </Badge>
+        )}
+        <code className="text-muted-foreground truncate flex-1 ml-2">
+          {summariseInput(event.input)}
+        </code>
+      </button>
+      {expanded && (
+        <div className="border-t border-muted-foreground/20 px-3 py-2 space-y-2">
+          <div>
+            <div className="text-[10px] text-muted-foreground mb-1">input</div>
+            <pre className="bg-background rounded p-2 overflow-x-auto text-[11px] leading-relaxed">
+              {JSON.stringify(event.input, null, 2)}
+            </pre>
+          </div>
+          <div>
+            <div className="text-[10px] text-muted-foreground mb-1">result</div>
+            <pre className="bg-background rounded p-2 overflow-x-auto text-[11px] leading-relaxed max-h-72 overflow-y-auto whitespace-pre-wrap">
+              {event.result_text}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function summariseInput(input: Record<string, unknown>): string {
+  const entries = Object.entries(input);
+  if (entries.length === 0) return "()";
+  const parts = entries.slice(0, 3).map(([k, v]) => {
+    const s = typeof v === "string" ? v : JSON.stringify(v);
+    return `${k}=${s.length > 30 ? s.slice(0, 30) + "…" : s}`;
+  });
+  return parts.join(" · ");
 }
 
 // ── Campaigns tab ────────────────────────────────────────────────────
