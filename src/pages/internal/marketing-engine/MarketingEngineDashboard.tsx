@@ -386,6 +386,78 @@ export default function MarketingEngineDashboard() {
     },
   });
 
+  // Top performers — posted posts in the last 30 days ranked by total
+  // YouTube view count. Surfaces winners so the operator can see what's
+  // working at a glance, and the closed-loop optimization decisions
+  // (template / topic / hook adjustments) can be sanity-checked against
+  // the actual leader board.
+  const { data: topPerformers } = useQuery<Array<{
+    id: string;
+    topic: string;
+    posted_at: string | null;
+    template_slug: string | null;
+    hook_style: string | null;
+    tone: string | null;
+    view_count: number;
+    like_count: number;
+    post_url: string | null;
+    caption_excerpt: string | null;
+  }>>({
+    queryKey: ["marketing-engine-top-performers"],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString();
+      const { data } = await supabase
+        .from("marketing_engine_posts")
+        .select(
+          "id, topic, posted_at, variation_axes, copy_variants, engagement_log, template:marketing_engine_templates(slug)",
+        )
+        .eq("status", "posted")
+        .gte("posted_at", since)
+        .limit(50);
+      type Row = {
+        id: string;
+        topic: string;
+        posted_at: string | null;
+        variation_axes: { hook_style?: string; tone?: string } | null;
+        copy_variants: Record<string, { caption?: string }> | null;
+        engagement_log: PostedPost["engagement_log"];
+        template: { slug?: string } | null;
+      };
+      const rows = (data ?? []) as unknown as Row[];
+      const enriched = rows
+        .map((r) => {
+          const yt = r.engagement_log?.metrics?.youtube;
+          const tt = r.engagement_log?.metrics?.tiktok;
+          const view = (yt?.engagement?.view_count ?? 0) +
+            (tt?.engagement?.view_count ?? 0);
+          const like = (yt?.engagement?.like_count ?? 0) +
+            (tt?.engagement?.like_count ?? 0);
+          const url = yt?.raw?.results?.[0]?.post_url ??
+            tt?.raw?.results?.[0]?.post_url ?? null;
+          const caption = r.copy_variants
+            ? Object.values(r.copy_variants)[0]?.caption ?? null
+            : null;
+          return {
+            id: r.id,
+            topic: r.topic,
+            posted_at: r.posted_at,
+            template_slug: r.template?.slug ?? null,
+            hook_style: r.variation_axes?.hook_style ?? null,
+            tone: r.variation_axes?.tone ?? null,
+            view_count: view,
+            like_count: like,
+            post_url: url,
+            caption_excerpt: caption ? caption.slice(0, 80) : null,
+          };
+        })
+        .filter((r) => r.view_count > 0)
+        .sort((a, b) => b.view_count - a.view_count)
+        .slice(0, 5);
+      return enriched;
+    },
+    refetchInterval: 60_000,
+  });
+
   // Variation-axis engagement aggregates. Three axes (tone, hook_style,
   // cta_style) — fetched in parallel via the parameterised SQL function.
   // Hook style is the highest-leverage axis per the taste rubric.
@@ -1078,6 +1150,85 @@ export default function MarketingEngineDashboard() {
                         {p.posted_at ? new Date(p.posted_at).toLocaleString() : "—"}
                       </span>
                     </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Top performers — posts ranked by total view count over 30d.
+            Only renders once at least one post has measurable engagement,
+            so the panel doesn't sit empty in cold-start. The leaderboard
+            is the operator's narrative view of what's actually working —
+            template / hook / topic patterns can be cross-checked against
+            it when deciding whether to flip the engagement-adjustment
+            master switches on. */}
+        {topPerformers && topPerformers.length > 0 && (
+          <Card className="border-amber-500/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                <BarChart3 className="h-4 w-4" />
+                Top performers (30d)
+              </CardTitle>
+              <CardDescription>
+                Posted posts ranked by total view count across measured
+                platforms. The closed-loop optimization layers (template,
+                topic, variation-axis) bias future picks toward patterns
+                that show up here repeatedly. Click a row to open the live post.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                {topPerformers.map((p, i) => {
+                  const Tag = p.post_url ? "a" : "div";
+                  return (
+                    <Tag
+                      key={p.id}
+                      {...(p.post_url
+                        ? {
+                            href: p.post_url,
+                            target: "_blank",
+                            rel: "noopener noreferrer",
+                          }
+                        : {})}
+                      className={`flex items-start gap-3 py-2 text-sm border-b last:border-b-0 ${
+                        p.post_url ? "hover:bg-muted/30 cursor-pointer" : ""
+                      }`}
+                    >
+                      <span className="text-xs font-mono text-muted-foreground w-6 shrink-0 mt-0.5">
+                        #{i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <code className="text-xs">{p.topic}</code>
+                          {p.template_slug && (
+                            <Badge variant="outline" className="text-[10px] h-4 px-1">
+                              {p.template_slug}
+                            </Badge>
+                          )}
+                          {p.hook_style && (
+                            <Badge variant="outline" className="text-[10px] h-4 px-1 text-amber-700 dark:text-amber-400 border-amber-500/30">
+                              {p.hook_style}
+                            </Badge>
+                          )}
+                        </div>
+                        {p.caption_excerpt && (
+                          <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                            {p.caption_excerpt}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-xs tabular-nums w-20 shrink-0 text-right">
+                        <span className="font-semibold">{p.view_count}</span>
+                        <span className="text-muted-foreground"> views</span>
+                      </span>
+                      {p.like_count > 0 && (
+                        <span className="text-xs tabular-nums text-muted-foreground w-16 shrink-0 text-right">
+                          {p.like_count} ♥
+                        </span>
+                      )}
+                    </Tag>
                   );
                 })}
               </div>
