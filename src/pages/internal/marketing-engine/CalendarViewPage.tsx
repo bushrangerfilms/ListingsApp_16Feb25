@@ -12,6 +12,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { Sparkles, Trash2 } from "lucide-react";
 import {
   addDays,
   addMonths,
@@ -63,6 +64,33 @@ interface PostRow {
   channels: string[] | null;
   scheduled_for: string | null;
 }
+
+// Schedule-slot row from marketing_engine_schedule_slots. Slots are
+// pure reservations until the processor fires the producer at slot
+// anchor. status='pending' = empty cell; 'generating' = producer
+// running; 'fulfilled' = post linked via post_id; 'cancelled' = greyed.
+interface SlotRow {
+  id: string;
+  slot_anchor: string;
+  status: "pending" | "generating" | "fulfilled" | "cancelled";
+  post_id: string | null;
+  generation_attempts: number;
+  cancelled_reason: string | null;
+}
+
+const SLOT_STATUS_CHIP: Record<SlotRow["status"], string> = {
+  pending: "bg-slate-200/40 text-slate-600 border-slate-400/30 border-dashed",
+  generating: "bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/30",
+  fulfilled: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30",
+  cancelled: "bg-muted/40 text-muted-foreground border-muted-foreground/20 line-through",
+};
+
+const SLOT_STATUS_DOT: Record<SlotRow["status"], string> = {
+  pending: "bg-slate-400",
+  generating: "bg-purple-500 animate-pulse",
+  fulfilled: "bg-blue-500",
+  cancelled: "bg-muted-foreground",
+};
 
 interface ReviewPostRow extends PostRow {
   copy_variants: Record<string, { caption: string }> | null;
@@ -245,12 +273,38 @@ function MonthView({
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
   const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
 
-  const { data: posts } = useQuery<PostRow[]>({
-    queryKey: ["me-calendar-posts-month", currentMonth.toISOString().slice(0, 7)],
+  // Slot-centric query post-2026-05-04. The slot table is the canonical
+  // schedule; posts are the content that fulfills slots. We embed the
+  // post via PostgREST relation so each row has both slot metadata
+  // (status, anchor) and post details (topic, status, channels) when
+  // the slot is fulfilled.
+  const { data: slots } = useQuery<
+    Array<SlotRow & { post: PostRow | null }>
+  >({
+    queryKey: ["me-calendar-slots-month", currentMonth.toISOString().slice(0, 7)],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketing_engine_schedule_slots")
+        .select(
+          "id, slot_anchor, status, post_id, generation_attempts, cancelled_reason, post:marketing_engine_posts(id, topic, topic_category, status, channels, scheduled_for)",
+        )
+        .gte("slot_anchor", calendarStart.toISOString())
+        .lte("slot_anchor", calendarEnd.toISOString())
+        .order("slot_anchor");
+      return (data ?? []) as unknown as Array<SlotRow & { post: PostRow | null }>;
+    },
+    refetchInterval: 30_000,
+  });
+
+  // Also pull POSTED rows (no slot link in some cases — historical or
+  // legacy). Stays in the calendar so the operator still sees ship history.
+  const { data: postedHistory } = useQuery<PostRow[]>({
+    queryKey: ["me-calendar-posted-month", currentMonth.toISOString().slice(0, 7)],
     queryFn: async () => {
       const { data } = await supabase
         .from("marketing_engine_posts")
         .select("id, topic, topic_category, status, channels, scheduled_for")
+        .eq("status", "posted")
         .not("scheduled_for", "is", null)
         .gte("scheduled_for", calendarStart.toISOString())
         .lte("scheduled_for", calendarEnd.toISOString())
@@ -269,23 +323,48 @@ function MonthView({
     return out;
   }, [calendarStart, calendarEnd]);
 
-  const postsByDay = useMemo(() => {
-    const map = new Map<string, PostRow[]>();
-    for (const p of posts ?? []) {
+  // Bucket slots by day. Posted-history rows that don't have a matching
+  // slot get stitched in as faux-fulfilled slots so the calendar shows
+  // ship history continuously.
+  const slotsByDay = useMemo(() => {
+    const map = new Map<string, Array<SlotRow & { post: PostRow | null }>>();
+    for (const s of slots ?? []) {
+      const key = s.slot_anchor.slice(0, 10);
+      map.set(key, [...(map.get(key) ?? []), s]);
+    }
+    const slotPostIds = new Set(
+      (slots ?? []).map((s) => s.post_id).filter(Boolean),
+    );
+    for (const p of postedHistory ?? []) {
       if (!p.scheduled_for) continue;
+      if (slotPostIds.has(p.id)) continue; // already covered via slot
       const key = p.scheduled_for.slice(0, 10);
-      map.set(key, [...(map.get(key) ?? []), p]);
+      const fauxSlot: SlotRow & { post: PostRow | null } = {
+        id: `legacy-${p.id}`,
+        slot_anchor: p.scheduled_for,
+        status: "fulfilled",
+        post_id: p.id,
+        generation_attempts: 1,
+        cancelled_reason: null,
+        post: p,
+      };
+      map.set(key, [...(map.get(key) ?? []), fauxSlot]);
+    }
+    // Sort each day's slots by anchor.
+    for (const [k, list] of map) {
+      list.sort((a, b) => a.slot_anchor.localeCompare(b.slot_anchor));
+      map.set(k, list);
     }
     return map;
-  }, [posts]);
+  }, [slots, postedHistory]);
 
-  const total = posts?.length ?? 0;
-  const posted = (posts ?? []).filter((p) => p.status === "posted").length;
-  const upcoming = (posts ?? []).filter(
-    (p) =>
-      (p.status === "approved" || p.status === "scheduled") &&
-      p.scheduled_for &&
-      new Date(p.scheduled_for) > new Date(),
+  const total = slots?.length ?? 0;
+  const posted = (postedHistory ?? []).length;
+  const upcoming = (slots ?? []).filter(
+    (s) =>
+      s.status !== "cancelled" &&
+      s.slot_anchor &&
+      new Date(s.slot_anchor) > new Date(),
   ).length;
 
   const weekDayHeaders = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -331,7 +410,7 @@ function MonthView({
         <div className="grid grid-cols-7 gap-1">
           {days.map((day) => {
             const inMonth = isSameMonth(day, currentMonth);
-            const dayPosts = postsByDay.get(format(day, "yyyy-MM-dd")) ?? [];
+            const daySlots = slotsByDay.get(format(day, "yyyy-MM-dd")) ?? [];
             const today = isToday(day);
             return (
               <div
@@ -356,25 +435,29 @@ function MonthView({
                   >
                     {format(day, "d")}
                   </button>
-                  {dayPosts.length > 0 && (
+                  {daySlots.length > 0 && (
                     <span className="text-[10px] text-muted-foreground">
-                      {dayPosts.length}
+                      {daySlots.length}
                     </span>
                   )}
                 </div>
 
                 <div className="space-y-1">
-                  {dayPosts.slice(0, 4).map((p) => (
-                    <PostPill key={p.id} post={p} onClick={() => onPostClick(p.id)} />
+                  {daySlots.slice(0, 4).map((s) => (
+                    <SlotPill
+                      key={s.id}
+                      slot={s}
+                      onPostClick={onPostClick}
+                    />
                   ))}
-                  {dayPosts.length > 4 && (
+                  {daySlots.length > 4 && (
                     <button
                       onClick={() =>
                         onWeekClick(startOfWeek(day, { weekStartsOn: 1 }))
                       }
                       className="w-full text-[10px] text-muted-foreground text-center py-0.5 hover:text-foreground transition-colors"
                     >
-                      +{dayPosts.length - 4} more
+                      +{daySlots.length - 4} more
                     </button>
                   )}
                 </div>
@@ -388,6 +471,61 @@ function MonthView({
 }
 
 // ── Week view ──────────────────────────────────────────────────────
+
+// Hook + helpers for the slot-action mutations (Generate now, Cancel).
+// Shared between MonthView + WeekView.
+function useSlotActions() {
+  const queryClient = useQueryClient();
+
+  const generateNow = useMutation({
+    mutationFn: async (slotId: string) => {
+      const { data, error } = await supabase.functions.invoke(
+        "marketing-engine-slot-processor",
+        { body: { slot_id: slotId } },
+      );
+      if (error) throw error;
+      if (!(data as { ok?: boolean }).ok) {
+        throw new Error((data as { error?: string }).error ?? "generation failed");
+      }
+      return data as { post_id?: string };
+    },
+    onSuccess: (data) => {
+      toast.success("Generation started", {
+        description: data.post_id
+          ? `Post ${data.post_id.slice(0, 8)}… being drafted`
+          : "Producer firing",
+      });
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-slots-month"] });
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-slots-week"] });
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-pending-count"] });
+    },
+    onError: (err: Error) =>
+      toast.error("Generation failed", { description: err.message }),
+  });
+
+  const cancelSlot = useMutation({
+    mutationFn: async (slotId: string) => {
+      const { error } = await supabase
+        .from("marketing_engine_schedule_slots")
+        .update({
+          status: "cancelled",
+          cancelled_reason: "manually cancelled by operator",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", slotId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Slot cancelled");
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-slots-month"] });
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-slots-week"] });
+    },
+    onError: (err: Error) =>
+      toast.error("Cancel failed", { description: err.message }),
+  });
+
+  return { generateNow, cancelSlot };
+}
 
 // 12 two-hour slot anchors per day, UTC. Mirrors the migration
 // 20260502110900 contract: slot N anchors at hour N*2 UTC.
@@ -838,6 +976,140 @@ function PostPill({
 // with a slot grid (12 rows × 7 days) that renders posts inline.
 // PostPill (above) handles the Month view; the slot grid uses
 // dedicated inline rendering per cell.
+
+// SlotPill — renders a slot from marketing_engine_schedule_slots.
+// Status drives styling + actions:
+//   - pending:   dashed muted cell with hover Generate now / Cancel actions
+//   - generating: animated pulse, spinner, no actions (in flight)
+//   - fulfilled: post topic pill, click → queue
+//   - cancelled: greyed strikethrough
+function SlotPill({
+  slot,
+  onPostClick,
+}: {
+  slot: SlotRow & { post: PostRow | null };
+  onPostClick: (id: string) => void;
+}) {
+  const { generateNow, cancelSlot } = useSlotActions();
+  const time = format(new Date(slot.slot_anchor), "HH:mm");
+
+  if (slot.status === "fulfilled" && slot.post) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={() => slot.post && onPostClick(slot.post.id)}
+            className={cn(
+              "w-full text-left text-[10px] leading-tight rounded px-1.5 py-1 border truncate hover:opacity-80 transition-opacity",
+              STATUS_CHIP[slot.post.status] ?? STATUS_CHIP.planning,
+            )}
+          >
+            <div className="flex items-center gap-1">
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full shrink-0",
+                  STATUS_DOT[slot.post.status] ?? STATUS_DOT.planning,
+                )}
+              />
+              <span className="truncate">
+                {time} · {slot.post.topic}
+              </span>
+            </div>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">
+          <PostTooltip post={slot.post} />
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // Pending / generating / cancelled — slot-status pill with inline
+  // actions on hover.
+  const label =
+    slot.status === "generating"
+      ? `${time} · generating…`
+      : slot.status === "cancelled"
+        ? `${time} · cancelled`
+        : `${time} · empty slot`;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className={cn(
+            "group w-full text-left text-[10px] leading-tight rounded px-1.5 py-1 border truncate transition-opacity flex items-center gap-1",
+            SLOT_STATUS_CHIP[slot.status],
+          )}
+        >
+          <span
+            className={cn(
+              "h-1.5 w-1.5 rounded-full shrink-0",
+              SLOT_STATUS_DOT[slot.status],
+            )}
+          />
+          <span className="truncate flex-1">{label}</span>
+          {slot.status === "pending" && (
+            <span className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  generateNow.mutate(slot.id);
+                }}
+                disabled={generateNow.isPending}
+                title="Generate content now"
+                className="hover:text-purple-700 dark:hover:text-purple-400"
+              >
+                <Sparkles className="h-3 w-3" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm("Cancel this slot?")) cancelSlot.mutate(slot.id);
+                }}
+                disabled={cancelSlot.isPending}
+                title="Cancel slot"
+                className="hover:text-red-600"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs">
+        <div className="space-y-1 text-xs">
+          <div className="font-medium">
+            Slot {slot.status}
+          </div>
+          <div className="text-muted-foreground">
+            {new Date(slot.slot_anchor).toLocaleString()}
+          </div>
+          {slot.generation_attempts > 0 && (
+            <div className="text-muted-foreground">
+              Attempts: {slot.generation_attempts}/3
+            </div>
+          )}
+          {slot.cancelled_reason && (
+            <div className="text-muted-foreground italic">
+              {slot.cancelled_reason}
+            </div>
+          )}
+          {slot.status === "pending" && (
+            <div className="text-purple-700 dark:text-purple-400 mt-1">
+              Hover for Generate now / Cancel actions
+            </div>
+          )}
+          {slot.status === "generating" && (
+            <div className="text-purple-700 dark:text-purple-400">
+              Producer is drafting content right now. Refresh in ~30s.
+            </div>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 function PostTooltip({ post }: { post: PostRow }) {
   return (

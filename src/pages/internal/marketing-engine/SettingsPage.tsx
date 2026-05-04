@@ -29,6 +29,13 @@ interface SettingRow {
 const KEYS = [
   // Publishing — load-bearing for go-live
   "publish_enabled",
+  // Slot generation (lazy post-time content)
+  "slot_generation_active",
+  "slot_frequency_per_week",
+  "slot_default_hour_utc",
+  "slot_horizon_days",
+  "slot_render_ahead_minutes",
+  "slot_processor_max_per_run",
   // Taste reviewer (copy)
   "reviewer_enabled",
   "reviewer_threshold",
@@ -61,6 +68,12 @@ type SettingKey = (typeof KEYS)[number];
 
 interface DraftState {
   publish_enabled: boolean;
+  slot_generation_active: boolean;
+  slot_frequency_per_week: number;
+  slot_default_hour_utc: number;
+  slot_horizon_days: number;
+  slot_render_ahead_minutes: number;
+  slot_processor_max_per_run: number;
   reviewer_enabled: boolean;
   reviewer_threshold: number;
   reviewer_max_retries: number;
@@ -85,6 +98,12 @@ interface DraftState {
 
 const DEFAULT_DRAFT: DraftState = {
   publish_enabled: false,
+  slot_generation_active: true,
+  slot_frequency_per_week: 7,
+  slot_default_hour_utc: 9,
+  slot_horizon_days: 14,
+  slot_render_ahead_minutes: 30,
+  slot_processor_max_per_run: 3,
   reviewer_enabled: false,
   reviewer_threshold: 7,
   reviewer_max_retries: 2,
@@ -135,6 +154,7 @@ export default function SettingsPage() {
       // / Number(s) coercions guard against null / "false" / etc.
       switch (k) {
         case "publish_enabled":
+        case "slot_generation_active":
         case "reviewer_enabled":
         case "visual_reviewer_enabled":
         case "auto_iterate_on_kickback":
@@ -145,6 +165,11 @@ export default function SettingsPage() {
         case "ab_testing_enabled":
           next[k] = s.value === true;
           break;
+        case "slot_frequency_per_week":
+        case "slot_default_hour_utc":
+        case "slot_horizon_days":
+        case "slot_render_ahead_minutes":
+        case "slot_processor_max_per_run":
         case "reviewer_threshold":
         case "reviewer_max_retries":
         case "visual_reviewer_threshold":
@@ -255,6 +280,74 @@ export default function SettingsPage() {
               checked={draft.publish_enabled}
               onChange={(v) => setKey("publish_enabled", v)}
               dirty={dirty.has("publish_enabled")}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Posting cadence (lazy generation)</CardTitle>
+            <CardDescription>
+              Posts are NO LONGER pre-generated at strategist time. The slot
+              generator (daily 02:00 UTC) creates empty slots in the calendar.
+              The slot processor (every 15 min) fires the producer when a slot
+              is within <code>slot_render_ahead_minutes</code> of its anchor —
+              content is generated using the CURRENT taste rubric so Overseer
+              edits propagate immediately.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <ToggleRow
+              label="Slot generation active"
+              description="Master switch for the slot generator + processor crons. Turn OFF to pause all auto-generation while tuning the rubric."
+              checked={draft.slot_generation_active}
+              onChange={(v) => setKey("slot_generation_active", v)}
+              dirty={dirty.has("slot_generation_active")}
+            />
+            <NumberRow
+              label="Slot frequency (per week)"
+              description="Total post slots per week. 7 = daily; 14 = 2x/day; 21 = 3x/day. Slots stagger evenly across the week. Min 1, max 21."
+              value={draft.slot_frequency_per_week}
+              onChange={(v) => setKey("slot_frequency_per_week", v)}
+              dirty={dirty.has("slot_frequency_per_week")}
+              min={1}
+              max={21}
+            />
+            <NumberRow
+              label="Default slot hour (UTC)"
+              description="UTC hour for the daily slot anchor (rounds DOWN to nearest 2h boundary). 9 = 09:00 UTC = 10:00 BST. For multiple slots/day, others stagger from this anchor."
+              value={draft.slot_default_hour_utc}
+              onChange={(v) => setKey("slot_default_hour_utc", v)}
+              dirty={dirty.has("slot_default_hour_utc")}
+              min={0}
+              max={22}
+            />
+            <NumberRow
+              label="Horizon (days)"
+              description="How far ahead the slot generator maintains slots. 14 = two weeks of upcoming slots visible in calendar."
+              value={draft.slot_horizon_days}
+              onChange={(v) => setKey("slot_horizon_days", v)}
+              dirty={dirty.has("slot_horizon_days")}
+              min={1}
+              max={60}
+            />
+            <NumberRow
+              label="Render-ahead (minutes)"
+              description="Minutes before slot_anchor that the processor fires the producer. 30 = generate content 30 min before publish time."
+              value={draft.slot_render_ahead_minutes}
+              onChange={(v) => setKey("slot_render_ahead_minutes", v)}
+              dirty={dirty.has("slot_render_ahead_minutes")}
+              min={0}
+              max={1440}
+            />
+            <NumberRow
+              label="Max generations per cron tick"
+              description="Hard cap on slots fired by one processor run. Defends against credit storms if producer hangs. 3 fits comfortably in the 15-min cron window."
+              value={draft.slot_processor_max_per_run}
+              onChange={(v) => setKey("slot_processor_max_per_run", v)}
+              dirty={dirty.has("slot_processor_max_per_run")}
+              min={1}
+              max={10}
             />
           </CardContent>
         </Card>
