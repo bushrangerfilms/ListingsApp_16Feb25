@@ -17,6 +17,11 @@ import {
   Wrench,
   AlertCircle,
   X,
+  Brain,
+  Plus,
+  Trash2,
+  Pencil,
+  Check,
 } from "lucide-react";
 import {
   Card,
@@ -135,6 +140,10 @@ export default function EmailCopyPage() {
             <MessageSquare className="h-4 w-4" />
             Chat
           </TabsTrigger>
+          <TabsTrigger value="memory" className="gap-2">
+            <Brain className="h-4 w-4" />
+            Memory
+          </TabsTrigger>
           <TabsTrigger value="generate" className="gap-2">
             <Sparkles className="h-4 w-4" />
             Generate New Campaign
@@ -151,6 +160,10 @@ export default function EmailCopyPage() {
 
         <TabsContent value="chat" className="space-y-4">
           <ChatTab />
+        </TabsContent>
+
+        <TabsContent value="memory" className="space-y-4">
+          <MemoryTab />
         </TabsContent>
 
         <TabsContent value="generate" className="space-y-4">
@@ -611,6 +624,391 @@ function ImproveTab() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// ── Memory tab (persistent learnings) ────────────────────────────────
+
+type MemoryCategory = "style" | "feedback" | "project" | "reference";
+
+interface MemoryEntry {
+  id: string;
+  category: MemoryCategory;
+  title: string;
+  body: string;
+  source_session_id: string | null;
+  saved_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const CATEGORY_META: Record<MemoryCategory, { label: string; description: string; tone: string }> = {
+  style: {
+    label: "Style",
+    description: "Voice / tone / phrasing preferences the team has set.",
+    tone: "bg-blue-500/10 text-blue-700 border-blue-500/30 dark:text-blue-300",
+  },
+  feedback: {
+    label: "Feedback",
+    description: "Dos and don'ts the team has corrected or confirmed (with reason).",
+    tone: "bg-rose-500/10 text-rose-700 border-rose-500/30 dark:text-rose-300",
+  },
+  project: {
+    label: "Project",
+    description: "Ongoing campaign / persona / strategy context.",
+    tone: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-300",
+  },
+  reference: {
+    label: "Reference",
+    description: "Where to find things — external system facts, locations.",
+    tone: "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-300",
+  },
+};
+
+function MemoryTab() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [adding, setAdding] = useState(false);
+
+  const memoryQuery = useQuery<MemoryEntry[]>({
+    queryKey: ["email-writer-memory"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("marketing_email_writer_memory")
+        .select(
+          "id, category, title, body, source_session_id, saved_by_user_id, created_at, updated_at",
+        )
+        .is("archived_at", null)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as MemoryEntry[];
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("marketing_email_writer_memory")
+        .update({ archived_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-writer-memory"] });
+      toast({ title: "Memory deleted" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (args: {
+      id: string;
+      patch: Partial<Pick<MemoryEntry, "title" | "body" | "category">>;
+    }) => {
+      const { error } = await supabase
+        .from("marketing_email_writer_memory")
+        .update(args.patch)
+        .eq("id", args.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-writer-memory"] });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Update failed", description: e.message, variant: "destructive" }),
+  });
+
+  const insertMutation = useMutation({
+    mutationFn: async (args: { category: MemoryCategory; title: string; body: string }) => {
+      const userResp = await supabase.auth.getUser();
+      const { error } = await supabase.from("marketing_email_writer_memory").insert({
+        category: args.category,
+        title: args.title,
+        body: args.body,
+        saved_by_user_id: userResp.data.user?.id ?? null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["email-writer-memory"] });
+      setAdding(false);
+      toast({ title: "Memory saved" });
+    },
+    onError: (e: Error) =>
+      toast({ title: "Save failed", description: e.message, variant: "destructive" }),
+  });
+
+  const grouped = (["style", "feedback", "project", "reference"] as MemoryCategory[])
+    .map((cat) => ({
+      cat,
+      entries: (memoryQuery.data ?? []).filter((e) => e.category === cat),
+    }));
+
+  const totalCount = memoryQuery.data?.length ?? 0;
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              Persistent memory
+              <Badge variant="outline" className="text-[10px] font-mono">{totalCount} active</Badge>
+            </CardTitle>
+            <CardDescription>
+              Learnings the agent reads on every chat, generate, and improve call. Saved
+              automatically when the agent picks something up mid-conversation, or added manually
+              here. Deleting an entry removes it from the agent's system prompt on the next call.
+            </CardDescription>
+          </div>
+          <Button size="sm" onClick={() => setAdding(true)} className="gap-2 shrink-0">
+            <Plus className="h-3.5 w-3.5" />
+            Add
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {memoryQuery.isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading…
+            </div>
+          ) : memoryQuery.error ? (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{(memoryQuery.error as Error).message}</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="space-y-6">
+              {adding && (
+                <NewMemoryForm
+                  onCancel={() => setAdding(false)}
+                  onSave={(args) => insertMutation.mutate(args)}
+                  saving={insertMutation.isPending}
+                />
+              )}
+              {grouped.map(({ cat, entries }) => {
+                const meta = CATEGORY_META[cat];
+                return (
+                  <div key={cat} className="space-y-2">
+                    <div className="flex items-baseline justify-between border-b pb-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={meta.tone}>
+                          {meta.label}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{meta.description}</span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {entries.length}
+                      </span>
+                    </div>
+                    {entries.length === 0 ? (
+                      <div className="text-xs text-muted-foreground italic px-1">
+                        Nothing saved here yet.
+                      </div>
+                    ) : (
+                      entries.map((entry) => (
+                        <MemoryEntryCard
+                          key={entry.id}
+                          entry={entry}
+                          onDelete={() =>
+                            confirm("Delete this memory? Agent stops using it on the next call.") &&
+                            archiveMutation.mutate(entry.id)
+                          }
+                          onUpdate={(patch) => updateMutation.mutate({ id: entry.id, patch })}
+                        />
+                      ))
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function NewMemoryForm({
+  onCancel,
+  onSave,
+  saving,
+}: {
+  onCancel: () => void;
+  onSave: (args: { category: MemoryCategory; title: string; body: string }) => void;
+  saving: boolean;
+}) {
+  const [category, setCategory] = useState<MemoryCategory>("style");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const canSave = title.trim().length > 0 && body.trim().length > 0;
+  return (
+    <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div>
+          <Label className="text-xs">Category</Label>
+          <Select value={category} onValueChange={(v) => setCategory(v as MemoryCategory)}>
+            <SelectTrigger className="mt-1 h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(["style", "feedback", "project", "reference"] as MemoryCategory[]).map((c) => (
+                <SelectItem key={c} value={c}>
+                  {CATEGORY_META[c].label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="md:col-span-2">
+          <Label className="text-xs">Title</Label>
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Pete prefers lowercase subjects"
+            className="mt-1 h-8"
+            maxLength={200}
+          />
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Body</Label>
+        <Textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="The actual learning. For feedback entries, include the WHY."
+          rows={3}
+          maxLength={4000}
+          className="mt-1 text-sm"
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
+          Cancel
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => onSave({ category, title: title.trim(), body: body.trim() })}
+          disabled={!canSave || saving}
+          className="gap-2"
+        >
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+          Save memory
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function MemoryEntryCard({
+  entry,
+  onDelete,
+  onUpdate,
+}: {
+  entry: MemoryEntry;
+  onDelete: () => void;
+  onUpdate: (patch: Partial<Pick<MemoryEntry, "title" | "body" | "category">>) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(entry.title);
+  const [draftBody, setDraftBody] = useState(entry.body);
+  const [draftCategory, setDraftCategory] = useState<MemoryCategory>(entry.category);
+
+  useEffect(() => {
+    if (!editing) {
+      setDraftTitle(entry.title);
+      setDraftBody(entry.body);
+      setDraftCategory(entry.category);
+    }
+  }, [editing, entry.title, entry.body, entry.category]);
+
+  const save = () => {
+    const patch: Partial<Pick<MemoryEntry, "title" | "body" | "category">> = {};
+    if (draftTitle.trim() !== entry.title) patch.title = draftTitle.trim();
+    if (draftBody.trim() !== entry.body) patch.body = draftBody.trim();
+    if (draftCategory !== entry.category) patch.category = draftCategory;
+    if (Object.keys(patch).length > 0) onUpdate(patch);
+    setEditing(false);
+  };
+
+  const fromChat = !!entry.source_session_id;
+
+  return (
+    <div className="border rounded-md p-3 group">
+      {editing ? (
+        <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <Select value={draftCategory} onValueChange={(v) => setDraftCategory(v as MemoryCategory)}>
+              <SelectTrigger className="h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(["style", "feedback", "project", "reference"] as MemoryCategory[]).map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {CATEGORY_META[c].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              value={draftTitle}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              className="md:col-span-2 h-8"
+            />
+          </div>
+          <Textarea
+            value={draftBody}
+            onChange={(e) => setDraftBody(e.target.value)}
+            rows={3}
+            className="text-sm"
+          />
+          <div className="flex justify-end gap-1">
+            <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
+            <Button size="sm" onClick={save} className="gap-1.5"><Check className="h-3 w-3" /> Save</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium">{entry.title}</div>
+            <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{entry.body}</div>
+            <div className="text-[10px] text-muted-foreground mt-2 font-mono flex items-center gap-2">
+              <span>{entry.id.slice(0, 8)}</span>
+              <span>·</span>
+              <span>updated {formatRelativeTime(entry.updated_at)}</span>
+              {fromChat && (
+                <>
+                  <span>·</span>
+                  <span className="italic">saved by agent in a chat</span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              title="Edit"
+              onClick={() => setEditing(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-destructive"
+              title="Delete"
+              onClick={onDelete}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
