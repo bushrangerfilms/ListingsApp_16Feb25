@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -15,8 +15,8 @@ import {
   MessageSquare,
   ChevronRight,
   Wrench,
-  RotateCcw,
   AlertCircle,
+  X,
 } from "lucide-react";
 import {
   Card,
@@ -646,9 +646,17 @@ interface ChatTurn {
   error?: string;
 }
 
-interface MessageParam {
-  role: "user" | "assistant";
-  content: unknown;
+interface SessionListItem {
+  id: string;
+  title: string;
+  updated_at: string;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cache_read_input_tokens: number;
+}
+
+interface SessionDetail extends SessionListItem {
+  turns: ChatTurn[];
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -666,55 +674,143 @@ const TOOL_LABELS: Record<string, string> = {
 
 function ChatTab() {
   const { toast } = useToast();
-  const [turns, setTurns] = useState<ChatTurn[]>([]);
-  const [messages, setMessages] = useState<MessageParam[]>([]);
+  const queryClient = useQueryClient();
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  // pendingTurns are turns the user has just sent that the server hasn't
+  // confirmed yet. They render with a spinner until the response lands.
+  // Once the response is in, the persisted session reload handles them.
+  const [pendingTurns, setPendingTurns] = useState<ChatTurn[]>([]);
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Sidebar — list non-archived sessions for the current user, newest activity first.
+  const sessionsQuery = useQuery<SessionListItem[]>({
+    queryKey: ["email-chat-sessions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("marketing_email_chat_sessions")
+        .select(
+          "id, title, updated_at, total_input_tokens, total_output_tokens, total_cache_read_input_tokens",
+        )
+        .is("archived_at", null)
+        .order("updated_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as SessionListItem[];
+    },
+  });
+
+  // Detail — full turns for the open session. Skips when no session selected (new chat mode).
+  const sessionQuery = useQuery<SessionDetail | null>({
+    queryKey: ["email-chat-session", currentSessionId],
+    queryFn: async () => {
+      if (!currentSessionId) return null;
+      const { data, error } = await supabase
+        .from("marketing_email_chat_sessions")
+        .select(
+          "id, title, updated_at, total_input_tokens, total_output_tokens, total_cache_read_input_tokens, turns",
+        )
+        .eq("id", currentSessionId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return data as SessionDetail;
+    },
+    enabled: !!currentSessionId,
+  });
+
+  const persistedTurns: ChatTurn[] = sessionQuery.data?.turns ?? [];
+  const allTurns = [...persistedTurns, ...pendingTurns];
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [turns]);
+  }, [allTurns.length, pendingTurns.length]);
 
   const send = useMutation({
     mutationFn: async (user_message: string) => {
       const { data, error } = await supabase.functions.invoke(
         "marketing-engine-email-chat",
-        { body: { messages, user_message } },
+        { body: { session_id: currentSessionId, user_message } },
       );
       if (error) throw error;
       if (!data?.ok) throw new Error(data?.error || "chat turn failed");
       return data as {
+        session_id: string;
+        title: string;
+        turn: ChatTurn;
         trace: TraceEvent[];
-        updated_messages: MessageParam[];
         usage: ChatTurn["usage"];
+        persist_failed?: boolean;
       };
     },
     onMutate: (user_message: string) => {
       const id = crypto.randomUUID();
-      setTurns((t) => [...t, { id, user_message, trace: [], pending: true }]);
+      setPendingTurns((t) => [...t, { id, user_message, trace: [], pending: true }]);
       return { id };
     },
     onSuccess: (data, _vars, ctx) => {
-      setMessages(data.updated_messages);
-      setTurns((t) =>
-        t.map((turn) =>
-          turn.id === ctx?.id
-            ? { ...turn, trace: data.trace, usage: data.usage, pending: false }
-            : turn,
-        ),
-      );
+      // Drop the optimistic turn — the persisted reload will show the real one.
+      setPendingTurns((t) => t.filter((turn) => turn.id !== ctx?.id));
+      // If this was a new chat, lock onto the new session id. Triggers
+      // sessionQuery to fetch the row (which now contains our turn).
+      if (!currentSessionId) {
+        setCurrentSessionId(data.session_id);
+      }
+      // Refresh both sidebar (updated_at moved up) and the session detail.
+      queryClient.invalidateQueries({ queryKey: ["email-chat-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["email-chat-session", data.session_id] });
+      if (data.persist_failed) {
+        toast({
+          title: "Persist warning",
+          description: "Turn returned but DB write failed — reload may not show this turn.",
+          variant: "destructive",
+        });
+      }
     },
     onError: (e: Error, _vars, ctx) => {
-      setTurns((t) =>
+      setPendingTurns((t) =>
         t.map((turn) =>
-          turn.id === ctx?.id
-            ? { ...turn, pending: false, error: e.message }
-            : turn,
+          turn.id === ctx?.id ? { ...turn, pending: false, error: e.message } : turn,
         ),
       );
       toast({ title: "Chat error", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const archiveSession = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const { error } = await supabase
+        .from("marketing_email_chat_sessions")
+        .update({ archived_at: new Date().toISOString() })
+        .eq("id", sessionId);
+      if (error) throw error;
+    },
+    onSuccess: (_v, sessionId) => {
+      if (currentSessionId === sessionId) {
+        setCurrentSessionId(null);
+        setPendingTurns([]);
+      }
+      queryClient.invalidateQueries({ queryKey: ["email-chat-sessions"] });
+      toast({ title: "Conversation deleted" });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+    },
+  });
+
+  const renameSession = useMutation({
+    mutationFn: async (args: { id: string; title: string }) => {
+      const { error } = await supabase
+        .from("marketing_email_chat_sessions")
+        .update({ title: args.title })
+        .eq("id", args.id);
+      if (error) throw error;
+    },
+    onSuccess: (_v, args) => {
+      queryClient.invalidateQueries({ queryKey: ["email-chat-sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["email-chat-session", args.id] });
     },
   });
 
@@ -726,43 +822,82 @@ function ChatTab() {
     send.mutate(text);
   };
 
-  const reset = () => {
-    setTurns([]);
-    setMessages([]);
+  const newChat = () => {
+    setCurrentSessionId(null);
+    setPendingTurns([]);
     setDraft("");
   };
 
   return (
-    <Card className="flex flex-col" style={{ height: "calc(100vh - 280px)", minHeight: 560 }}>
-      <CardHeader className="pb-3 flex flex-row items-start justify-between gap-3 shrink-0">
-        <div>
-          <CardTitle className="text-base flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" />
-            Email writer agent
-            <Badge variant="outline" className="text-[10px] font-mono">opus 4.7 · adaptive thinking · xhigh effort</Badge>
-          </CardTitle>
-          <CardDescription>
-            Tool-using copywriting partner. Has access to: improve, generate, list PlusVibe campaigns,
-            get variation stats, spam lint, push to PlusVibe. State-mutating tools (push) require your
-            explicit go-ahead.
-          </CardDescription>
+    <Card className="flex flex-row overflow-hidden" style={{ height: "calc(100vh - 280px)", minHeight: 560 }}>
+      {/* Sidebar — session history */}
+      <div className="w-72 shrink-0 border-r flex flex-col bg-muted/20">
+        <div className="p-3 border-b flex items-center justify-between gap-2 shrink-0">
+          <div className="text-xs font-medium text-muted-foreground">Conversations</div>
+          <Button size="sm" variant="outline" onClick={newChat} className="gap-1.5 h-7 text-xs">
+            <MessageSquare className="h-3 w-3" />
+            New
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={reset} disabled={turns.length === 0} className="gap-2">
-          <RotateCcw className="h-3.5 w-3.5" />
-          Reset
-        </Button>
-      </CardHeader>
+        <div className="flex-1 overflow-y-auto">
+          {sessionsQuery.isLoading ? (
+            <div className="p-3 text-xs text-muted-foreground flex items-center gap-2">
+              <Loader2 className="h-3 w-3 animate-spin" /> loading…
+            </div>
+          ) : !sessionsQuery.data || sessionsQuery.data.length === 0 ? (
+            <div className="p-3 text-xs text-muted-foreground italic">No conversations yet.</div>
+          ) : (
+            <div className="space-y-px p-1">
+              {sessionsQuery.data.map((s) => (
+                <SessionRow
+                  key={s.id}
+                  session={s}
+                  active={s.id === currentSessionId}
+                  onSelect={() => {
+                    setCurrentSessionId(s.id);
+                    setPendingTurns([]);
+                  }}
+                  onArchive={() => archiveSession.mutate(s.id)}
+                  onRename={(title) => renameSession.mutate({ id: s.id, title })}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
-      <CardContent className="flex-1 overflow-hidden flex flex-col gap-3 pb-3">
-        <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-4">
-          {turns.length === 0 ? (
+      {/* Chat area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <CardHeader className="pb-3 flex flex-row items-start justify-between gap-3 shrink-0 border-b">
+          <div className="min-w-0">
+            <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+              <MessageSquare className="h-4 w-4 shrink-0" />
+              <span className="truncate">
+                {sessionQuery.data?.title ?? (currentSessionId ? "Loading…" : "New conversation")}
+              </span>
+              <Badge variant="outline" className="text-[10px] font-mono shrink-0">
+                opus 4.7 · adaptive thinking · xhigh effort
+              </Badge>
+            </CardTitle>
+            <CardDescription>
+              Tool-using copywriting partner. Conversations save automatically — pick up any chat from the sidebar.
+            </CardDescription>
+          </div>
+        </CardHeader>
+
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          {sessionQuery.isLoading && currentSessionId ? (
+            <div className="text-xs text-muted-foreground flex items-center gap-2">
+              <Loader2 className="h-3 w-3 animate-spin" /> Loading conversation…
+            </div>
+          ) : allTurns.length === 0 ? (
             <ChatEmptyState />
           ) : (
-            turns.map((t) => <TurnView key={t.id} turn={t} />)
+            allTurns.map((t) => <TurnView key={t.id} turn={t} />)
           )}
         </div>
 
-        <form onSubmit={submit} className="flex gap-2 shrink-0">
+        <form onSubmit={submit} className="flex gap-2 shrink-0 p-3 border-t">
           <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -771,7 +906,7 @@ function ChatTab() {
                 submit(e);
               }
             }}
-            placeholder="Ask the agent anything — 'rewrite UK Launch step 1A as time-saved angle', 'which angle is converting on UK Launch', 'draft a NZ-launch campaign for solo agents using Canva'…"
+            placeholder="Ask the agent anything — 'rewrite UK Launch step 1A as time-saved angle', 'which angle is converting', 'plan a bucketed Irish launch'…"
             rows={3}
             className="font-sans text-sm resize-none"
             disabled={send.isPending}
@@ -781,13 +916,117 @@ function ChatTab() {
             Send
           </Button>
         </form>
-        <div className="text-[10px] text-muted-foreground shrink-0">
-          ⌘+Enter to send. Conversation lives in this tab only — Reset wipes it. Tool calls stream
-          back as a timeline; expand any one for the JSON input/output.
+        <div className="text-[10px] text-muted-foreground shrink-0 px-3 pb-2">
+          ⌘+Enter to send. Saved automatically. Tool calls expand inline for the JSON input/output.
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
+}
+
+function SessionRow({
+  session,
+  active,
+  onSelect,
+  onArchive,
+  onRename,
+}: {
+  session: SessionListItem;
+  active: boolean;
+  onSelect: () => void;
+  onArchive: () => void;
+  onRename: (newTitle: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(session.title);
+
+  useEffect(() => {
+    if (!editing) setTitleDraft(session.title);
+  }, [session.title, editing]);
+
+  const commitRename = () => {
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== session.title) onRename(trimmed);
+    setEditing(false);
+  };
+
+  return (
+    <div
+      className={`group rounded-md px-2 py-2 text-xs cursor-pointer transition-colors ${
+        active ? "bg-primary/10 text-primary" : "hover:bg-muted/60"
+      }`}
+      onClick={() => !editing && onSelect()}
+    >
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          {editing ? (
+            <Input
+              autoFocus
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitRename();
+                if (e.key === "Escape") {
+                  setTitleDraft(session.title);
+                  setEditing(false);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="h-6 text-xs"
+            />
+          ) : (
+            <div className="font-medium truncate" title={session.title}>
+              {session.title}
+            </div>
+          )}
+          <div className="text-[10px] text-muted-foreground mt-0.5">
+            {formatRelativeTime(session.updated_at)}
+          </div>
+        </div>
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5"
+            title="Rename"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+            }}
+          >
+            <Wand2 className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5 text-destructive"
+            title="Delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm("Delete this conversation? This can't be undone from the UI.")) {
+                onArchive();
+              }
+            }}
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatRelativeTime(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
 function ChatEmptyState() {
