@@ -12,7 +12,15 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Sparkles, Trash2 } from "lucide-react";
+import { Sparkles, Trash2, Send, RefreshCw, MapPin, Clock } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   addDays,
   addMonths,
@@ -134,6 +142,9 @@ export default function CalendarViewPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  // Selected slot for the SlotDetailsDialog. Holds the slot id only;
+  // the dialog re-fetches full slot+post details to stay live.
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
 
   // Pending approval count for the Review tab badge.
   const { data: pendingCount } = useQuery<number>({
@@ -228,9 +239,7 @@ export default function CalendarViewPage() {
               setCurrentWeek(d);
               setViewMode("week");
             }}
-            onPostClick={(id) =>
-              navigate(`/internal/marketing-engine/queue#post-${id}`)
-            }
+            onSlotClick={setSelectedSlotId}
           />
         )}
         {viewMode === "week" && (
@@ -240,12 +249,24 @@ export default function CalendarViewPage() {
             onNext={() => setCurrentWeek(addWeeks(currentWeek, 1))}
             onToday={() => setCurrentWeek(new Date())}
             onBackToMonth={() => setViewMode("month")}
-            onPostClick={(id) =>
-              navigate(`/internal/marketing-engine/queue#post-${id}`)
-            }
+            onSlotClick={setSelectedSlotId}
           />
         )}
         {viewMode === "review" && <ReviewView />}
+
+        {/* Slot details dialog — opens when a slot is clicked anywhere
+            in the calendar (Month or Week). Shows the full post (if
+            generated) plus actions: Generate now / Cancel slot /
+            Approve / Reject / Regenerate / Post now. Status drives
+            which buttons render. */}
+        <SlotDetailsDialog
+          slotId={selectedSlotId}
+          onClose={() => setSelectedSlotId(null)}
+          onOpenInQueue={(postId) => {
+            setSelectedSlotId(null);
+            navigate(`/internal/marketing-engine/queue#post-${postId}`);
+          }}
+        />
       </div>
     </TooltipProvider>
   );
@@ -259,14 +280,14 @@ function MonthView({
   onNext,
   onToday,
   onWeekClick,
-  onPostClick,
+  onSlotClick,
 }: {
   currentMonth: Date;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
   onWeekClick: (weekStart: Date) => void;
-  onPostClick: (id: string) => void;
+  onSlotClick: (slotId: string) => void;
 }) {
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -447,7 +468,7 @@ function MonthView({
                     <SlotPill
                       key={s.id}
                       slot={s}
-                      onPostClick={onPostClick}
+                      onSlotClick={onSlotClick}
                     />
                   ))}
                   {daySlots.length > 4 && (
@@ -542,24 +563,49 @@ function WeekView({
   onNext,
   onToday,
   onBackToMonth,
-  onPostClick,
+  onSlotClick,
 }: {
   currentWeek: Date;
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
   onBackToMonth: () => void;
-  onPostClick: (id: string) => void;
+  onSlotClick: (slotId: string) => void;
 }) {
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
 
-  const { data: posts } = useQuery<PostRow[]>({
-    queryKey: ["me-calendar-posts-week", weekStart.toISOString().slice(0, 10)],
+  // Slot-centric query — same shape as MonthView. Slots are the
+  // canonical schedule; rejected/failed posts pre-2026-05-04 don't
+  // appear here (no slot row), keeping the calendar clean.
+  const { data: slots } = useQuery<
+    Array<SlotRow & { post: PostRow | null }>
+  >({
+    queryKey: ["me-calendar-slots-week", weekStart.toISOString().slice(0, 10)],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("marketing_engine_schedule_slots")
+        .select(
+          "id, slot_anchor, status, post_id, generation_attempts, cancelled_reason, post:marketing_engine_posts(id, topic, topic_category, status, channels, scheduled_for)",
+        )
+        .gte("slot_anchor", weekStart.toISOString())
+        .lte("slot_anchor", weekEnd.toISOString())
+        .order("slot_anchor");
+      return (data ?? []) as unknown as Array<
+        SlotRow & { post: PostRow | null }
+      >;
+    },
+    refetchInterval: 30_000,
+  });
+
+  // Posted history that doesn't have a slot row (legacy / pre-slot-system).
+  const { data: postedHistory } = useQuery<PostRow[]>({
+    queryKey: ["me-calendar-posted-week", weekStart.toISOString().slice(0, 10)],
     queryFn: async () => {
       const { data } = await supabase
         .from("marketing_engine_posts")
         .select("id, topic, topic_category, status, channels, scheduled_for")
+        .eq("status", "posted")
         .not("scheduled_for", "is", null)
         .gte("scheduled_for", weekStart.toISOString())
         .lte("scheduled_for", weekEnd.toISOString())
@@ -574,25 +620,40 @@ function WeekView({
     return out;
   }, [weekStart]);
 
-  // Slot grid: keyed by `${dayIso}|${slotIdx}`. Active posts collide-free
-  // (one per slot via the unique partial index in DB); rejected/failed
-  // can pile up but are visually distinct enough to share a cell.
-  const postBySlot = useMemo(() => {
-    const map = new Map<string, PostRow>();
-    for (const p of posts ?? []) {
+  // Slot grid keyed by `${dayIso}|${slotIdx}`. Slot table guarantees
+  // uniqueness; legacy posted rows get stitched in as faux slots.
+  const slotBySlotKey = useMemo(() => {
+    const map = new Map<string, SlotRow & { post: PostRow | null }>();
+    for (const s of slots ?? []) {
+      const dt = new Date(s.slot_anchor);
+      const dayKey = format(dt, "yyyy-MM-dd");
+      const key = `${dayKey}|${slotIndexOf(dt)}`;
+      map.set(key, s);
+    }
+    const slotPostIds = new Set(
+      (slots ?? []).map((s) => s.post_id).filter(Boolean),
+    );
+    for (const p of postedHistory ?? []) {
       if (!p.scheduled_for) continue;
+      if (slotPostIds.has(p.id)) continue;
       const dt = new Date(p.scheduled_for);
       const dayKey = format(dt, "yyyy-MM-dd");
       const key = `${dayKey}|${slotIndexOf(dt)}`;
-      // First wins — should never collide for active posts due to DB
-      // unique index on scheduled_for. Rejected/failed siblings get
-      // dropped in this view (visible in Review tab + Recent failures).
-      if (!map.has(key)) map.set(key, p);
+      if (map.has(key)) continue;
+      map.set(key, {
+        id: `legacy-${p.id}`,
+        slot_anchor: p.scheduled_for,
+        status: "fulfilled",
+        post_id: p.id,
+        generation_attempts: 1,
+        cancelled_reason: null,
+        post: p,
+      });
     }
     return map;
-  }, [posts]);
+  }, [slots, postedHistory]);
 
-  const total = posts?.length ?? 0;
+  const total = slots?.length ?? 0;
   const weekDayHeaders = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
@@ -674,7 +735,7 @@ function WeekView({
             {days.map((day) => {
               const dayKey = format(day, "yyyy-MM-dd");
               const slotIdx = SLOT_HOURS.indexOf(hour);
-              const post = postBySlot.get(`${dayKey}|${slotIdx}`);
+              const slot = slotBySlotKey.get(`${dayKey}|${slotIdx}`);
               const today = isToday(day);
               return (
                 <div
@@ -682,34 +743,11 @@ function WeekView({
                   className={cn(
                     "min-h-[42px] border rounded p-0.5 transition-colors",
                     today && "bg-primary/5",
-                    post ? "" : "bg-muted/20 border-dashed border-muted-foreground/15",
+                    slot ? "" : "bg-muted/20 border-dashed border-muted-foreground/15",
                   )}
                 >
-                  {post ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => onPostClick(post.id)}
-                          className={cn(
-                            "w-full h-full text-left text-[10px] leading-tight rounded px-1.5 py-1 border truncate hover:opacity-80 transition-opacity",
-                            STATUS_CHIP[post.status] ?? STATUS_CHIP.planning,
-                          )}
-                        >
-                          <div className="flex items-center gap-1">
-                            <span
-                              className={cn(
-                                "h-1.5 w-1.5 rounded-full shrink-0",
-                                STATUS_DOT[post.status] ?? STATUS_DOT.planning,
-                              )}
-                            />
-                            <span className="truncate">{post.topic}</span>
-                          </div>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <PostTooltip post={post} />
-                      </TooltipContent>
-                    </Tooltip>
+                  {slot ? (
+                    <SlotPill slot={slot} onSlotClick={onSlotClick} />
                   ) : null}
                 </div>
               );
@@ -985,20 +1023,28 @@ function PostPill({
 //   - cancelled: greyed strikethrough
 function SlotPill({
   slot,
-  onPostClick,
+  onSlotClick,
 }: {
   slot: SlotRow & { post: PostRow | null };
-  onPostClick: (id: string) => void;
+  onSlotClick: (slotId: string) => void;
 }) {
   const { generateNow, cancelSlot } = useSlotActions();
   const time = format(new Date(slot.slot_anchor), "HH:mm");
+  // Legacy posts stitched in as faux slots have id="legacy-…" — those
+  // can't open the slot details dialog (no slot row), so they fall
+  // through to the queue page like before.
+  const isLegacy = slot.id.startsWith("legacy-");
+  const handleClick = () => {
+    if (isLegacy) return; // tooltip-only; legacy rows have no slot row
+    onSlotClick(slot.id);
+  };
 
   if (slot.status === "fulfilled" && slot.post) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <button
-            onClick={() => slot.post && onPostClick(slot.post.id)}
+            onClick={handleClick}
             className={cn(
               "w-full text-left text-[10px] leading-tight rounded px-1.5 py-1 border truncate hover:opacity-80 transition-opacity",
               STATUS_CHIP[slot.post.status] ?? STATUS_CHIP.planning,
@@ -1036,10 +1082,13 @@ function SlotPill({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div
+        <button
+          onClick={handleClick}
+          disabled={isLegacy}
           className={cn(
             "group w-full text-left text-[10px] leading-tight rounded px-1.5 py-1 border truncate transition-opacity flex items-center gap-1",
             SLOT_STATUS_CHIP[slot.status],
+            !isLegacy && "hover:opacity-80 cursor-pointer",
           )}
         >
           <span
@@ -1051,31 +1100,33 @@ function SlotPill({
           <span className="truncate flex-1">{label}</span>
           {slot.status === "pending" && (
             <span className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
-              <button
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={(e) => {
                   e.stopPropagation();
                   generateNow.mutate(slot.id);
                 }}
-                disabled={generateNow.isPending}
                 title="Generate content now"
-                className="hover:text-purple-700 dark:hover:text-purple-400"
+                className="hover:text-purple-700 dark:hover:text-purple-400 cursor-pointer"
               >
                 <Sparkles className="h-3 w-3" />
-              </button>
-              <button
+              </span>
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (confirm("Cancel this slot?")) cancelSlot.mutate(slot.id);
                 }}
-                disabled={cancelSlot.isPending}
                 title="Cancel slot"
-                className="hover:text-red-600"
+                className="hover:text-red-600 cursor-pointer"
               >
                 <Trash2 className="h-3 w-3" />
-              </button>
+              </span>
             </span>
           )}
-        </div>
+        </button>
       </TooltipTrigger>
       <TooltipContent className="max-w-xs">
         <div className="space-y-1 text-xs">
@@ -1156,5 +1207,443 @@ function KpiPill({
         {value}
       </span>
     </div>
+  );
+}
+
+// SlotDetailsDialog — modal that opens when a slot is clicked. Loads
+// the full slot row + linked post (storyboard, copy_variants, output_assets,
+// reviewer feedback) and renders status-driven actions:
+//   pending     → Generate now / Cancel slot
+//   generating  → read-only with refresh hint
+//   fulfilled (post status review_queue / pending_approval) → Approve / Reject
+//                / Regenerate / Open in queue / Cancel slot
+//   fulfilled (post status approved) → Post now / Reject / Regenerate / Cancel
+//   fulfilled (post status posted) → Open live / Open in queue
+//   cancelled   → message only
+//
+// Keep the modal LIVE with refetchInterval so a Generate-now click
+// shows the slot transitioning generating → fulfilled in real time.
+function SlotDetailsDialog({
+  slotId,
+  onClose,
+  onOpenInQueue,
+}: {
+  slotId: string | null;
+  onClose: () => void;
+  onOpenInQueue: (postId: string) => void;
+}) {
+  const queryClient = useQueryClient();
+  const open = !!slotId;
+  const { generateNow, cancelSlot } = useSlotActions();
+
+  const { data: detail, refetch } = useQuery<{
+    slot: SlotRow;
+    post: (PostRow & {
+      copy_variants?: Record<string, { caption: string }> | null;
+      output_assets?: Record<string, string[]> | null;
+      render_thumbnails?: string[] | null;
+      reviewer_decision?: string | null;
+      reviewer_score?: number | null;
+      reviewer_feedback?: string | null;
+      approved_by?: string | null;
+      variation_axes?: Record<string, string> | null;
+      template?: { slug?: string } | null;
+    }) | null;
+  } | null>({
+    queryKey: ["me-slot-detail", slotId ?? "null"],
+    queryFn: async () => {
+      if (!slotId) return null;
+      const { data: slot } = await supabase
+        .from("marketing_engine_schedule_slots")
+        .select("*")
+        .eq("id", slotId)
+        .maybeSingle();
+      if (!slot) return null;
+      let post = null;
+      if (slot.post_id) {
+        const { data: postData } = await supabase
+          .from("marketing_engine_posts")
+          .select(
+            "id, topic, topic_category, status, channels, scheduled_for, copy_variants, output_assets, render_thumbnails, reviewer_decision, reviewer_score, reviewer_feedback, approved_by, variation_axes, template:marketing_engine_templates(slug)",
+          )
+          .eq("id", slot.post_id)
+          .maybeSingle();
+        post = postData;
+      }
+      return { slot: slot as SlotRow, post: post as never };
+    },
+    enabled: open,
+    refetchInterval: open ? 5_000 : false,
+  });
+
+  const updatePostStatus = useMutation({
+    mutationFn: async (next: { status: string; rejected_reason?: string }) => {
+      if (!detail?.post) throw new Error("no post on slot");
+      const updates: Record<string, unknown> = {
+        status: next.status,
+        updated_at: new Date().toISOString(),
+      };
+      if (next.status === "approved") {
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData?.user?.id;
+        if (!userId) throw new Error("Not authenticated");
+        updates.approved_at = new Date().toISOString();
+        updates.approved_by = userId;
+      }
+      if (next.status === "rejected") {
+        updates.rejected_reason = next.rejected_reason ?? "manual reject";
+      }
+      const { error } = await supabase
+        .from("marketing_engine_posts")
+        .update(updates)
+        .eq("id", detail.post.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(vars.status === "approved" ? "Approved" : "Rejected");
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-slots-month"] });
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-slots-week"] });
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-pending-count"] });
+    },
+    onError: (err: Error) => toast.error("Update failed", { description: err.message }),
+  });
+
+  const postNow = useMutation({
+    mutationFn: async () => {
+      if (!detail?.post) throw new Error("no post");
+      const { data, error } = await supabase.functions.invoke(
+        "marketing-engine-publish",
+        { body: { post_id: detail.post.id } },
+      );
+      if (error) throw error;
+      if (!(data as { ok?: boolean }).ok) {
+        throw new Error((data as { error?: string }).error ?? "publish failed");
+      }
+    },
+    onSuccess: () => {
+      toast.success("Post now triggered");
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-slots-month"] });
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-slots-week"] });
+    },
+    onError: (err: Error) =>
+      toast.error("Post now failed", { description: err.message }),
+  });
+
+  const regenerate = useMutation({
+    mutationFn: async () => {
+      if (!detail?.slot || !slotId) throw new Error("no slot");
+      // Reject the existing post (if any) and reset the slot to pending.
+      // Operator can hit Generate now to fire fresh, or wait for cron.
+      if (detail.post) {
+        await supabase
+          .from("marketing_engine_posts")
+          .update({
+            status: "rejected",
+            rejected_reason: "regeneration requested",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", detail.post.id);
+      }
+      const { error } = await supabase
+        .from("marketing_engine_schedule_slots")
+        .update({
+          status: "pending",
+          post_id: null,
+          generation_attempts: 0,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", slotId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Slot reset for regeneration", {
+        description: "Click Generate now to fire the producer immediately.",
+      });
+      refetch();
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-slots-month"] });
+      queryClient.invalidateQueries({ queryKey: ["me-calendar-slots-week"] });
+    },
+    onError: (err: Error) =>
+      toast.error("Regenerate failed", { description: err.message }),
+  });
+
+  if (!open || !detail) {
+    return (
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Slot details</DialogTitle>
+            <DialogDescription>
+              {open ? "Loading…" : ""}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const { slot, post } = detail;
+  const slotTime = new Date(slot.slot_anchor).toLocaleString();
+  const headlineSample =
+    post && (post as { storyboard?: { slides?: Array<{ headline?: string }> } })
+      .storyboard?.slides?.[0]?.headline;
+  const captionsByChannel = post?.copy_variants ?? {};
+  const thumbs = post?.render_thumbnails ?? [];
+  const isLoading = generateNow.isPending || cancelSlot.isPending ||
+    updatePostStatus.isPending || postNow.isPending || regenerate.isPending;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
+            <Badge variant="outline" className={SLOT_STATUS_CHIP[slot.status]}>
+              {slot.status}
+            </Badge>
+            {post && (
+              <Badge
+                variant="outline"
+                className={STATUS_CHIP[post.status] ?? STATUS_CHIP.planning}
+              >
+                {post.status}
+              </Badge>
+            )}
+            <span className="text-base font-normal text-muted-foreground">
+              Slot
+            </span>
+          </DialogTitle>
+          <DialogDescription className="flex items-center gap-3 flex-wrap text-xs">
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {slotTime}
+            </span>
+            {post?.template?.slug && (
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {post.template.slug}
+              </span>
+            )}
+            {post?.variation_axes && (
+              <span>
+                tone={post.variation_axes.tone} · hook={post.variation_axes.hook_style} · cta={post.variation_axes.cta_style}
+              </span>
+            )}
+            {slot.generation_attempts > 0 && (
+              <span>
+                attempts {slot.generation_attempts}/3
+              </span>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          {slot.status === "pending" && (
+            <div className="rounded border border-dashed border-muted-foreground/30 p-4 text-center text-sm text-muted-foreground">
+              <Sparkles className="h-5 w-5 mx-auto mb-2 opacity-50" />
+              Empty slot. Content gets generated when the processor cron fires (~30 min before slot time) or on Generate now.
+            </div>
+          )}
+
+          {slot.status === "generating" && (
+            <div className="rounded border border-purple-500/40 bg-purple-500/5 p-4 text-center text-sm">
+              <Loader2 className="h-5 w-5 mx-auto mb-2 animate-spin text-purple-700 dark:text-purple-400" />
+              Producer is drafting content right now. Refreshing every 5s.
+            </div>
+          )}
+
+          {slot.status === "cancelled" && (
+            <div className="rounded border border-muted bg-muted/20 p-4 text-sm text-muted-foreground">
+              Cancelled{slot.cancelled_reason ? ` — ${slot.cancelled_reason}` : ""}
+            </div>
+          )}
+
+          {post && (
+            <div className="space-y-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                  Topic
+                </div>
+                <div className="font-mono text-sm">{post.topic}</div>
+                {headlineSample && (
+                  <div className="text-sm font-medium mt-1">
+                    "{headlineSample}"
+                  </div>
+                )}
+              </div>
+
+              {thumbs.length > 0 && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                    Render preview
+                  </div>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {thumbs.slice(0, 6).map((t, i) => (
+                      <img
+                        key={i}
+                        src={t}
+                        alt={`thumb ${i + 1}`}
+                        className="h-32 rounded border object-cover shrink-0"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.opacity = "0.3";
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {Object.keys(captionsByChannel).length > 0 && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                    Captions
+                  </div>
+                  <div className="space-y-2">
+                    {Object.entries(captionsByChannel).map(([ch, v]) => (
+                      <div key={ch} className="rounded border bg-muted/20 p-2">
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">
+                          {ch}
+                        </div>
+                        <div className="text-xs whitespace-pre-wrap">
+                          {v.caption}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(post.reviewer_decision || post.reviewer_feedback) && (
+                <div className="rounded border border-blue-500/30 bg-blue-500/5 p-2 text-xs">
+                  <div className="font-semibold text-blue-700 dark:text-blue-400 mb-1">
+                    AI reviewer: {post.reviewer_decision}
+                    {typeof post.reviewer_score === "number" &&
+                      ` · ${post.reviewer_score}/10`}
+                  </div>
+                  {post.reviewer_feedback && (
+                    <div className="whitespace-pre-wrap">
+                      {post.reviewer_feedback}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-2">
+          {slot.status === "pending" && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (confirm("Cancel this slot?")) {
+                    cancelSlot.mutate(slot.id);
+                    onClose();
+                  }
+                }}
+                disabled={isLoading}
+                className="text-rose-700 dark:text-rose-400"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Cancel slot
+              </Button>
+              <Button
+                onClick={() => generateNow.mutate(slot.id)}
+                disabled={isLoading}
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                Generate now
+              </Button>
+            </>
+          )}
+
+          {(post?.status === "review_queue" ||
+            post?.status === "pending_approval") && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  updatePostStatus.mutate({
+                    status: "rejected",
+                    rejected_reason: "manual reject",
+                  })
+                }
+                disabled={isLoading}
+                className="text-rose-700 dark:text-rose-400"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Reject
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => regenerate.mutate()}
+                disabled={isLoading}
+              >
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                Regenerate
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => post && onOpenInQueue(post.id)}
+                disabled={isLoading}
+              >
+                Edit captions
+              </Button>
+              <Button
+                onClick={() => updatePostStatus.mutate({ status: "approved" })}
+                disabled={isLoading}
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                Approve
+              </Button>
+            </>
+          )}
+
+          {post?.status === "approved" && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => regenerate.mutate()}
+                disabled={isLoading}
+              >
+                <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                Regenerate
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  updatePostStatus.mutate({
+                    status: "rejected",
+                    rejected_reason: "post-approval reject",
+                  })
+                }
+                disabled={isLoading}
+                className="text-rose-700 dark:text-rose-400"
+              >
+                Reject
+              </Button>
+              <Button
+                onClick={() => postNow.mutate()}
+                disabled={isLoading}
+              >
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                Post now
+              </Button>
+            </>
+          )}
+
+          {post?.status === "posted" && (
+            <Button
+              variant="outline"
+              onClick={() => post && onOpenInQueue(post.id)}
+            >
+              Open in queue
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
